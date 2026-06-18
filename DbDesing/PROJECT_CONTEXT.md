@@ -1,7 +1,7 @@
 # EnrouteLogTech - Project Context & Progress Tracker
 
-**Last Updated**: June 13, 2026  
-**Current Phase**: Database Setup & Authentication  
+**Last Updated**: June 18, 2026  
+**Current Phase**: Backend APIs (Controllers, Routes, Middleware)  
 **Status**: 🟡 In Progress
 
 ---
@@ -533,6 +533,35 @@ backend/src/db/
 ---
 
 ### [Add new date entries below as you progress]
+
+---
+
+### June 18, 2026 (Thursday)
+**Status**: Backend Foundation & Auth Design
+
+**What We Did**:
+- Pushed all schemas to PostgreSQL (companies, branches, users, subscription plans, company subscriptions)
+- Fixed multiple schema issues (gel-core → pg-core typos, enum name conflicts, broken references)
+- Set up Node.js subpath imports (`#db/*`, `#schemas/*`, etc.) for clean path aliases
+- Installed backend packages: bcrypt, jsonwebtoken, cors, helmet, express-validator
+- Designed complete authentication & session architecture (JWT access + refresh tokens, user_sessions table, role middleware)
+- Reviewed auth architecture (scored 8.8/10) - added suggestions: rate limiting, account lockout, audit logging, refresh token rotation
+- Created README.md with full project summary
+- Set up GitHub repository and pushed code
+
+**Decisions Made**:
+- Generate enrouteCompanyId in service layer (not schema) - needs companyType
+- Use application-level security (not RLS) - database is not exposed, only APIs are
+- No Passport.js - custom email/OTP/JWT is sufficient for now
+- All URL fields use length 1000
+
+**Next Steps**:
+- Build utility helpers (response.js, generators.js)
+- Build error handler middleware
+- Create first API: Company Registration (service → controller → route)
+- Implement auth middleware chain (authMiddleware → sessionMiddleware → roleMiddleware)
+
+**Blockers**: None
 
 ---
 
