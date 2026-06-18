@@ -12,16 +12,16 @@ export function errorResponse (res,message = "error",statusCode =500,error = nul
     return res.status(statusCode).json({
         success:false,
         message,
-        ...(error && { errors }) 
+        ...(error && { error }) 
     });
 }
 
 //validation error response 
-export function validationErrorResponse(res,message = 'validation fail',errors){
+export function validationErrorResponse(res,message = 'validation fail',error){
     return res.status(400).json({
         success:false,
         message,
-        errors
+        error
     })
 }
 

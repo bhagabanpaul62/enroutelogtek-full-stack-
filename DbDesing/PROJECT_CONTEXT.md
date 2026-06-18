@@ -1,8 +1,58 @@
 # EnrouteLogTech - Project Context & Progress Tracker
 
-**Last Updated**: June 18, 2026  
+**Last Updated**: June 18, 2026 (Session 2)  
 **Current Phase**: Backend APIs (Controllers, Routes, Middleware)  
 **Status**: 🟡 In Progress
+
+---
+
+## 🚀 START HERE WHEN YOU REOPEN THE PROJECT
+
+**Where we stopped:** We built `asyncHandler` and response utilities, but the error-handling chain is incomplete. `asyncHandler` calls `next(error)` but there is no global error handler to receive it yet.
+
+### ✅ What already exists
+- `src/utils/asyncHandler.js` — wraps controllers, forwards errors via `next(error)`
+- `src/utils/response.js` — `successResponse`, `errorResponse`, `validationErrorResponse`
+- `src/utils/generotors.js` — `generateEnrouteCompanyId(companyType)`
+- `src/app.js` — express + helmet + cors + json setup (routes NOT wired yet)
+- `src/index.js` — server start + DB connection check
+- All DB schemas pushed (companies, branches, users, subscription plans, company subscriptions)
+
+### 🔴 TO DO NEXT (in this order)
+
+1. **Create global error handler** → `src/middleware/errorHandler.js`
+   - Must have 4 params: `(err, req, res, next)`
+   - Reads `err.statusCode` (default 500) and `err.message`
+   - Sends response using `errorResponse(res, message, statusCode)`
+   - THIS IS THE CRITICAL MISSING PIECE — without it, `next(error)` goes nowhere.
+
+2. **Register error handler in `app.js`**
+   - Add `app.use(errorHandler)` as the VERY LAST middleware (after all routes)
+   - Also add a 404 handler before it for unknown routes
+
+3. **Fix bug in `src/utils/response.js`**
+   - In `errorResponse`: `...(error && { errors })` is broken — `errors` is undefined.
+   - Param is named `error`, so fix to: `...(error && { errors: error })`
+
+4. **Fix CORS typo in `app.js`**
+   - `Credential:true` → should be `credentials:true` (lowercase + 's')
+
+5. **Build first controller** → `src/controller/company.controller.js`
+   - Use `asyncHandler`, use `successResponse` for success
+   - Use `generateEnrouteCompanyId` when creating a company
+
+6. **Build first route** → `src/routes/company.routes.js`
+   - `POST /register` → company controller
+   - Wire it in `app.js`: `app.use('/api/v1/companies', companyRoutes)`
+
+7. **Test** with Postman / Thunder Client
+
+### 📝 Key decisions reminder
+- Logic goes in CONTROLLER (no service layer for now) → so use `errorResponse`/`validationErrorResponse` directly; `AppError` is NOT needed.
+- `asyncHandler` IS being used → so a global error handler is required.
+- Application-level security only (no RLS). Database not exposed, only APIs.
+
+---
 
 ---
 
@@ -560,6 +610,29 @@ backend/src/db/
 - Build error handler middleware
 - Create first API: Company Registration (service → controller → route)
 - Implement auth middleware chain (authMiddleware → sessionMiddleware → roleMiddleware)
+
+**Blockers**: None
+
+---
+
+### June 18, 2026 (Session 2 - Evening)
+**Status**: Understanding asyncHandler & error handling
+
+**What We Did**:
+- Deep-dived into how `asyncHandler` works (higher-order function that wraps controllers in try/catch)
+- Understood why `next(error)` is better than sending response directly (one central error handler, different status codes, works with Express design)
+- Learned the relationship: `AppError` (throws, no res needed) vs `errorResponse` (sends, needs res) - they are partners, not alternatives
+- Decided: NO service layer for now → logic in controllers → use response utilities directly, skip AppError
+- Searched full codebase and identified what's missing (see "START HERE" section at top)
+
+**Key Findings (what's missing)**:
+- 🔴 No global error handler (errorHandler.js) - asyncHandler's next(error) has nowhere to go
+- 🔴 Routes not wired in app.js
+- 🟡 Bug in errorResponse: `{ errors }` undefined, should be `{ errors: error }`
+- 🟡 CORS typo: `Credential` → `credentials`
+- 🟡 controller/, routes/, middleware/ folders are empty
+
+**Next Steps**: See the "START HERE WHEN YOU REOPEN THE PROJECT" section at the top of this file.
 
 **Blockers**: None
 
