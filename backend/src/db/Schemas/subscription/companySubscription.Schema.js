@@ -1,8 +1,9 @@
 
 import { date, integer, pgEnum, pgTable, serial, timestamp } from "drizzle-orm/pg-core";
-import { subscriptionPlane } from "./subscrptionPlan.Schema";
-import { timestamps } from "../schema.Helper.Colomus/columns.Hemper";
-import { companies } from "../companies/company.Schema";
+import { subscriptionPlane } from "./subscrptionPlan.Schema.js";
+import { timestamps } from "../schema.Helper.Colomus/columns.Hemper.js";
+import { companies } from "../companies/company.Schema.js";
+
 
 
 export const paymentStatus=pgEnum('payment_status',['paid','pending','failed'])

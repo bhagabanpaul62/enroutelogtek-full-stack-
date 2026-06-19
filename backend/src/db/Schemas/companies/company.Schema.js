@@ -1,12 +1,12 @@
 import {
   pgTable,
   serial,
-  primaryKey,
+
   varchar,
   pgEnum,
-  unique,
+
 } from 'drizzle-orm/pg-core';
-import { timestamps } from '../schema.Helper.Colomus/columns.Hemper';
+import { timestamps } from '../schema.Helper.Colomus/columns.Hemper.js';
 
 export const companyType = pgEnum('company_type', [
   'customer',
@@ -30,7 +30,7 @@ export const companies = pgTable('companies', {
   companyType: companyType('company_type').notNull(),
   gstNumber: varchar('gst_number', { length: 15 }).notNull(),
   panNumber: varchar('pan_number', { length: 10 }).notNull(),
-  companyEmailId: varchar('company_email_id', { length: 15 })
+  companyEmailId: varchar('company_email_id', { length: 255 })
     .notNull()
     .unique(),
   companyPhoneNumber: varchar('company_phone_no', { length: 500 })

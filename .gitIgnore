@@ -1,0 +1,22 @@
+.vscode/
+DbDesing/
+
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs
+*.log

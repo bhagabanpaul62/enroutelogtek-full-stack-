@@ -1,2 +1,2 @@
-export * from './companySubscription.Schema'
-export * from './subscrptionPlan.Schema'
+export * from './companySubscription.Schema.js'
+export * from './subscrptionPlan.Schema.js'

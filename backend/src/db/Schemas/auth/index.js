@@ -1,1 +1,3 @@
-export * from "./users.Schema"
+export * from './users.Schema.js';
+export * from './otpVerification.Schema.js';
+export * from './userSessions.Schema.js';

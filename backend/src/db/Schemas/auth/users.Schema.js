@@ -9,9 +9,9 @@ import {
 } from 'drizzle-orm/pg-core';
 
 //reference table
-import { companies } from '../companies/company.Schema';
-import { branch } from '../companies/branch.Schema';
-import { timestamps } from '../schema.Helper.Colomus/columns.Hemper';
+import { companies } from '../companies/company.Schema.js';
+import { branch } from '../companies/branch.Schema.js';
+import { timestamps } from '../schema.Helper.Colomus/columns.Hemper.js';
 
 export const UserStatus = pgEnum('user_status', [
   'active',
