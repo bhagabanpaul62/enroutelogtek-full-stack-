@@ -20,7 +20,7 @@
   "type": "module",
   "imports": {
     "#db/*": "./src/db/*",
-    "#schemas/*": "./src/db/schemas/*",
+    "#schemas/*": "./src/db/Schemas/*",
     "#utils/*": "./src/utils/*",
     "#services/*": "./src/services/*",
     "#controllers/*": "./src/controllers/*",

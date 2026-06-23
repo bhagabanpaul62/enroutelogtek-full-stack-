@@ -1,89 +1,149 @@
+// emailTemplates.js
+const BRAND_NAME = 'EnrouteLogTech';
+const BRAND_DOMAIN = 'enroutelogtek.in';
+const SUPPORT_EMAIL = 'support@enroutelogtek.in';
+
+/**
+ * Premium Dark-Canvas Layout Wrapper
+ */
+function emailLayoutWrapper(content) {
+  return `
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #000000; font-family: Arial, sans-serif; margin: 0; padding: 40px 0;">
+      <tr>
+        <td align="center">
+          <!-- Main Content Container Card -->
+          <table border="0" cellpadding="0" cellspacing="0" width="580" style="background-color: #131313; border: 1px solid #222222; border-radius: 12px; overflow: hidden; border-collapse: collapse;">
+            
+            <!-- Brand Header -->
+            <tr>
+              <td style="padding: 32px 32px 20px 32px; text-align: left;">
+                <span style="color: #fbbc0e; font-size: 24px; font-weight: bold; letter-spacing: -0.5px;">
+                  ${BRAND_NAME}
+                </span>
+              </td>
+            </tr>
+
+            <!-- Content Area -->
+            <tr>
+              <td style="padding: 20px 32px 40px 32px; color: #e5e2e1; font-size: 15px; line-height: 24px;">
+                ${content}
+              </td>
+            </tr>
+
+            <!-- Muted System Footer -->
+            <tr>
+              <td bgcolor="#111111" style="padding: 32px; border-top: 1px solid #222222; text-align: center; font-size: 12px; color: #525B7A; line-height: 20px;">
+                <p style="margin: 0 0 6px 0; font-weight: bold; color: #e5e2e1; font-size: 13px;">${BRAND_NAME} — Logistics Made Simple</p>
+                <p style="margin: 0 0 16px 0;">This is an automated operational transmission from ${BRAND_DOMAIN}.</p>
+                <p style="margin: 0;">
+                  Need assistance? Contact our team at <a href="mailto:${SUPPORT_EMAIL}" style="color: #ffd88a; text-decoration: none; font-weight: bold;">${SUPPORT_EMAIL}</a>
+                </p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
+  `;
+}
 
 export function otpEmailTemplate(otp) {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background-color: #1a56db; padding: 20px; text-align: center;">
-        <h1 style="color: white; margin: 0;">EnrouteLogTech</h1>
-      </div>
-      
-      <div style="padding: 30px; background-color: #f9fafb;">
-        <h2>Your Verification Code</h2>
-        <p>Use this OTP to verify your email address:</p>
-        
-        <div style="background-color: #1a56db; color: white; 
-                    font-size: 32px; font-weight: bold; 
-                    text-align: center; padding: 20px; 
-                    border-radius: 8px; letter-spacing: 8px;">
+  const content = `
+    <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: bold; color: #ffffff;">Verify Your Email Address</h2>
+    <p style="margin: 0 0 24px 0; font-size: 15px; color: #e5e2e1;">Please apply the high-visibility verification token shown below inside your session window:</p>
+    
+    <!-- Token Display Section -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #111111; border: 1px dashed #fbbc0e; border-radius: 8px; margin-bottom: 24px;">
+      <tr>
+        <td align="center" style="padding: 24px; font-family: 'Courier New', Courier, monospace; color: #fbbc0e; font-size: 38px; font-weight: bold; letter-spacing: 10px; padding-left: 10px;">
           ${otp}
-        </div>
-        
-        <p style="color: #6b7280; margin-top: 20px;">
-          This OTP expires in <strong>10 minutes</strong>.
-          Do not share this with anyone.
-        </p>
-      </div>
-      
-      <div style="padding: 20px; text-align: center; color: #9ca3af;">
-        <p>EnrouteLogTech - Logistics Made Simple</p>
-      </div>
-    </div>
+        </td>
+      </tr>
+    </table>
+    
+    <!-- Info Flag -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #111111; border-left: 3px solid #525B7A; border-radius: 4px;">
+      <tr>
+        <td style="padding: 14px; font-size: 14px; color: #525B7A; line-height: 20px;">
+          <strong style="color: #e5e2e1;">Security Notice:</strong> This secure token remains live for exactly <strong>10 minutes</strong>. Do not expose or forward this passcode to any external parties.
+        </td>
+      </tr>
+    </table>
   `;
+  return emailLayoutWrapper(content);
 }
 
 export function welcomeEmailTemplate(name) {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background-color: #1a56db; padding: 20px; text-align: center;">
-        <h1 style="color: white;">Welcome to EnrouteLogTech!</h1>
-      </div>
-      
-      <div style="padding: 30px;">
-        <h2>Hello ${name},</h2>
-        <p>Your application has been submitted successfully.</p>
-        <p>Our team will review your documents and get back to you within 24-48 hours.</p>
-        <p>Status: <strong style="color: orange;">Pending Review</strong></p>
-      </div>
-    </div>
+  const content = `
+    <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: bold; color: #ffffff;">Application Submitted</h2>
+    <p style="margin: 0 0 12px 0; font-size: 15px; color: #ffffff;">Hello ${name},</p>
+    <p style="margin: 0 0 24px 0; font-size: 15px; color: #e5e2e1;">Your commercial profile data package has been registered cleanly onto the ${BRAND_NAME} engine database.</p>
+    
+    <!-- Elevated Status Container -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #111111; border: 1px solid #222222; border-radius: 6px; margin-bottom: 24px;">
+      <tr>
+        <td style="padding: 16px;">
+          <span style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; color: #525B7A; margin-bottom: 4px;">Current Verification Status</span>
+          <span style="font-size: 16px; font-weight: bold; color: #fbbc0e;">Pending Review</span>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 15px; color: #e5e2e1;">
+      Our verification staff is analyzing your structural files. Expect background processing configurations to finalize within <strong>24 to 48 hours</strong>.
+    </p>
   `;
+  return emailLayoutWrapper(content);
 }
 
 export function approvalEmailTemplate(companyName) {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background-color: #059669; padding: 20px; text-align: center;">
-        <h1 style="color: white;">Account Approved!</h1>
-      </div>
-      
-      <div style="padding: 30px;">
-        <h2>Congratulations!</h2>
-        <p><strong>${companyName}</strong> has been approved on EnrouteLogTech.</p>
-        <p>You can now login and start using the platform.</p>
-        
-        <a href="${process.env.FRONTEND_URL}/login" 
-           style="background-color: #059669; color: white; 
-                  padding: 12px 24px; text-decoration: none; 
-                  border-radius: 6px; display: inline-block; margin-top: 20px;">
-          Login Now
-        </a>
-      </div>
-    </div>
+  const content = `
+    <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: bold; color: #ffffff;">Account Cleared & Approved</h2>
+    <p style="margin: 0 0 24px 0; font-size: 14px; color: #fbbc0e; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">System Active</p>
+
+    <p style="margin: 0 0 16px 0; font-size: 15px; color: #ffffff;">Operational Milestone Reached,</p>
+    <p style="margin: 0 0 28px 0; font-size: 15px; color: #e5e2e1;">
+      The corporate registration details designated for <strong>${companyName}</strong> have been evaluated and cleared. Your tracking pipeline is now live.
+    </p>
+    
+    <!-- Beacon Button -->
+    <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+      <tr>
+        <td bgcolor="#fbbc0e" style="border-radius: 6px; padding: 14px 28px;" align="center">
+          <a href="${process.env.FRONTEND_URL}/login" 
+             style="color: #000000; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block;">
+            Access Corporate Console
+          </a>
+        </td>
+      </tr>
+    </table>
   `;
+  return emailLayoutWrapper(content);
 }
 
 export function rejectionEmailTemplate(companyName, reason) {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background-color: #dc2626; padding: 20px; text-align: center;">
-        <h1 style="color: white;">Application Update</h1>
-      </div>
-      
-      <div style="padding: 30px;">
-        <h2>Application Status Update</h2>
-        <p>We regret to inform you that <strong>${companyName}</strong>'s 
-           application could not be approved at this time.</p>
-        <p><strong>Reason:</strong> ${reason}</p>
-        <p>You may reapply after addressing the above concerns.</p>
-      </div>
-    </div>
+  const content = `
+    <h2 style="margin: 0 0 8px 0; font-size: 22px; font-weight: bold; color: #ffffff;">Application Verification Exception</h2>
+    <p style="margin: 0 0 24px 0; font-size: 14px; color: #525B7A; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Action Required</p>
+
+    <p style="margin: 0 0 20px 0; font-size: 15px; color: #e5e2e1;">
+      Thank you for processing with ${BRAND_NAME}. Following an explicit documentation cross-check for <strong>${companyName}</strong>, your account access couldn't be automatically provisioned.
+    </p>
+    
+    <!-- Deep Gray Error Container -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #111111; border: 1px solid #222222; border-left: 4px solid #fbbc0e; border-radius: 4px; margin-bottom: 24px;">
+      <tr>
+        <td style="padding: 18px;">
+          <h4 style="margin: 0 0 6px 0; font-size: 13px; font-weight: bold; color: #525B7A; text-transform: uppercase; letter-spacing: 0.5px;">Exception Log Detail:</h4>
+          <p style="margin: 0; font-size: 14px; color: #e5e2e1; line-height: 22px;">${reason}</p>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 15px; color: #525B7A;">
+      To reset your verification validation pipeline, connect to your registration link, overwrite the configuration gaps outlined above, and submit your profile details for re-queueing.
+    </p>
   `;
+  return emailLayoutWrapper(content);
 }

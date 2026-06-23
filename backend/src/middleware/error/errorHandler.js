@@ -1,4 +1,4 @@
-import {errorResponse} from '../../utils/response.js'
+import {errorResponse} from '#utils/response.js'
 
 
 export const errorHandler=(err,req,res,next)=>{

@@ -1,7 +1,6 @@
+import 'dotenv/config';
 import { app } from './app.js';
 import { db } from '#db/index.js';
-
-
 
 const startServer = async () => {
   try {
@@ -14,7 +13,8 @@ const startServer = async () => {
       console.log(`server is start in ${process.env.PORT}`);
     });
   } catch (error) {
-    console.log('fail to stat the server');
+    console.log('fail to stat the server :', error);
+    process.exit(1);
   }
 };
 

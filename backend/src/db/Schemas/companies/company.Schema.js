@@ -1,10 +1,8 @@
 import {
   pgTable,
-  serial,
-
+  uuid,
   varchar,
   pgEnum,
-
 } from 'drizzle-orm/pg-core';
 import { timestamps } from '../schema.Helper.Colomus/columns.Hemper.js';
 
@@ -22,8 +20,8 @@ export const CompanyStatus = pgEnum('company_status', [
 ]);
 
 export const companies = pgTable('companies', {
-  id: serial('id').primaryKey(),
-  companyName: varchar('company_name', { length: 255 }).notNull(),
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyName: varchar      ('company_name', { length: 255 }).notNull(),
   enrouteCompanyId: varchar('enroute_company_id', { length: 50 })
     .notNull()
     .unique(),

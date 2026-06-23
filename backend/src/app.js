@@ -1,9 +1,10 @@
 import  express  from "express";
-import 'dotenv/config';
 import helmet from 'helmet';
 import cors from 'cors';
 import { errorHandler } from "#middleware/error/errorHandler.js";
 import { errorResponse } from "#utils/response.js";
+//import router 
+import authRouter from'./routes/auth.Routes.js'
 
 export const app = express();
 
@@ -20,18 +21,20 @@ app.use(express.static("public"))
 
 //application API end-pointes 
 
+//auth api 
+app.use('/api/v1/auth',authRouter);
 
 
 
 
-
-
+//server life testing 
 app.get("/", (req,res)=>{
     res.json({
         message:"server is running"
     })
 })
 
+//404 if route is messing 
 app.use((req,res)=>{
     return errorResponse(res,`Route ${req.path} not found`,404);
 })

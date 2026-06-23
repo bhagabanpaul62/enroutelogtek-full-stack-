@@ -1,9 +1,8 @@
 import {
   pgEnum,
-  serial,
+  uuid,
   varchar,
   boolean,
-  integer,
   timestamp,
   pgTable,
 } from 'drizzle-orm/pg-core';
@@ -28,13 +27,12 @@ export const userRoll = pgEnum('user_role', [
 ]);
 
 export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
-  companyId: integer('company_id')
+  id: uuid('id').defaultRandom().primaryKey(),
+  companyId: uuid('company_id')
     .notNull()
     .references(() => companies.id),
-  branchId: integer('branch_id')
-    .notNull()
-    .references(() => branch.id),
+  branchId: uuid('branch_id')
+   .references(() => branch.id),
   name: varchar('name', { length: 255 }).notNull(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   isEmailVerified: boolean('is_email_verified').default(false),
