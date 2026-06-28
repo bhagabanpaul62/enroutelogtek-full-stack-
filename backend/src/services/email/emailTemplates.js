@@ -1,119 +1,278 @@
 // emailTemplates.js
-const BRAND_NAME = 'EnrouteLogTech';
+const BRAND_NAME = 'EnrouteLogtek';
 const BRAND_DOMAIN = 'enroutelogtek.in';
 const SUPPORT_EMAIL = 'support@enroutelogtek.in';
 
-/**
- * Premium Dark-Canvas Layout Wrapper
- */
+// ─── Color Tokens ─────────────────────────────────────────────────────────────
+// BG_PRIMARY    : #0a0a0a  — page background
+// BG_CARD       : #0a0a0a  — card background (same, unified)
+// BG_INSET      : #111111  — inset blocks inside card
+// BORDER        : #1f1f1f  — subtle borders
+// ACCENT        : #fbbc0e  — brand gold
+// ACCENT_MUTED  : #c49309  — dimmed gold
+// TEXT_PRIMARY  : #f0ede8  — main text
+// TEXT_SECONDARY: #7a8099  — muted text
+// TEXT_WHITE    : #ffffff  — headings
+
+
+// ─── Layout Wrapper ───────────────────────────────────────────────────────────
 function emailLayoutWrapper(content) {
   return `
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #000000; font-family: Arial, sans-serif; margin: 0; padding: 40px 0;">
-      <tr>
-        <td align="center">
-          <!-- Main Content Container Card -->
-          <table border="0" cellpadding="0" cellspacing="0" width="580" style="background-color: #131313; border: 1px solid #222222; border-radius: 12px; overflow: hidden; border-collapse: collapse;">
-            
-            <!-- Brand Header -->
-            <tr>
-              <td style="padding: 32px 32px 20px 32px; text-align: left;">
-                <span style="color: #fbbc0e; font-size: 24px; font-weight: bold; letter-spacing: -0.5px;">
-                  ${BRAND_NAME}
-                </span>
-              </td>
-            </tr>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0; padding:0; background-color:#0a0a0a;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%"
+    style="background-color:#0a0a0a; font-family:Arial,Helvetica,sans-serif; padding:48px 0;">
+    <tr>
+      <td align="center">
+        <table border="0" cellpadding="0" cellspacing="0" width="560"
+          style="background-color:#0a0a0a; border:1px solid #1f1f1f;
+                 border-radius:12px; overflow:hidden;">
 
-            <!-- Content Area -->
-            <tr>
-              <td style="padding: 20px 32px 40px 32px; color: #e5e2e1; font-size: 15px; line-height: 24px;">
-                ${content}
-              </td>
-            </tr>
+          <!-- Header -->
+          <tr>
+            <td style="padding:28px 36px 24px 36px;
+                        border-bottom:1px solid #1f1f1f;">
+              <span style="color:#fbbc0e; font-size:20px; font-weight:bold;
+                            letter-spacing:-0.3px; display:block;">
+                ${BRAND_NAME}
+              </span>
+              <span style="font-size:11px; text-transform:uppercase;
+                            letter-spacing:2.5px; margin-top:6px; display:block;">
+                <span style="color:#f0ede8;">SMARTER </span><span style="color:#fbbc0e;">LOGISTICS.</span>
+                <span style="color:#f0ede8;"> STRONGER </span><span style="color:#fbbc0e;">FUTURE.</span>
+              </span>
+            </td>
+          </tr>
 
-            <!-- Muted System Footer -->
-            <tr>
-              <td bgcolor="#111111" style="padding: 32px; border-top: 1px solid #222222; text-align: center; font-size: 12px; color: #525B7A; line-height: 20px;">
-                <p style="margin: 0 0 6px 0; font-weight: bold; color: #e5e2e1; font-size: 13px;">${BRAND_NAME} — Logistics Made Simple</p>
-                <p style="margin: 0 0 16px 0;">This is an automated operational transmission from ${BRAND_DOMAIN}.</p>
-                <p style="margin: 0;">
-                  Need assistance? Contact our team at <a href="mailto:${SUPPORT_EMAIL}" style="color: #ffd88a; text-decoration: none; font-weight: bold;">${SUPPORT_EMAIL}</a>
-                </p>
-              </td>
-            </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:36px; color:#f0ede8;
+                        font-size:15px; line-height:26px;">
+              ${content}
+            </td>
+          </tr>
 
-          </table>
-        </td>
-      </tr>
-    </table>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 36px; border-top:1px solid #1f1f1f;
+                        text-align:center;">
+              <p style="margin:0 0 6px 0; font-size:12px;
+                         font-weight:bold; color:#fbbc0e;">
+                ${BRAND_NAME}
+              </p>
+              <p style="margin:0 0 6px 0; font-size:12px; color:#7a8099;">
+                ${BRAND_DOMAIN}
+              </p>
+              <p style="margin:0; font-size:12px; color:#7a8099;">
+                Support:
+                <a href="mailto:${SUPPORT_EMAIL}"
+                   style="color:#c49309; text-decoration:none;">
+                  ${SUPPORT_EMAIL}
+                </a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
   `;
 }
 
+
+// ─── OTP Email ────────────────────────────────────────────────────────────────
 export function otpEmailTemplate(otp) {
   const content = `
-    <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: bold; color: #ffffff;">Verify Your Email Address</h2>
-    <p style="margin: 0 0 24px 0; font-size: 15px; color: #e5e2e1;">Please apply the high-visibility verification token shown below inside your session window:</p>
-    
-    <!-- Token Display Section -->
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #111111; border: 1px dashed #fbbc0e; border-radius: 8px; margin-bottom: 24px;">
-      <tr>
-        <td align="center" style="padding: 24px; font-family: 'Courier New', Courier, monospace; color: #fbbc0e; font-size: 38px; font-weight: bold; letter-spacing: 10px; padding-left: 10px;">
-          ${otp}
-        </td>
-      </tr>
-    </table>
-    
-    <!-- Info Flag -->
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #111111; border-left: 3px solid #525B7A; border-radius: 4px;">
-      <tr>
-        <td style="padding: 14px; font-size: 14px; color: #525B7A; line-height: 20px;">
-          <strong style="color: #e5e2e1;">Security Notice:</strong> This secure token remains live for exactly <strong>10 minutes</strong>. Do not expose or forward this passcode to any external parties.
-        </td>
-      </tr>
-    </table>
-  `;
-  return emailLayoutWrapper(content);
-}
-
-export function welcomeEmailTemplate(name) {
-  const content = `
-    <h2 style="margin: 0 0 16px 0; font-size: 22px; font-weight: bold; color: #ffffff;">Application Submitted</h2>
-    <p style="margin: 0 0 12px 0; font-size: 15px; color: #ffffff;">Hello ${name},</p>
-    <p style="margin: 0 0 24px 0; font-size: 15px; color: #e5e2e1;">Your commercial profile data package has been registered cleanly onto the ${BRAND_NAME} engine database.</p>
-    
-    <!-- Elevated Status Container -->
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #111111; border: 1px solid #222222; border-radius: 6px; margin-bottom: 24px;">
-      <tr>
-        <td style="padding: 16px;">
-          <span style="display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; color: #525B7A; margin-bottom: 4px;">Current Verification Status</span>
-          <span style="font-size: 16px; font-weight: bold; color: #fbbc0e;">Pending Review</span>
-        </td>
-      </tr>
-    </table>
-
-    <p style="margin: 0; font-size: 15px; color: #e5e2e1;">
-      Our verification staff is analyzing your structural files. Expect background processing configurations to finalize within <strong>24 to 48 hours</strong>.
+    <h2 style="margin:0 0 8px 0; font-size:20px; font-weight:bold; color:#ffffff;">
+      Email Verification
+    </h2>
+    <p style="margin:0 0 28px 0; font-size:14px; color:#7a8099;">
+      Use the verification code below to confirm your email address.
+      This code is valid for 10 minutes.
     </p>
+
+    <!-- OTP Block -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background-color:#111111; border:1px solid #1f1f1f;
+             border-top:2px solid #fbbc0e; border-radius:8px; margin-bottom:28px;">
+      <tr>
+        <td align="center" style="padding:32px 0;">
+          <span style="font-family:'Courier New',Courier,monospace;
+                        color:#fbbc0e; font-size:40px; font-weight:bold;
+                        letter-spacing:12px; display:block;">
+            ${otp}
+          </span>
+          <span style="display:block; margin-top:10px; font-size:12px;
+                        color:#7a8099; letter-spacing:0.5px;">
+            One-time password — expires in 10 minutes
+          </span>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Security Note -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background-color:#111111; border:1px solid #1f1f1f;
+             border-left:3px solid #fbbc0e; border-radius:4px;">
+      <tr>
+        <td style="padding:14px 18px; font-size:13px;
+                    color:#7a8099; line-height:20px;">
+          <strong style="color:#f0ede8;">Security Notice:</strong>
+          Never share this code with anyone.
+          ${BRAND_NAME} will never request your OTP via phone or chat.
+          If you did not request this, please disregard this message.
+        </td>
+      </tr>
+    </table>
   `;
   return emailLayoutWrapper(content);
 }
 
+
+// ─── Welcome Email (sent after all documents submitted) ───────────────────────
+export function welcomeEmailTemplate(name, companyName) {
+  const content = `
+    <h2 style="margin:0 0 8px 0; font-size:20px; font-weight:bold; color:#ffffff;">
+      Application Submitted Successfully
+    </h2>
+    <p style="margin:0 0 28px 0; font-size:14px; color:#7a8099;">
+      Thank you for completing your registration on ${BRAND_NAME}.
+    </p>
+
+    <p style="margin:0 0 24px 0; font-size:15px; color:#f0ede8; line-height:26px;">
+      Dear <strong style="color:#fbbc0e;">${name}</strong>,
+      <br><br>
+      Your company <strong style="color:#ffffff;">${companyName}</strong> has been
+      successfully registered on ${BRAND_NAME}. All your documents and company
+      details have been received and are now under review by our verification team.
+    </p>
+
+    <!-- Status Block -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background-color:#111111; border:1px solid #1f1f1f;
+             border-radius:8px; margin-bottom:28px;">
+      <tr>
+        <td style="padding:20px 24px;">
+          <span style="display:block; font-size:11px; font-weight:bold;
+                        text-transform:uppercase; letter-spacing:1.5px;
+                        color:#7a8099; margin-bottom:6px;">
+            Current Status
+          </span>
+          <span style="font-size:16px; font-weight:bold; color:#fbbc0e;">
+            Pending Verification
+          </span>
+          <span style="display:block; margin-top:6px; font-size:13px; color:#7a8099;">
+            Estimated review time: 24 to 48 business hours
+          </span>
+        </td>
+      </tr>
+    </table>
+
+    <!-- What to expect -->
+    <p style="margin:0 0 14px 0; font-size:12px; font-weight:bold;
+               color:#7a8099; text-transform:uppercase; letter-spacing:1.5px;">
+      What Happens Next
+    </p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="border:1px solid #1f1f1f; border-radius:8px; overflow:hidden;
+             margin-bottom:0;">
+      <tr>
+        <td style="padding:14px 20px; font-size:14px; color:#f0ede8;
+                    border-bottom:1px solid #1f1f1f;">
+          Our team reviews your submitted documents and company information.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:14px 20px; font-size:14px; color:#f0ede8;
+                    border-bottom:1px solid #1f1f1f;">
+          You will receive an approval or feedback email within 24 to 48 hours.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:14px 20px; font-size:14px; color:#f0ede8;">
+          Once approved, you can log in and start using the platform.
+        </td>
+      </tr>
+    </table>
+  `;
+  return emailLayoutWrapper(content);
+}
+
+
+// ─── Approval Email ───────────────────────────────────────────────────────────
 export function approvalEmailTemplate(companyName) {
   const content = `
-    <h2 style="margin: 0 0 8px 0; font-size: 24px; font-weight: bold; color: #ffffff;">Account Cleared & Approved</h2>
-    <p style="margin: 0 0 24px 0; font-size: 14px; color: #fbbc0e; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">System Active</p>
-
-    <p style="margin: 0 0 16px 0; font-size: 15px; color: #ffffff;">Operational Milestone Reached,</p>
-    <p style="margin: 0 0 28px 0; font-size: 15px; color: #e5e2e1;">
-      The corporate registration details designated for <strong>${companyName}</strong> have been evaluated and cleared. Your tracking pipeline is now live.
+    <h2 style="margin:0 0 8px 0; font-size:20px; font-weight:bold; color:#ffffff;">
+      Account Approved
+    </h2>
+    <p style="margin:0 0 28px 0; font-size:14px; color:#7a8099;">
+      Your company has been verified and approved on ${BRAND_NAME}.
     </p>
-    
-    <!-- Beacon Button -->
-    <table border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 8px;">
+
+    <p style="margin:0 0 24px 0; font-size:15px; color:#f0ede8; line-height:26px;">
+      We are pleased to inform you that
+      <strong style="color:#ffffff;">${companyName}</strong> has successfully
+      completed the verification process and is now an active member of the
+      ${BRAND_NAME} network.
+    </p>
+
+    <!-- Status Block -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background-color:#111111; border:1px solid #1f1f1f;
+             border-top:2px solid #fbbc0e; border-radius:8px; margin-bottom:28px;">
       <tr>
-        <td bgcolor="#fbbc0e" style="border-radius: 6px; padding: 14px 28px;" align="center">
-          <a href="${process.env.FRONTEND_URL}/login" 
-             style="color: #000000; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block;">
-            Access Corporate Console
+        <td style="padding:20px 24px;">
+          <span style="display:block; font-size:11px; font-weight:bold;
+                        text-transform:uppercase; letter-spacing:1.5px;
+                        color:#7a8099; margin-bottom:6px;">
+            Account Status
+          </span>
+          <span style="font-size:16px; font-weight:bold; color:#fbbc0e;">
+            Active and Verified
+          </span>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Divider -->
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="margin-bottom:28px;">
+      <tr>
+        <td style="padding:4px 0;">
+          <p style="margin:0 0 10px 0; font-size:12px; font-weight:bold;
+                     color:#7a8099; text-transform:uppercase; letter-spacing:1.5px;">
+            You Now Have Access To
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="font-size:14px; color:#f0ede8; line-height:28px;">
+          — Create and publish RFQs for freight procurement<br>
+          — Connect with verified transporters, brokers, and fleet owners<br>
+          — Manage trip execution and track shipments<br>
+          — Invite and manage your team members<br>
+          — Access billing and subscription management
+        </td>
+      </tr>
+    </table>
+
+    <!-- CTA -->
+    <table border="0" cellpadding="0" cellspacing="0">
+      <tr>
+        <td bgcolor="#fbbc0e"
+          style="border-radius:6px; padding:0;">
+          <a href="${process.env.FRONTEND_URL}/login"
+             style="display:inline-block; padding:13px 28px; color:#000000;
+                    text-decoration:none; font-weight:bold; font-size:14px;">
+            Login to Your Account
           </a>
         </td>
       </tr>
@@ -122,27 +281,73 @@ export function approvalEmailTemplate(companyName) {
   return emailLayoutWrapper(content);
 }
 
+
+// ─── Rejection Email ──────────────────────────────────────────────────────────
 export function rejectionEmailTemplate(companyName, reason) {
   const content = `
-    <h2 style="margin: 0 0 8px 0; font-size: 22px; font-weight: bold; color: #ffffff;">Application Verification Exception</h2>
-    <p style="margin: 0 0 24px 0; font-size: 14px; color: #525B7A; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Action Required</p>
-
-    <p style="margin: 0 0 20px 0; font-size: 15px; color: #e5e2e1;">
-      Thank you for processing with ${BRAND_NAME}. Following an explicit documentation cross-check for <strong>${companyName}</strong>, your account access couldn't be automatically provisioned.
+    <h2 style="margin:0 0 8px 0; font-size:20px; font-weight:bold; color:#ffffff;">
+      Application Status Update
+    </h2>
+    <p style="margin:0 0 28px 0; font-size:14px; color:#7a8099;">
+      We have completed the review of your registration.
     </p>
-    
-    <!-- Deep Gray Error Container -->
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #111111; border: 1px solid #222222; border-left: 4px solid #fbbc0e; border-radius: 4px; margin-bottom: 24px;">
+
+    <p style="margin:0 0 24px 0; font-size:15px; color:#f0ede8; line-height:26px;">
+      After a thorough review of the submitted documents and company information
+      for <strong style="color:#ffffff;">${companyName}</strong>, we are unable
+      to approve the account at this time.
+    </p>
+
+    <!-- Reason Block -->
+    <p style="margin:0 0 10px 0; font-size:12px; font-weight:bold;
+               color:#7a8099; text-transform:uppercase; letter-spacing:1.5px;">
+      Reason
+    </p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="background-color:#111111; border:1px solid #1f1f1f;
+             border-left:3px solid #fbbc0e; border-radius:6px; margin-bottom:28px;">
       <tr>
-        <td style="padding: 18px;">
-          <h4 style="margin: 0 0 6px 0; font-size: 13px; font-weight: bold; color: #525B7A; text-transform: uppercase; letter-spacing: 0.5px;">Exception Log Detail:</h4>
-          <p style="margin: 0; font-size: 14px; color: #e5e2e1; line-height: 22px;">${reason}</p>
+        <td style="padding:18px 20px; font-size:14px;
+                    color:#f0ede8; line-height:24px;">
+          ${reason}
         </td>
       </tr>
     </table>
 
-    <p style="margin: 0; font-size: 15px; color: #525B7A;">
-      To reset your verification validation pipeline, connect to your registration link, overwrite the configuration gaps outlined above, and submit your profile details for re-queueing.
+    <!-- Steps -->
+    <p style="margin:0 0 10px 0; font-size:12px; font-weight:bold;
+               color:#7a8099; text-transform:uppercase; letter-spacing:1.5px;">
+      Steps to Reapply
+    </p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="border:1px solid #1f1f1f; border-radius:8px; overflow:hidden;
+             margin-bottom:28px;">
+      <tr>
+        <td style="padding:13px 20px; font-size:14px; color:#f0ede8;
+                    border-bottom:1px solid #1f1f1f;">
+          Review the reason mentioned above and resolve the issue.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:13px 20px; font-size:14px; color:#f0ede8;
+                    border-bottom:1px solid #1f1f1f;">
+          Register again at <a href="https://${BRAND_DOMAIN}"
+            style="color:#c49309; text-decoration:none;">${BRAND_DOMAIN}</a>
+          with corrected information.
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:13px 20px; font-size:14px; color:#f0ede8;">
+          Upload valid documents and resubmit your application for review.
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin:0; font-size:13px; color:#7a8099; line-height:22px;">
+      If you believe this decision was made in error or need assistance,
+      please contact our support team at
+      <a href="mailto:${SUPPORT_EMAIL}"
+         style="color:#c49309; text-decoration:none;">${SUPPORT_EMAIL}</a>.
     </p>
   `;
   return emailLayoutWrapper(content);

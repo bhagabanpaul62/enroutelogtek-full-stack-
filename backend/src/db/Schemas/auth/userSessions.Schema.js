@@ -6,7 +6,8 @@ import {
   boolean,
 } from 'drizzle-orm/pg-core';
 import { users } from "./users.Schema.js";
-import { timestamps } from "../schema.Helper.Colomus/columns.Hemper.js";
+import { timestamps } from '../schema.Helper.Columns/column.Helper.js';
+
 
 export const userSessions = pgTable('user_sessions', {
   id: uuid('id').defaultRandom().primaryKey(),

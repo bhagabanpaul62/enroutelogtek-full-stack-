@@ -4,7 +4,9 @@ import cors from 'cors';
 import { errorHandler } from "#middleware/error/errorHandler.js";
 import { errorResponse } from "#utils/response.js";
 //import router 
-import authRouter from'./routes/auth.Routes.js'
+import authRouter from'./routes/auth.routes.js'
+import documentRouter from './routes/upload.route.js'
+import cookieParser from 'cookie-parser'
 
 export const app = express();
 
@@ -17,12 +19,14 @@ app.use(cors({
 }))
 app.use(express.urlencoded({extended:true,limit:"16kb"}))
 app.use(express.static("public"))
+app.use(cookieParser());
 
 
 //application API end-pointes 
 
 //auth api 
 app.use('/api/v1/auth',authRouter);
+app.use('/api/v1/documents',documentRouter)
 
 
 

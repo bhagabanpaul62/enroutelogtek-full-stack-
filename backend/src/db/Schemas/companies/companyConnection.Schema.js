@@ -1,6 +1,7 @@
 import { uuid, pgEnum, pgTable } from 'drizzle-orm/pg-core';
 import { companies } from './company.Schema.js';
-import { timestamps } from '../schema.Helper.Colomus/columns.Hemper.js';
+import { timestamps } from '../schema.Helper.Columns/column.Helper.js';
+
 
 export const connectionType = pgEnum('connection_type', [
   'customer',

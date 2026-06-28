@@ -1,5 +1,6 @@
 import { pgTable, uuid, timestamp, varchar, boolean } from "drizzle-orm/pg-core";
-import { timestamps } from "../schema.Helper.Colomus/columns.Hemper.js";
+import { timestamps } from "../schema.Helper.Columns/column.Helper.js";
+
 
 export const otpVerification = pgTable('otp_verification', {
   id: uuid('id').defaultRandom().primaryKey(),

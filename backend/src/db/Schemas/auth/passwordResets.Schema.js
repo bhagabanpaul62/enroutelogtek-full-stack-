@@ -1,5 +1,6 @@
 import { boolean, pgTable, uuid, timestamp, varchar } from "drizzle-orm/pg-core";
-import { timestamps } from "../schema.Helper.Colomus/columns.Hemper.js";
+import { timestamps } from "../schema.Helper.Columns/column.Helper.js";
+
 
 export const passwordResets = pgTable('password_resets', {
   id: uuid('id').defaultRandom().primaryKey(),

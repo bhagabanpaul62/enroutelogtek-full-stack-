@@ -3,13 +3,13 @@ import { otpEmailTemplate,welcomeEmailTemplate,approvalEmailTemplate,rejectionEm
 
 //create transporter
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: Number(process.env.EMAIL_PORT),
-  secure: process.env.EMAIL_SECURE === 'true',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+    host: process.env.EMAIL_HOST,
+    port: Number(process.env.EMAIL_PORT),
+    secure: process.env.EMAIL_SECURE === 'true',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD,
+    },
 });
 
 //core email sender
@@ -37,11 +37,11 @@ export async function sendOtpEmail(email, otp) {
   });
 }
 
-export async function sendWelcomeEmail(email, name) {
+export async function sendWelcomeEmail(email, name , companyName) {
   await sendEmail({
     to: email,
     subject: 'Welcome to EnrouteLogTech - Application Received',
-    html: welcomeEmailTemplate(name),
+    html: welcomeEmailTemplate(name,companyName),
     text: `Welcome ${name}! Your application is under review.`
   });
 }

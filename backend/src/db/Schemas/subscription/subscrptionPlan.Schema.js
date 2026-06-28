@@ -1,5 +1,6 @@
 import { pgTable, uuid, varchar, integer } from "drizzle-orm/pg-core";
-import { timestamps } from "../schema.Helper.Colomus/columns.Hemper.js";
+import { timestamps } from "../schema.Helper.Columns/column.Helper";
+
 
 export const subscriptionPlane = pgTable('subscription_plan', {
   id: uuid('id').defaultRandom().primaryKey(),
