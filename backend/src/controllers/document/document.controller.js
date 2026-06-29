@@ -1,8 +1,8 @@
 import { asyncHandler } from '#utils/asyncHandler.js';
 import { successResponse, validationErrorResponse } from '#utils/response.js';
 import { db } from '#db/index.js';
-import { uploadToR2 } from '../services/storage/r2.service.js';
-import {documents } from '#db/Schemas/companies/documents.Schema.js'
+import { uploadToR2 } from '#services/storage/r2.service.js';
+import { documents } from '#db/Schemas/companies/documents.Schema.js';
 import { AppError } from '#utils/AppError.js';
 
 export const uploadDocument = asyncHandler(async (req, res) => {
@@ -32,13 +32,11 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     ];
 
     if (!validTypes.includes(documentType)) {
-        throw new AppError('invalid types', 400);
+        throw new AppError('Invalid document type', 400);
     }
 
-    //upload doc and get a link
-    const fileLink = await uploadToR2(file,companyId,documentType);
+    const fileLink = await uploadToR2(file, companyId, documentType);
 
-    //save to database
     const [newDoc] = await db
         .insert(documents)
         .values({
@@ -49,7 +47,6 @@ export const uploadDocument = asyncHandler(async (req, res) => {
         })
         .returning();
 
-    //success response 
     return successResponse(
         res,
         {
@@ -60,5 +57,4 @@ export const uploadDocument = asyncHandler(async (req, res) => {
         'Document uploaded successfully',
         201,
     );
-
 });

@@ -25,7 +25,7 @@ export const users = pgTable('users', {
     name: varchar('name', { length: 255 }).notNull(),
     email: varchar('email', { length: 255 }).notNull().unique(),
     isEmailVerified: boolean('is_email_verified').default(false),
-    passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+    passwordHash: varchar('password_hash', { length: 1000 }).notNull(),
     phone: varchar('phone', { length: 15 }).unique(),
     userStatus: userStatus('user_status').default('active'),
     userRole: userRoll('user_role').default('admin'),
