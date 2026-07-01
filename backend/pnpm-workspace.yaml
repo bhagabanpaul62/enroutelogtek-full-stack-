@@ -1,3 +1,18 @@
+# Current (WRONG - these config keys don't exist in pnpm 11):
 allowBuilds:
+  sharp: false
+  unrs-resolver: false
   bcrypt: false
-  esbuild: set this to true or false
+  esbuild: false
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
+  - bcrypt
+  - esbuild
+
+# Correct:
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver
+  - bcrypt
+  - esbuild

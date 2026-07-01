@@ -1,4 +1,6 @@
 services:
+
+    #service 1
     postgres:
         image: postgres:18.4
         ports:
@@ -7,3 +9,27 @@ services:
             POSTGRES_DB: enroute
             POSTGRES_USER: enrouteDb
             POSTGRES_PASSWORD: enroute09832
+
+
+    #service 2
+    backend:
+        build: ./backend
+        ports:
+            - "8000:8000"
+        depends_on:
+            - postgres
+        env_file:
+            - ./backend/.env
+
+    frontend:
+        build: ./frontend
+        ports:
+            - "3000:3000"
+        depends_on:
+            - backend
+        env_file:
+            - ./frontend/.env
+         
+
+
+    

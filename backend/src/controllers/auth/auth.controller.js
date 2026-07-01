@@ -2,7 +2,7 @@ import { errorResponse, successResponse, validationErrorResponse } from '#utils/
 import { asyncHandler } from '#utils/asyncHandler.js';
 import { db } from '#db/index.js';
 import bcrypt from 'bcrypt';
-import { users, otpVerification } from '#db/Schemas/auth/index.js';
+import { users, otpVerification, userSessions } from '#db/Schemas/auth/index.js';
 import { sendOtpEmail, sendWelcomeEmail } from '#services/email/email.service.js';
 import crypto from 'crypto';
 import { and, eq, gt } from 'drizzle-orm';
@@ -277,4 +277,59 @@ export const submitRegistration = asyncHandler(async (req, res) => {
     }
 
     return successResponse(res, null, 'Application submitted. Pending admin review.', 200);
+});
+
+//forget password
+export const forgetPassword = asyncHandler(async (req, res) => {
+    //get email , otp , new password from req
+    const { email, otp, newPassword } = req.body;
+    //check validation email ,otp , new password
+    if (!email || !otp || !newPassword)
+        return validationErrorResponse(res, 'required email password and otp ', {
+            email: !email ? 'email is required ' : null,
+            otp: !otp ? 'otp is required' : null,
+            newPassword: !newPassword ? 'newPassword is required' : null,
+        });
+    //verify the otp
+    //get otp from db
+    const [dbOtp] = await db
+        .select()
+        .from(otpVerification)
+        .where(
+            and(
+                eq(otpVerification.email, email),
+                eq(otpVerification.isUsed, false),
+                gt(otpVerification.expiresAt, new Date()),
+            ),
+        )
+        .limit(1);
+
+    if (!dbOtp) throw new AppError('otp is expired', 400);
+    if (dbOtp.otp !== otp) throw new AppError('otp is invalid', 400);
+    //update otp is used
+    await db
+        .update(otpVerification)
+        .set({
+            isUsed: true,
+        })
+        .where(eq(otpVerification.email, email));
+    //get user details
+    const [ExistingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    if (!ExistingUser) throw new AppError('user not registered', 401);
+    //make hashed the password
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    //update the password
+    await db
+        .update(users)
+        .set({
+            passwordHash: passwordHash,
+        })
+        .where(eq(users.id, ExistingUser.id));
+    //update session or kill the session 
+    await db.update(userSessions).set({
+        refreshToken: null,
+        isActive:false,
+    }).where(eq(userSessions.userId,ExistingUser.id));
+    //success response
+    return successResponse(res, null, 'forget password successful', 200);
 });

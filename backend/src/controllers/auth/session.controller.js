@@ -156,7 +156,7 @@ export const refreshToken = asyncHandler(async (req, res) => {
     // 4. If expired → 401 "Session expired, login again"
     // 5. Find session in DB (matching sessionId + isActive = true)
 
-    const [session] = db
+    const [session] = await db
         .select()
         .from(userSessions)
         .where(

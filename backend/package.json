@@ -13,7 +13,7 @@
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "^11.5.0",
+      "version": "11.5.0",
       "onFail": "download"
     }
   },
@@ -45,6 +45,7 @@
     "@types/node": "^25.9.3",
     "@types/pg": "^8.20.0",
     "drizzle-kit": "^0.31.10",
+    "nodemon": "^3.1.14",
     "prettier": "^3.8.4",
     "tsx": "^4.22.4"
   }

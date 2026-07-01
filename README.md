@@ -1,105 +1,331 @@
-# EnrouteLogTech
+# EnrouteLogtek
 
-A B2B Logistics Procurement and Transportation Management (TMS) SaaS platform that digitizes the entire freight procurement and transportation lifecycle, from RFQ creation to trip completion.
+> **AI Agent Context File** — Read this first before doing anything. This file contains the full project context, completed work, current state, and next steps.
 
-## Overview
+---
 
-EnrouteLogTech is a multi-company platform where every company operates independently while interacting through a controlled business network. It serves manufacturers, transporters, brokers, and fleet owners with a subscription-based business model.
+## Project Overview
 
-### Core Features
-- Transporter onboarding & vendor network management
-- RFQ creation, live bidding, and contract awarding
-- Trip execution & fleet management
-- Broker & document management
-- Subscription & seat-based access control
+**EnrouteLogtek** is a B2B Logistics Procurement and Transportation Management (TMS) SaaS platform that digitizes the entire freight procurement and transportation lifecycle — from RFQ creation to trip completion.
 
-### Company Types (one type per company)
-- Customer
-- Transporter
-- Broker
-- Fleet Owner
+**Tagline:** SMARTER LOGISTICS. STRONGER FUTURE.
 
-### User Roles
-`rootAdmin` · `admin` · `viewer` · `bidManager` · `tripManager` · `accounts`
+**Domain:** enroutelogtek.in
+
+**Target Users:**
+
+- Manufacturing Companies (Customers)
+- Transporters
+- Brokers
+- Fleet Owners
+
+---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | Next.js |
-| Backend | Express.js |
-| Database | PostgreSQL |
-| ORM | Drizzle ORM |
-| Storage | Cloudflare R2 |
-| Auth | JWT (access + refresh tokens) |
-| Container | Docker |
-| Reverse Proxy | Nginx |
-| Hosting | Contabo VPS |
+| Layer           | Technology                                       |
+| --------------- | ------------------------------------------------ |
+| Frontend        | Next.js                                          |
+| Backend         | Express.js (Node.js)                             |
+| Database        | PostgreSQL                                       |
+| ORM             | Drizzle ORM                                      |
+| Storage         | Cloudflare R2                                    |
+| Auth            | JWT (access + refresh tokens) + HttpOnly Cookies |
+| Email           | Nodemailer + Hostinger SMTP                      |
+| Container       | Docker                                           |
+| Reverse Proxy   | Nginx                                            |
+| Hosting         | Contabo VPS                                      |
+| Package Manager | pnpm                                             |
+
+---
 
 ## Project Structure
 
 ```
 ENROUTE/
-├── frontend/              # Next.js frontend
-├── backend/              # Express.js backend
+├── frontend/                    # Next.js frontend (Phase 1.5 - building)
+├── backend/
 │   └── src/
-│       ├── controllers/  # Request handlers
-│       ├── services/     # Business logic
-│       ├── routes/       # API endpoints
-│       ├── middleware/   # Auth & validation
-│       ├── utils/        # Helpers
-│       └── db/
-│           ├── Schemas/  # Drizzle schemas
-│           └── index.js  # DB connection
+│       ├── controllers/
+│       │   ├── auth/            # sendOtp, verifyOtp, register, submitRegistration, login, logout, refreshToken, forgetPassword
+│       │   ├── document/        # uploadDocument
+│       │   ├── platform/        # rootAdmin: approve, reject companies (TODO)
+│       │   └── company/         # company management (TODO)
+│       ├── routes/
+│       │   ├── auth/            # /api/v1/auth/*
+│       │   ├── document/        # /api/v1/documents/*
+│       │   ├── platform/        # /api/v1/platform/* (rootAdmin only)
+│       │   ├── company/         # /api/v1/companies/*
+│       │   └── index.js         # collects all routes
+│       ├── middleware/
+│       │   ├── auth/
+│       │   │   ├── auth.middleware.js    # verifies JWT + checks session
+│       │   │   └── role.middleware.js    # checks user role permissions
+│       │   ├── error/
+│       │   │   └── errorHandler.js
+│       │   └── upload/
+│       │       └── upload.middleware.js
+│       ├── services/
+│       │   ├── email/
+│       │   │   ├── email.service.js
+│       │   │   └── emailTemplates.js
+│       │   └── storage/
+│       │       └── r2.service.js
+│       ├── utils/
+│       │   ├── asyncHandler.js
+│       │   ├── AppError.js
+│       │   ├── response.js       # successResponse, errorResponse, validationErrorResponse
+│       │   ├── jwt.js            # generateAccessToken, generateRefreshToken, verifyToken
+│       │   └── genarateEnrouteId.js
+│       ├── db/
+│       │   ├── index.js
+│       │   └── Schemas/
+│       │       ├── auth/         # users, userSessions, otpVerification, passwordResets
+│       │       ├── companies/    # companies, branch, documents, companyConnections
+│       │       └── subscription/ # subscriptionPlans, companySubscription
+│       ├── app.js
+│       └── index.js
 ├── docker-compose.yml
-└── DbDesing/             # Database design (DBML + context docs)
+└── DbDesing/
+    ├── model.dbml               # Database ERD
+    ├── PROJECT_CONTEXT.md       # Daily progress tracker
+    ├── BACKEND_ESSENTIALS.md    # Learning reference guide (6 chapters)
+    └── AUTH_FLOW.md             # Auth flow diagrams
 ```
-
-## Getting Started
-
-### Prerequisites
-- Node.js (v22+)
-- pnpm
-- Docker & Docker Compose
-
-### Setup
-1. Clone the repository
-2. Start PostgreSQL: `docker-compose up -d`
-3. Install backend dependencies: `cd backend && pnpm install`
-4. Configure `.env` (see `.env.example`)
-5. Push schemas to DB: `pnpm drizzle-kit push`
-6. Start the server: `pnpm start`
-
-## Development Progress
-
-### ✅ Completed
-- Database design (DBML)
-- Docker + PostgreSQL setup
-- Drizzle ORM configuration
-- Core schemas: companies, branches, users
-- Subscription schemas: subscription plans, company subscriptions
-- Path alias configuration (Node.js subpath imports)
-- Express app foundation (helmet, cors, error handling)
-- Authentication architecture design (JWT + refresh tokens + sessions)
-
-### 🔄 In Progress
-- Controllers, routes, and middleware
-- Registration & authentication APIs
-
-### 📋 Upcoming
-- RFQ management & invitations
-- Live bidding system
-- Contract management
-- Trip, vehicle & driver management
-- POD management
-- Analytics & reports
-
-## Development Philosophy
-
-Business First → Database → Backend → Frontend → Deploy
-
-Build only what is needed for current business requirements. Avoid premature optimization.
 
 ---
 
-*This README is updated regularly as the project progresses. For detailed daily context, see `DbDesing/PROJECT_CONTEXT.md`.*
+## Business Model
+
+- **Subscription-based** SaaS (Starter, Pro, Enterprise, Custom)
+- **Per-seat licensing** (no credential sharing)
+- **4 Company Types** (strict — one type per company):
+  - Customer (manufacturer/shipper)
+  - Transporter (logistics provider)
+  - Broker (freight broker)
+  - Fleet Owner (vehicle owner)
+- **Manual approval** — rootAdmin approves companies before login is allowed
+- **Network-based** — companies must connect before doing business together
+
+### User Roles
+
+| Role          | Description                    |
+| ------------- | ------------------------------ |
+| `rootAdmin`   | Platform owner (EnrouteLogtek) |
+| `admin`       | Company administrator          |
+| `co-admin`    | Company co-admin               |
+| `viewer`      | Read-only                      |
+| `bidManager`  | RFQ and bidding                |
+| `tripManager` | Trip execution                 |
+| `accounts`    | Billing/finance                |
+
+---
+
+## Completed APIs
+
+### ✅ Phase 1 — Authentication (COMPLETE — FROZEN)
+
+```
+POST /api/v1/auth/send-otp              ← Send OTP to email
+POST /api/v1/auth/otp-verification      ← Verify OTP + check if user exists
+POST /api/v1/auth/register              ← Create company + user + branch (status: draft)
+POST /api/v1/auth/submit-registration   ← Check docs uploaded → status: pending
+POST /api/v1/auth/login                 ← JWT + cookies + one-session rule
+POST /api/v1/auth/logout                ← Kill session + clear cookies
+POST /api/v1/auth/refresh-token         ← Get new access token
+POST /api/v1/auth/forget-password       ← OTP + reset password + kill sessions
+
+POST /api/v1/documents/upload           ← Upload doc to Cloudflare R2
+```
+
+### ✅ Auth Security Features:
+
+- ✅ Email OTP verification before registration
+- ✅ bcrypt password hashing (12 rounds)
+- ✅ JWT access token (15 min) + refresh token (30 days)
+- ✅ HttpOnly cookies (XSS protection)
+- ✅ Session table (instant revocation)
+- ✅ One user one session rule (prevents credential sharing)
+- ✅ Forgot password kills all sessions
+- ✅ authMiddleware (verifies JWT + session)
+- ✅ roleMiddleware (checks permissions)
+
+### Company Status Lifecycle:
+
+```
+draft → pending → approved → rejected/blocked
+```
+
+---
+
+## Environment Variables (backend/.env)
+
+```env
+DATABASE_URL="postgres://enrouteDb:enroute09832@localhost:5432/enroute"
+FRONTEND_URL="http://localhost:3000"
+PORT=8000
+NODE_ENV=development
+
+EMAIL_HOST=smtp.hostinger.com
+EMAIL_PORT=465
+EMAIL_SECURE=true
+EMAIL_USER=hello@enroutelogtek.in
+EMAIL_PASSWORD=***
+EMAIL_FROM=noreply@enroutelogtek.in
+
+JWT_SECRET=***
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=30d
+
+R2_ACCOUNT_ID=***
+R2_ACCESS_KEY_ID=***
+R2_SECRET_ACCESS_KEY=***
+R2_BUCKET_NAME=enroute-documents
+R2_PUBLIC_URL=https://pub-***.r2.dev
+```
+
+---
+
+## Development Roadmap
+
+```
+✅ Phase 1 — Authentication Backend (COMPLETE)
+   ✅ Database design (DBML)
+   ✅ Docker + PostgreSQL setup
+   ✅ Drizzle ORM + all schemas (UUID)
+   ✅ Auth APIs (OTP, register, login, logout, refresh, forgot password)
+   ✅ Document upload (Multer + Cloudflare R2)
+   ✅ Email system (Nodemailer + templates)
+   ✅ JWT + session management
+   ✅ authMiddleware + roleMiddleware
+
+🎨 Phase 1.5 — Authentication UI (CURRENT — BUILDING NOW)
+   → Frontend in Next.js
+   Public pages:
+     □ Landing page
+     □ Login
+     □ OTP verification
+     □ Registration (user + company + branch)
+     □ Document upload
+     □ Waiting for approval
+     □ 404 page
+   Dashboard:
+     □ Dashboard layout (sidebar + header)
+     □ Protected routes
+     □ Profile menu
+     □ Logout
+   NO business modules yet — just shell
+
+🔜 Phase 2 — Company Network
+   POST /network/send-request
+   POST /network/accept-request
+   POST /network/reject-request
+   DELETE /network/remove
+   GET  /network/my-network
+   GET  /network/pending
+
+🔜 Phase 3 — RFQ System
+   POST /rfq
+   GET  /rfq
+   GET  /rfq/:id
+   PATCH /rfq/:id
+   DELETE /rfq/:id
+   POST /rfq/:id/invite
+
+🔜 Phase 4 — Live Bidding
+   POST /bid
+   GET  /bid
+   PATCH /bid
+   (WebSocket for real-time, max 5 bids, countdown timer)
+
+🔜 Phase 5 — Contract Award
+🔜 Phase 6 — Trip Management (vehicle, driver, tracking, POD)
+🔜 Phase 7 — Analytics + Reports + Notifications
+```
+
+---
+
+## Frontend Architecture (Next.js)
+
+Single Next.js app with route groups:
+
+```
+app/
+├── (public)/
+│   ├── login/
+│   ├── register/
+│   └── landing/
+│
+└── (dashboard)/
+    ├── customer/
+    ├── transporter/
+    ├── broker/
+    └── fleet-owner/
+```
+
+After login, redirect based on `companyType` from JWT:
+
+- Customer → `/customer`
+- Transporter → `/transporter`
+- Broker → `/broker`
+- Fleet Owner → `/fleet-owner`
+
+---
+
+## How to Start Backend
+
+```bash
+# Start PostgreSQL
+docker-compose up -d
+
+# Install dependencies
+cd backend
+pnpm install
+
+# Push schemas to DB
+pnpm drizzle-kit push
+
+# Start server
+pnpm start
+```
+
+---
+
+## Key Decisions Made
+
+| Decision           | Choice                               | Reason                              |
+| ------------------ | ------------------------------------ | ----------------------------------- |
+| Auth type          | Hybrid (JWT + Session DB)            | Speed + revocation control          |
+| Token storage      | HttpOnly cookies                     | XSS protection                      |
+| ID type            | UUID                                 | Security (non-guessable)            |
+| OTP storage        | Plain text                           | Expires in 10min, deleted after use |
+| Password hashing   | bcrypt (12 rounds)                   | Industry standard                   |
+| Company type       | Strict (one type per company)        | Business rule                       |
+| File storage       | Cloudflare R2                        | Cost-effective, CDN                 |
+| Frontend structure | Single Next.js app with route groups | One codebase, different experiences |
+| Passport.js        | Not used                             | Custom email/OTP/JWT sufficient     |
+
+---
+
+## Documentation Files
+
+| File                             | Purpose                                  |
+| -------------------------------- | ---------------------------------------- |
+| `DbDesing/PROJECT_CONTEXT.md`    | Daily progress tracker + what to do next |
+| `DbDesing/BACKEND_ESSENTIALS.md` | 6-chapter backend learning reference     |
+| `DbDesing/AUTH_FLOW.md`          | Auth flow diagrams                       |
+| `DbDesing/model.dbml`            | Database ERD                             |
+
+---
+
+## For AI Agent — Start Here
+
+1. Read this README for full project context
+2. Check `DbDesing/PROJECT_CONTEXT.md` for what was done last session
+3. Current task: **Building Phase 1.5 UI (Next.js frontend)**
+4. Backend API base URL: `http://localhost:8000/api/v1`
+5. All auth APIs are complete and tested
+
+**Development philosophy:** Business First → Database → Backend → Frontend → Deploy
+
+**Key rule:** Build only what's needed. No premature optimization.
