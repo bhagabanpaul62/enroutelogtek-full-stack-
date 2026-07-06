@@ -1,0 +1,57 @@
+services:
+
+    #service 1
+    postgres:
+        image: postgres:18.4
+        ports:
+            - "5432:5432"
+        environment:
+            POSTGRES_DB: enroute
+            POSTGRES_USER: enrouteDb
+            POSTGRES_PASSWORD: enroute09832
+        volumes: 
+          - postgres_data:/var/lib/postgresql
+        healthcheck:
+          test: ["CMD-SHELL", "pg_isready -U enrouteDb -d enroute"]
+          interval: 5s
+          timeout: 5s
+          retries: 5
+
+    #service 2
+    backend:
+        build: 
+          context: ./backend
+          dockerfile: Dockerfile.dev
+        ports:
+            - "8000:8000"
+        depends_on:
+          postgres:
+            condition: service_healthy
+        env_file:
+            - ./backend/.env
+        volumes:
+          - ./backend:/app
+          - /app/node_modules
+
+
+    #service 3
+    frontend:
+        build: 
+          context: ./frontend
+          dockerfile: Dockerfile.dev
+        ports:
+            - "3000:3000"
+        depends_on:
+            - backend
+        env_file:
+            - ./frontend/.env
+        volumes:
+          - ./frontend:/app
+          - /app/node_modules
+
+volumes:
+  postgres_data:
+         
+
+
+    
