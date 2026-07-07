@@ -1,32 +1,164 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
+@custom-variant dark (&:is(.dark *));
+
+/* ═══════════════════════════════════════════════════════════════
+   EnrouteLogtek Brand Theme — Dark by Default
+   SMARTER LOGISTICS. STRONGER FUTURE.
+   
+   Usage:
+   bg-background       → page background (#131313)
+   bg-card             → cards, panels (#111111)
+   bg-primary          → gold buttons (#fbbc0e)
+   text-foreground     → main text (#e5e2e1)
+   text-muted-foreground → gray text (#525B7A)
+   border-border       → subtle borders (#222222)
+   ═══════════════════════════════════════════════════════════════ */
 
 :root {
-    /* Brand */
-    --color-primary: #fbbc0e;
-    --color-primary-muted: #c49309;
+  /* ── Page Background & Text ── */
+  --background: #131313;           /* page bg */
+  --foreground: #e5e2e1;           /* main text */
 
-    /* Background */
-    --color-bg: #0a0a0a;
-    --color-card: #111111;
-    --color-inset: #0d0d0d;
+  /* ── Cards / Panels / Modals ── */
+  --card: #111111;
+  --card-foreground: #e5e2e1;
 
-    /* Border */
-    --color-border: #1f1f1f;
-    --color-border-accent: #fbbc0e;
+  /* ── Popover (dropdown, tooltip) ── */
+  --popover: #111111;
+  --popover-foreground: #e5e2e1;
 
-    /* Text */
-    --color-text: #f0ede8;
-    --color-text-muted: #7a8099;
+  /* ── Primary (Gold - Brand Color) ── */
+  --primary: #fbbc0e;
+  --primary-foreground: #402d00;   /* dark text on gold */
 
-    /* Status */
-    --color-success: #4ade80;
-    --color-error: #ef4444;
-    --color-warning: #fbbc0e;
+  /* ── Secondary ── */
+  --secondary: #454747;
+  --secondary-foreground: #e2e2e2;
 
-    /* Spacing / Radius */
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-  }
+  /* ── Muted (dimmed, subtle) ── */
+  --muted: #201f1f;
+  --muted-foreground: #525B7A;
+
+  /* ── Accent (hover, active states) ── */
+  --accent: #2a2a2a;
+  --accent-foreground: #e5e2e1;
+
+  /* ── Destructive (error, delete) ── */
+  --destructive: #ED1C24;
+
+  /* ── Border & Input ── */
+  --border: #222222;
+  --input: #1f1f1f;
+
+  /* ── Focus Ring ── */
+  --ring: #fbbc0e;
+
+  /* ── Chart Colors ── */
+  --chart-1: #fbbc0e;
+  --chart-2: #c49309;
+  --chart-3: #4ade80;
+  --chart-4: #7a8099;
+  --chart-5: #f0ede8;
+
+  /* ── Border Radius ── */
+  --radius: 0.5rem;
+
+  /* ── Sidebar ── */
+  --sidebar: #0e0e0e;
+  --sidebar-foreground: #e5e2e1;
+  --sidebar-primary: #f5b700;
+  --sidebar-primary-foreground: #402d00;
+  --sidebar-accent: #1c1b1b;
+  --sidebar-accent-foreground: #e5e2e1;
+  --sidebar-border: #222222;
+  --sidebar-ring: #fbbc0e;
+}
+
+@theme inline {
+  /* ── Font Families ── */
+  --font-heading: var(--font-sans);
+  --font-sans: var(--font-space-grotesk);
+  --font-space-grotesk:var(--font-space-grotesk);
+
+  /* ── Shadcn Core Colors (mapped to :root variables) ── */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* ── Sidebar ── */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* ── Extended Brand Colors (EnrouteLogtek specific) ── */
+  --color-surface: #131313;
+  --color-surface-card: #111111;
+  --color-surface-container-low: #1c1b1b;
+  --color-surface-container: #201f1f;
+  --color-surface-container-high: #2a2a2a;
+  --color-surface-container-highest: #353534;
+  --color-surface-bright: #3a3939;
+  --color-surface-deep: #000000;
+  --color-surface-dim: #131313;
+
+  --color-gold: #ffd88a;
+  --color-gold-strong: #f5b700;
+  --color-gold-dim: #fbbc0e;
+  --color-gold-muted: #c49309;
+
+  --color-on-surface-variant: #d4c5ac;
+  --color-text-muted: #525B7A;
+
+  --color-outline: #9c8f78;
+  --color-outline-variant: #504532;
+  --color-border-subtle: #222222;
+
+  --color-tertiary: #ace5ff;
+  --color-tertiary-container: #45cfff;
+
+  --color-error: #ffb4ab;
+  --color-error-container: #93000a;
+  --color-status-error: #ED1C24;
+  --color-success: #4ade80;
+
+  --color-inverse-surface: #e5e2e1;
+  --color-inverse-on-surface: #313030;
+
+  /* ── Radius ── */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
 
