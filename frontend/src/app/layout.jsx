@@ -2,12 +2,17 @@
 import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { twMerge } from "tailwind-merge";
+import { ViewTransitions } from "next-view-transitions";
 
-const spaceGrotesk = Space_Grotesk({
+
+
+const geist = Space_Grotesk({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-space-grotesk",
 });
+
+
 
 
 export const metadata = {
@@ -17,9 +22,11 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} h-full antialiased`}>
+    <ViewTransitions>
+    <html lang="en" className={`${geist.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background">{children}</body>
     </html>
+    </ViewTransitions>
   );
 }
 

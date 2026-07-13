@@ -4,19 +4,19 @@ import { Input } from "@/components/ui/input";
 import React from "react";
 import { FaArrowRight } from "react-icons/fa6";
 import { useForm } from "react-hook-form";
-import Link from "next/link";
+import { Link } from "next-view-transitions";
 
 function Register() {
   const { register, handleSubmit, reset } = useForm({});
   return (
-    <section className="py-24 md:py-40 text-amber-100 ">
+    <section className="min-h-screen w-full bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 text-amber-100 flex justify-center items-center px-4 py-24 md:py-24">
       <div className=" flex flex-col justify-center items-center">
         <div className=" px-10 py-10 rounded-2xl sm:border border-white/12">
           <div>
             <div className="py-7">
               {" "}
-              <h2 className="text-2xl font-bold">Welcome back</h2>
-              <p className="font-medium w-75">
+              <h2 className="text-4xl font-bold">Welcome back</h2>
+              <p className="font-medium w-75 mt-5">
                 Enter your credentials to access your dashboard.
               </p>
             </div>
@@ -38,9 +38,9 @@ function Register() {
           </form>
           <div className="flex justify-center py-10">
             <p className="font-medium text-sm">
-              Don't have an account?{" "}
-              <Link href={"/register"} className="font-bold text-md">
-                Register
+              Have an account already?{" "}
+              <Link href={"/login"} className="font-bold text-md">
+                Log in.
               </Link>
             </p>
           </div>
