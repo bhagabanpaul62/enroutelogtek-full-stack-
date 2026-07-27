@@ -17,19 +17,19 @@ export const uploadDocument = asyncHandler(async (req, res) => {
             file: !file ? 'File is required' : null,
         });
     }
-
-    const validTypes = [
-        'gst',
-        'pan',
-        'logo',
-        'rc',
-        'insurance',
-        'paymentProof',
-        'pod',
-        'lr',
-        'indent',
-        'term&condition',
-    ];
+const validTypes = [
+    'gst',
+    'pan',
+    'logo',
+    'rc',
+    'insurance',
+    'paymentProof',
+    'pod',
+    'lr',
+    'indent',
+    'term&condition',
+    'profileImage',
+];
 
     if (!validTypes.includes(documentType)) {
         throw new AppError('Invalid document type', 400);

@@ -9,6 +9,7 @@ export const branch = pgTable('branch', {
     userId: uuid('userId').references(() => users.id),
     branchName: varchar('branch_name', { length: 255 }),
     branchCode: varchar('branch_code', { length: 50 }).unique(),
+    address:varchar('address' , {length:150}).notNull(),
     city: varchar('city', { length: 100 }).notNull(),
     state: varchar('state', { length: 100 }).notNull(),
     pinCode: varchar('pin_code', { length: 10 }).notNull(),

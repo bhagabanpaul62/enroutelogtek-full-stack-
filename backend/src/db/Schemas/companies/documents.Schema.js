@@ -3,20 +3,19 @@ import { companies } from './company.Schema.js';
 import { timestamps } from '../schema.Helper.Columns/column.Helper.js';
 import { users } from '../auth/users.Schema.js';
 
-
 export const documentType = pgEnum('document_type', [
-  'gst',
-  'pan',
-  'logo',
-  'rc',
-  'insurance',
-  'paymentProof',
-  'pod',
-  'lr',
-  'indent',
-  'term&condition'
+    'gst',
+    'pan',
+    'logo',
+    'rc',
+    'insurance',
+    'paymentProof',
+    'pod',
+    'lr',
+    'indent',
+    'term&condition',
+    'profileImage',
 ]);
-
 export const documents = pgTable('documents', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId:uuid('userId').references(()=> users.id),

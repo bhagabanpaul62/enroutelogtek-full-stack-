@@ -17,21 +17,26 @@ services:
           timeout: 5s
           retries: 5
 
-    #service 2
-    backend:
-        build: 
-            context: ./backend
-            dockerfile: Dockerfile.dev
-        ports:
-            - "8000:8000"
-        depends_on:
-            postgres:
-                condition: service_healthy
-        env_file:
-            - ./backend/.env
-        volumes:
-            - ./backend:/app
-            - backend_node_modules:/app/node_modules
+    # #service 2
+    # backend:
+    #     build: 
+    #         context: ./backend
+    #         dockerfile: Dockerfile.dev
+    #     volumes:
+    #         - ./backend:/app
+    #         - /app/node_modules
+        
+    #     ports:
+    #         - "8000:8000"
+    #         - "4983:4983"
+    #     depends_on:
+    #         postgres:
+    #             condition: service_healthy
+    #     env_file:
+    #         - ./backend/.env
+    #     environment:
+    #         CI: true
+        
 
 
     #service 3

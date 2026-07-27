@@ -11,7 +11,7 @@ function Footer() {
     product: [
       { name: "Solutions", href: "/solution" },
       { name: "Pricing", href: "/pricing" },
-      { name: "Features", href: "#" },
+     
     ],
     company: [
       { name: "About Us", href: "/about" },

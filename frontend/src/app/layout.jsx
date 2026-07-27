@@ -1,8 +1,8 @@
 
 import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import { twMerge } from "tailwind-merge";
-import { ViewTransitions } from "next-view-transitions";
+import { Toaster } from "sonner";
+
 
 
 
@@ -22,11 +22,12 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <ViewTransitions>
-    <html lang="en" className={`${geist.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-background">{children}</body>
-    </html>
-    </ViewTransitions>
+      <html lang="en" className={`${geist.variable} h-full antialiased`}>
+          <body className="min-h-full flex flex-col bg-background">
+              {children}
+              <Toaster richColors position="bottom-right" />
+          </body>
+      </html>
   );
 }
 

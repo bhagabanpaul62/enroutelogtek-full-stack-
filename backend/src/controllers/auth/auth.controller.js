@@ -2,9 +2,9 @@ import { errorResponse, successResponse, validationErrorResponse } from '#utils/
 import { asyncHandler } from '#utils/asyncHandler.js';
 import { db } from '#db/index.js';
 import bcrypt from 'bcrypt';
-import { users, otpVerification, userSessions } from '#db/Schemas/auth/index.js';
+import { users, otpVerification, userSessions, registrationSession } from '#db/Schemas/auth/index.js';
 import { sendOtpEmail, sendWelcomeEmail } from '#services/email/email.service.js';
-import crypto from 'crypto';
+import crypto, { secureHeapUsed } from 'crypto';
 import { and, eq, gt } from 'drizzle-orm';
 import { AppError } from '#utils/AppError.js';
 import { companies, branch, documents } from '#db/Schemas/companies/index.js';
@@ -38,18 +38,49 @@ export const sendOtp = asyncHandler(async (req, res) => {
         isUsed: false,
     });
 
+    const [session] = await db
+        .insert(registrationSession)
+        .values({
+            email: email,
+            step: 'OTP_SENT',
+            expiresAt: expiresAt,
+        })
+        .returning();
+
     try {
         await sendOtpEmail(email, otp);
     } catch (error) {
         console.error('Email send failed:', error.message);
     }
 
+    
+
+
+    res.cookie('registration_Session_Id',session.id,{
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite:"strict",
+        maxAge:10*60*1000
+    });
+
+    res.cookie('otp_email', email, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite:"strict",
+        maxAge:10*60*1000
+    });
     return successResponse(res, null, 'OTP sent to email', 200);
+    
+    
 });
 
 //verify the OTP
 export const verifyOtp = asyncHandler(async (req, res) => {
-    const { email, otp } = req.body;
+    const { otp } = req.body;
+    const email = req.cookies.otp_email;
+    const registrationSessionId = req.cookies.registration_Session_Id;
+
+
 
     if (!email || !otp) {
         return validationErrorResponse(res, 'email id or otp is not found', {
@@ -82,8 +113,34 @@ export const verifyOtp = asyncHandler(async (req, res) => {
         .set({ isUsed: true })
         .where(eq(otpVerification.id, data[0].id));
 
+    await db
+        .update(registrationSession)
+        .set({
+            step: 'OTP_VERIFIED',
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+        })
+        .where(
+            and(
+                eq(registrationSession.id, registrationSessionId),
+                eq(registrationSession.email, email),
+            ),
+        );
+
     const ExistingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
     const userExists = ExistingUser.length > 0;
+
+     res.cookie('registration_Session_Id', registrationSessionId, {
+         httpOnly: true,
+         secure: process.env.NODE_ENV === 'production',
+         sameSite: 'strict',
+         maxAge: 10 * 60 * 1000,
+     });
+     res.cookie('otp_email', email, {
+         httpOnly: true,
+         secure: process.env.NODE_ENV === 'production',
+         sameSite: 'lax',
+         maxAge: 30 * 60 * 1000,
+     });
 
     return successResponse(res, { userExists }, 'OTP verification successful', 200);
 });
@@ -103,6 +160,7 @@ export const register = asyncHandler(async (req, res) => {
         companyPhoneNumber,
         branchName,
         branchCode,
+        address,
         city,
         state,
         pinCode,
@@ -119,6 +177,7 @@ export const register = asyncHandler(async (req, res) => {
         !companyPhoneNumber ||
         !branchName ||
         !branchCode ||
+        !address ||
         !city ||
         !state ||
         !pinCode
@@ -134,6 +193,7 @@ export const register = asyncHandler(async (req, res) => {
             companyPhoneNumber: companyPhoneNumber ? null : 'Company Phone Number is required',
             branchName: branchName ? null : 'Branch name is required',
             branchCode: branchCode ? null : 'Branch code is required',
+            address: address ? null : "address is requried",
             city: city ? null : 'City is required',
             state: state ? null : 'State is required',
             pinCode: pinCode ? null : 'Pin Code is required',
@@ -217,6 +277,7 @@ export const register = asyncHandler(async (req, res) => {
             userId: newUser.id,
             branchName,
             branchCode,
+            address,
             city,
             state,
             pinCode,
@@ -269,6 +330,7 @@ export const submitRegistration = asyncHandler(async (req, res) => {
     await db.update(companies).set({ companyStatus: 'pending' }).where(eq(companies.id, companyId));
 
     const [user] = await db.select().from(users).where(eq(users.companyId, companyId)).limit(1);
+    
 
     try {
         await sendWelcomeEmail(user.email, user.name, company.companyName);
