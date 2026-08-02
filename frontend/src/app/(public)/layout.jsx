@@ -1,19 +1,19 @@
-import React from "react";
-import { ViewTransitions } from "next-view-transitions";
-import Nav from "@/components/publicUi/nav";
-import Footer from "@/components/publicUi/footer";
+import React from 'react';
+import { ViewTransitions } from 'next-view-transitions';
+import Nav from '@/shared/ui/layout/nav';
+import Footer from '@/shared/ui/layout/footer';
 
 function layout({ children }) {
-  return (
-      <>
-          <ViewTransitions>
-              <Nav></Nav>
-              <main className="flex-1">{children}</main>
+    return (
+        <>
+            <ViewTransitions>
+                <Nav></Nav>
+                <main className="flex-1">{children}</main>
 
-              <Footer />
-          </ViewTransitions>
-      </>
-  );
+                <Footer />
+            </ViewTransitions>
+        </>
+    );
 }
 
 export default layout;

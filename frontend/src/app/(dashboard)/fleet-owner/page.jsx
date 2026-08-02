@@ -1,9 +1,3 @@
-import React from 'react'
+import FleetOwnerDashboardPage from '@/features/dashboard/ui/FleetOwnerDashboardPage';
 
-function page() {
-  return (
-    <div>page</div>
-  )
-}
-
-export default page
+export default FleetOwnerDashboardPage;

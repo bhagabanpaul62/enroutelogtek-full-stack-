@@ -1,9 +1,3 @@
-import React from 'react'
+import BrokerDashboardPage from '@/features/dashboard/ui/BrokerDashboardPage';
 
-function page() {
-  return (
-    <div>page</div>
-  )
-}
-
-export default page
+export default BrokerDashboardPage;

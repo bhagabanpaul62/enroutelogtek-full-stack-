@@ -1,9 +1,3 @@
-import React from 'react'
+import CustomerDashboardPage from '@/features/dashboard/ui/CustomerDashboardPage';
 
-function page() {
-  return (
-    <div>page</div>
-  )
-}
-
-export default page
+export default CustomerDashboardPage;

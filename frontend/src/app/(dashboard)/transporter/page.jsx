@@ -1,9 +1,3 @@
-import React from 'react'
+import TransporterDashboardPage from '@/features/dashboard/ui/TransporterDashboardPage';
 
-function page() {
-  return (
-    <div>page</div>
-  )
-}
-
-export default page
+export default TransporterDashboardPage;

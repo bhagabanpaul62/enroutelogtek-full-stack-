@@ -17,25 +17,26 @@ services:
           timeout: 5s
           retries: 5
 
-    # #service 2
-    # backend:
-    #     build: 
-    #         context: ./backend
-    #         dockerfile: Dockerfile.dev
-    #     volumes:
-    #         - ./backend:/app
-    #         - /app/node_modules
+    #service 2
+    backend:
+        build: 
+            context: ./backend
+            dockerfile: Dockerfile.dev
+        volumes:
+            - ./backend:/app
+            - /app/node_modules
         
-    #     ports:
-    #         - "8000:8000"
-    #         - "4983:4983"
-    #     depends_on:
-    #         postgres:
-    #             condition: service_healthy
-    #     env_file:
-    #         - ./backend/.env
-    #     environment:
-    #         CI: true
+        ports:
+            - "8000:8000"
+            - "4983:4983"
+        depends_on:
+            postgres:
+                condition: service_healthy
+        env_file:
+            - ./backend/.env
+        environment:
+            DATABASE_URL: "postgres://enrouteDb:enroute09832@postgres:5432/enroute"
+            CI: true
         
 
 

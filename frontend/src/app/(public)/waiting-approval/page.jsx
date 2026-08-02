@@ -1,9 +1,3 @@
-import React from 'react'
+import WaitingApprovalPage from '@/features/auth/ui/WaitingApprovalPage';
 
-function page() {
-  return (
-    <div>wait</div>
-  )
-}
-
-export default page
+export default WaitingApprovalPage;
