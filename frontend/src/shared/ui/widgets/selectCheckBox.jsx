@@ -22,6 +22,7 @@ function SelectCheckBox({ list, value, onChange }) {
             className="hidden"
             checked={value === item}
             onChange={(e) => onChange(e.target.value)}
+     
           />
           {item.name}
         </label>

@@ -17,6 +17,8 @@ export const useResendOtp = () => {
             toast.success('otp send');
         } catch (error) {
             toast.error(error.response?.data?.message);
+            console.log(error);
+            
         }
     };
 

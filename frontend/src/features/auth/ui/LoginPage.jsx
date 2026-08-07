@@ -73,6 +73,14 @@ function Login() {
                                 {isPass === true ? <FaEyeSlash /> : <FaEye />}
                             </button>
                         </div>
+                        {errors.password && (
+                            <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+                        )}
+                        {apiError && (
+                            <p className="text-red-400 text-sm text-center mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                                {apiError}
+                            </p>
+                        )}
                         <Button
                             type="submit"
                             className="flex mx-auto font-bold w-full py-7 text-lg  mt-15"

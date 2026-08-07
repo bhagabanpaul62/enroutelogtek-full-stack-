@@ -1,5 +1,5 @@
 import { registerApi, submitRegistration, uploadDocumentApi } from '@/features/auth/api/auth.api';
-import { useRouter } from 'next/navigation';
+
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -13,9 +13,12 @@ export function useRegister() {
 
     const [registrationResult, setRegistrationResult] = useState(null);
     useEffect(() => {
+        const savedFromData = sessionStorage.getItem('fromData');
+        if (savedFromData) setFormData(JSON.parse(savedFromData));
         setEmail(sessionStorage.getItem('email'));
         if (sessionStorage.getItem('userExists')) {
             (setFinalSubmissions(true), setStep(0));
+        
         }
         const saved = sessionStorage.getItem('registrationResult');
         if (saved) {
@@ -26,7 +29,9 @@ export function useRegister() {
 
     // save data and go next
     const nextStep = (stepData) => {
-        setFormData((prev) => ({ ...prev, ...stepData }));
+        const update = { ...formData, ...stepData };
+        setFormData(update);
+        sessionStorage.setItem('fromData', JSON.stringify(update));
         setStep((prev) => prev + 1);
     };
 
@@ -48,11 +53,15 @@ export function useRegister() {
             //save the data
             sessionStorage.setItem('registrationResult', JSON.stringify(res.data.data));
             setRegistrationResult(res.data.data);
-            toast.success('Registration Successful');
+            toast.success('Data Save Successful');
             setStep(4);
         } catch (error) {
-            setApiError(error.response?.data?.message);
-            toast.error('Submission account info error');
+            const message = error.response?.data?.message || 'Submission account info error';
+
+            setApiError(message);
+            toast.error(message);
+
+            console.log(error.response?.data);
         } finally {
             setIsSubmitting(false);
         }
@@ -86,6 +95,8 @@ export function useRegister() {
             setFinalSubmissions(true);
 
             sessionStorage.removeItem('registrationResult');
+            sessionStorage.removeItem('userExists'); // ← ADD THIS
+            sessionStorage.removeItem('formData');
             sessionStorage.removeItem('email');
         } catch (error) {
             toast.error(error.response?.data?.message || 'Submission failed');

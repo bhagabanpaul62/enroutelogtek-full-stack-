@@ -8,6 +8,7 @@ import ProgressBar from '@/shared/ui/widgets/progressBar';
 import DropDown from '@/shared/ui/widgets/dropDowun';
 import { FaArrowLeft, FaArrowRight } from 'react-icons/fa6';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 
 const indianStates = [
     'Andhra Pradesh',
@@ -54,6 +55,10 @@ function BranchDetails({ progress, registerHook }) {
     };
 
     const onSubmit = (data) => {
+        if (!state) {
+            toast.error('Please select a state');
+            return;
+        }
         registerHook.nextStep({ ...data, state });
     };
 
@@ -148,6 +153,7 @@ function BranchDetails({ progress, registerHook }) {
                 {/* Submit Button */}
                 <div className="pt-6  flex justify-between items-center">
                     <Button
+                        type="button"
                         onClick={registerHook.prevStep}
                         className="w-fit py-6 px-6 text-base sm:text-lg font-bold border border-white/20 hover:border-primary/50 transition-all"
                     >

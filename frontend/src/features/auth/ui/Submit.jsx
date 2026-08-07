@@ -8,7 +8,7 @@ function Submit() {
 
 
   return (
-    <div className="min-h-screen bg-[#181309] text-[#ede1d0] antialiased overflow-x-hidden selection:bg-[#ffde9f] selection:text-[#402d00] font-sans relative flex flex-col justify-between">
+    <div className="min-h-screen bg-[#181309] text-[#ede1d0] antialiased overflow-x-hidden selection:bg-[#ffde9f] selection:text-[#402d00] font-sans relative flex flex-col justify-between rounded-2xl">
       {/* Styles Injection for Keyframe Animations */}
       
 

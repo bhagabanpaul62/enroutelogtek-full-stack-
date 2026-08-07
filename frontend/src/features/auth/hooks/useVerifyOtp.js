@@ -1,11 +1,12 @@
 import { verifyOtpApi } from '@/features/auth/api/auth.api';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
 export const useVerifyOtp = () => {
     const router = useRouter();
+    const [email, setEmail] = useState('');
 
     const [apiError, setApiError] = useState();
     const {
@@ -14,14 +15,20 @@ export const useVerifyOtp = () => {
         formState: { errors, isSubmitting },
     } = useForm();
 
+    useEffect(() => {
+        setEmail(sessionStorage.getItem('email'));
+    }, []);
+
     const onSubmit = async (data) => {
         try {
             const res = await verifyOtpApi(data.otp);
-            if (res.data.data.userExists)
-                sessionStorage.setItem('userExists', res.data.data.userExists);
-
-            toast.success('Otp verified');
-            router.push('/register/register-form');
+            if (res.data.data.userExists) {
+                toast.success('user already exist try to login ');
+                router.push('/login');
+            } else {
+                toast.success('Otp verified');
+                router.push('/register/register-form');
+            }
         } catch (error) {
             console.log('use otp error ::', error.response?.data?.message);
             setApiError(error.response?.data?.message);
@@ -36,5 +43,6 @@ export const useVerifyOtp = () => {
         isSubmitting,
         apiError,
         onSubmit,
+        email,
     };
 };

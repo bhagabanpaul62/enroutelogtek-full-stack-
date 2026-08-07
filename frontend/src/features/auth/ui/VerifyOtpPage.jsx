@@ -12,8 +12,8 @@ import { useResendOtp } from '@/features/auth/hooks/useResendOtp';
 
 function VerifyOtp() {
     const { isAllow, loading } = useRegistrationFlow();
-    const { control, handleSubmit, errors, isSubmitting, apiError, onSubmit } = useVerifyOtp();
-    const { handelResendOtp, count, email } = useResendOtp();
+    const { control, handleSubmit, errors, isSubmitting, apiError, onSubmit , email} = useVerifyOtp();
+    const { handelResendOtp, count } = useResendOtp();
 
     if (!isAllow) {
         return null;
@@ -47,6 +47,7 @@ function VerifyOtp() {
                                         maxLength={6}
                                         value={field.value || ''}
                                         onChange={field.onChange}
+                                        autoFocus={true}
                                     >
                                         <InputOTPGroup className="flex gap-2 py-8 ">
                                             <InputOTPSlot

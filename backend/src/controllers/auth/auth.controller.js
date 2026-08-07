@@ -1,10 +1,15 @@
-import { errorResponse, successResponse, validationErrorResponse } from '#utils/response.js';
+import { successResponse, validationErrorResponse } from '#utils/response.js';
 import { asyncHandler } from '#utils/asyncHandler.js';
 import { db } from '#db/index.js';
 import bcrypt from 'bcrypt';
-import { users, otpVerification, userSessions, registrationSession } from '#db/Schemas/auth/index.js';
+import {
+    users,
+    otpVerification,
+    userSessions,
+    registrationSession,
+} from '#db/Schemas/auth/index.js';
 import { sendOtpEmail, sendWelcomeEmail } from '#services/email/email.service.js';
-import crypto, { secureHeapUsed } from 'crypto';
+import crypto from 'crypto';
 import { and, eq, gt } from 'drizzle-orm';
 import { AppError } from '#utils/AppError.js';
 import { companies, branch, documents } from '#db/Schemas/companies/index.js';
@@ -53,25 +58,20 @@ export const sendOtp = asyncHandler(async (req, res) => {
         console.error('Email send failed:', error.message);
     }
 
-    
-
-
-    res.cookie('registration_Session_Id',session.id,{
+    res.cookie('registration_Session_Id', session.id, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite:"strict",
-        maxAge:10*60*1000
+        sameSite: 'strict',
+        maxAge: 10 * 60 * 1000,
     });
 
     res.cookie('otp_email', email, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite:"strict",
-        maxAge:10*60*1000
+        sameSite: 'strict',
+        maxAge: 30 * 60 * 1000,
     });
     return successResponse(res, null, 'OTP sent to email', 200);
-    
-    
 });
 
 //verify the OTP
@@ -79,8 +79,6 @@ export const verifyOtp = asyncHandler(async (req, res) => {
     const { otp } = req.body;
     const email = req.cookies.otp_email;
     const registrationSessionId = req.cookies.registration_Session_Id;
-
-
 
     if (!email || !otp) {
         return validationErrorResponse(res, 'email id or otp is not found', {
@@ -129,18 +127,18 @@ export const verifyOtp = asyncHandler(async (req, res) => {
     const ExistingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
     const userExists = ExistingUser.length > 0;
 
-     res.cookie('registration_Session_Id', registrationSessionId, {
-         httpOnly: true,
-         secure: process.env.NODE_ENV === 'production',
-         sameSite: 'strict',
-         maxAge: 10 * 60 * 1000,
-     });
-     res.cookie('otp_email', email, {
-         httpOnly: true,
-         secure: process.env.NODE_ENV === 'production',
-         sameSite: 'lax',
-         maxAge: 30 * 60 * 1000,
-     });
+    res.cookie('registration_Session_Id', registrationSessionId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 10 * 60 * 1000,
+    });
+    res.cookie('otp_email', email, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 60 * 1000,
+    });
 
     return successResponse(res, { userExists }, 'OTP verification successful', 200);
 });
@@ -193,12 +191,16 @@ export const register = asyncHandler(async (req, res) => {
             companyPhoneNumber: companyPhoneNumber ? null : 'Company Phone Number is required',
             branchName: branchName ? null : 'Branch name is required',
             branchCode: branchCode ? null : 'Branch code is required',
-            address: address ? null : "address is requried",
+            address: address ? null : 'address is requried',
             city: city ? null : 'City is required',
             state: state ? null : 'State is required',
             pinCode: pinCode ? null : 'Pin Code is required',
         });
     }
+
+    //check gst length and panNumber length
+    if (gstNumber && gstNumber.length > 15) throw new AppError('GST number must be 15 characters',400);
+    if (panNumber && panNumber.length > 10) throw new AppError('PAN number must me 10 characters',400);
 
     // Check email is verified via OTP
     const [checkEmail] = await db
@@ -209,6 +211,22 @@ export const register = asyncHandler(async (req, res) => {
     if (!checkEmail || checkEmail.isUsed === false) {
         throw new AppError('Email is not verified', 403);
     }
+
+    //check phone number duplicate
+    const checkPhone = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
+    if (checkPhone.length > 0) {
+        throw new AppError('Phone number already registered',409);
+    }
+
+    //check company phone number duplicate
+    const checkCompanyPhone = await db
+        .select()
+        .from(companies)
+        .where(eq(companies.companyPhoneNumber , companyPhoneNumber))
+        .limit(1);
+    if(checkCompanyPhone.length > 0){
+        throw new AppError('Company phone number already exist ',409)
+    } 
 
     // Check company email duplicate
     const checkCompanyEmail = await db
@@ -226,6 +244,8 @@ export const register = asyncHandler(async (req, res) => {
         throw new AppError('User email already registered', 409);
     }
 
+
+
     // Check GST duplicate (only if provided)
     if (gstNumber) {
         const checkGst = await db
@@ -236,65 +256,73 @@ export const register = asyncHandler(async (req, res) => {
         if (checkGst.length > 0) throw new AppError('GST number already taken', 409);
     }
 
+    //Check branchCode duplicate 
+    const checkBranchCode = await db.select().from(branch).where(eq(branch.branchCode , branchCode)).limit(1);
+    if(checkBranchCode.length > 0 ) throw new AppError('Branch Code is already exist',409)
+
     const passwordHash = await bcrypt.hash(password, 12);
     const enrouteCompanyId = generateEnrouteId(companyType);
 
-    // Insert company
-    const [newCompany] = await db
-        .insert(companies)
-        .values({
-            companyName,
-            enrouteCompanyId,
-            companyType,
-            gstNumber: gstNumber || null,
-            panNumber: panNumber || null,
-            companyEmailId,
-            companyPhoneNumber,
-            companyStatus: 'draft',
-        })
-        .returning();
+    const result = await db.transaction(async (tx) => {
+        // Insert company
+        const [newCompany] = await tx
+            .insert(companies)
+            .values({
+                companyName,
+                enrouteCompanyId,
+                companyType,
+                gstNumber: gstNumber || null,
+                panNumber: panNumber || null,
+                companyEmailId,
+                companyPhoneNumber,
+                companyStatus: 'draft',
+            })
+            .returning();
 
-    // Insert user
-    const [newUser] = await db
-        .insert(users)
-        .values({
-            companyId: newCompany.id,
-            name,
-            email,
-            isEmailVerified: true,
-            passwordHash,
-            phone,
-            userStatus: 'active',
-            userRole: 'admin',
-        })
-        .returning();
+        // Insert user
+        const [newUser] = await tx
+            .insert(users)
+            .values({
+                companyId: newCompany.id,
+                name,
+                email,
+                isEmailVerified: true,
+                passwordHash,
+                phone,
+                userStatus: 'active',
+                userRole: 'admin',
+            })
+            .returning();
 
-    // Insert branch
-    const [newBranch] = await db
-        .insert(branch)
-        .values({
-            companyId: newCompany.id,
-            userId: newUser.id,
-            branchName,
-            branchCode,
-            address,
-            city,
-            state,
-            pinCode,
-        })
-        .returning();
+        // Insert branch
+        const [newBranch] = await tx
+            .insert(branch)
+            .values({
+                companyId: newCompany.id,
+                userId: newUser.id,
+                branchName,
+                branchCode,
+                address,
+                city,
+                state,
+                pinCode,
+            })
+            .returning();
+        // Update user with branchId
+        await tx.update(users).set({ branchId: newBranch.id }).where(eq(users.id, newUser.id));
+        await tx.delete(otpVerification).where(eq(otpVerification.email, email));
 
-    // Update user with branchId
-    await db.update(users).set({ branchId: newBranch.id }).where(eq(users.id, newUser.id));
+        return { newCompany, newUser, newBranch };
+    });
 
     return successResponse(
         res,
         {
-            userId: newUser.id,
-            companyName: newCompany.companyName,
-            companyId: newCompany.id,
-            branchId: newBranch.id,
-            enrouteCompanyId: newCompany.enrouteCompanyId,
+            userId: result.newUser.id,
+            companyName: result.newCompany.companyName,
+            companyId: result.newCompany.id,
+            branchId: result.newBranch.id,
+            enrouteCompanyId: result.newCompany.enrouteCompanyId,
             status: 'draft',
         },
         'Registration successful',
@@ -330,7 +358,6 @@ export const submitRegistration = asyncHandler(async (req, res) => {
     await db.update(companies).set({ companyStatus: 'pending' }).where(eq(companies.id, companyId));
 
     const [user] = await db.select().from(users).where(eq(users.companyId, companyId)).limit(1);
-    
 
     try {
         await sendWelcomeEmail(user.email, user.name, company.companyName);
@@ -387,11 +414,44 @@ export const forgetPassword = asyncHandler(async (req, res) => {
             passwordHash: passwordHash,
         })
         .where(eq(users.id, ExistingUser.id));
-    //update session or kill the session 
-    await db.update(userSessions).set({
-        refreshToken: null,
-        isActive:false,
-    }).where(eq(userSessions.userId,ExistingUser.id));
+    //update session or kill the session
+    await db
+        .update(userSessions)
+        .set({
+            refreshToken: null,
+            isActive: false,
+        })
+        .where(eq(userSessions.userId, ExistingUser.id));
     //success response
     return successResponse(res, null, 'forget password successful', 200);
+});
+
+//Get Registration End Point
+export const getRegistration = asyncHandler(async (req, res) => {
+    const sessionId = req.cookies.registration_Session_Id;
+    const email = req.cookies.otp_email;
+
+    if (!sessionId || !email) {
+        return validationErrorResponse(res, 'not get email or sessionId in cookies', {
+            sessionId: sessionId ? null : 'not faound session ID',
+            email: email ? null : 'need email id',
+        });
+    }
+
+    const [session] = await db
+        .select()
+        .from(registrationSession)
+        .where(
+            and(
+                eq(registrationSession.id, sessionId),
+                eq(registrationSession.email, email),
+                gt(registrationSession.expiresAt, new Date()),
+            ),
+        )
+        .limit(1);
+
+    if (!session) {
+        throw new AppError('Session expired', 404);
+    }
+    return successResponse(res, session, 'session faound');
 });

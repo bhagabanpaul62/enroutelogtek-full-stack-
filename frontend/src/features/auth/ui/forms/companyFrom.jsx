@@ -7,6 +7,7 @@ import SelectCheckBox from '@/shared/ui/widgets/selectCheckBox';
 import ProgressBar from '@/shared/ui/widgets/progressBar';
 import { FaArrowRight } from 'react-icons/fa6';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 
 function CompanyForm({ registerHook, progress }) {
     const [companyType, setCompanyType] = useState(registerHook?.formData?.companyType || '');
@@ -20,6 +21,10 @@ function CompanyForm({ registerHook, progress }) {
     });
 
     const onSubmit = (data) => {
+        if (!companyType) {
+            toast.error('Please select a company type');
+            return;
+        }
         registerHook.nextStep({ ...data, companyType });
     };
 
@@ -44,15 +49,23 @@ function CompanyForm({ registerHook, progress }) {
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                     {/* Company Name */}
-                    <InputWithLabel
-                        id="companyName"
-                        label="Company Name"
-                        inputProps={{
-                            placeholder: 'Legal Entity Name',
-                            required: true,
-                            ...register('companyName', { required: 'Company name is required' }),
-                        }}
-                    />
+                    <div>
+                        <InputWithLabel
+                            id="companyName"
+                            label="Company Name"
+                            inputProps={{
+                                placeholder: 'Legal Entity Name',
+                                ...register('companyName', {
+                                    required: 'Company name is required',
+                                }),
+                            }}
+                        />
+                        {errors.companyName && (
+                            <p className="text-red-500 text-xs mt-1">
+                                {errors.companyName.message}
+                            </p>
+                        )}
+                    </div>
 
                     {/* Company Type — spans full width on mobile, fits in grid on desktop */}
                     <div>
@@ -70,34 +83,46 @@ function CompanyForm({ registerHook, progress }) {
                     </div>
 
                     {/* Work Email */}
-                    <InputWithLabel
-                        id="workEmail"
-                        label="Company Email"
-                        inputProps={{
-                            placeholder: 'corp@company.com',
-                            type: 'email',
-                            required: true,
-                            ...register('companyEmailId', {
-                                required: 'Company email is required',
-                            }),
-                        }}
-                    />
+                    <div>
+                        <InputWithLabel
+                            id="workEmail"
+                            label="Company Email"
+                            inputProps={{
+                                placeholder: 'corp@company.com',
+                                type: 'email',
+                                ...register('companyEmailId', {
+                                    required: 'Company email is required',
+                                }),
+                            }}
+                        />
+                        {errors.companyEmailId && (
+                            <p className="text-red-500 text-xs mt-1">
+                                {errors.companyEmailId.message}
+                            </p>
+                        )}
+                    </div>
 
                     {/* Phone Number */}
-                    <InputWithLabel
-                        id="phoneNumber"
-                        label="Company Phone Number"
-                        inputProps={{
-                            placeholder: '+91 98765 43210',
-                            type: 'tel',
-                            maxLength: 15,
-                            minLength: 10,
-                            required: true,
-                            ...register('companyPhoneNumber', {
-                                required: ' Company phone number is required',
-                            }),
-                        }}
-                    />
+                    <div>
+                        <InputWithLabel
+                            id="phoneNumber"
+                            label="Company Phone Number"
+                            inputProps={{
+                                placeholder: '+91 98765 43210',
+                                type: 'tel',
+                                maxLength: 15,
+                                minLength: 10,
+                                ...register('companyPhoneNumber', {
+                                    required: 'Company phone number is required',
+                                }),
+                            }}
+                        />
+                        {errors.companyPhoneNumber && (
+                            <p className="text-red-500 text-xs mt-1">
+                                {errors.companyPhoneNumber.message}
+                            </p>
+                        )}
+                    </div>
 
                     {/* GST Number */}
                     <InputWithLabel

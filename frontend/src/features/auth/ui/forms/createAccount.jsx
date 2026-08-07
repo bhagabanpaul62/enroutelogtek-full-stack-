@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 const countryCodes = ['+1', '+91', '+44', '+81'];
 
 function CreateAccount({ registerHook, progress }) {
-    const [countryCode, setCountryCode] = useState();
+    const [countryCode, setCountryCode] = useState('+91');
 
     const {
         register,
@@ -54,6 +54,12 @@ function CreateAccount({ registerHook, progress }) {
 
             {/* Form */}
             <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+                {/* API Error Display */}
+                {registerHook.apiError && (
+                    <p className="text-red-400 text-sm text-center p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                        {registerHook.apiError}
+                    </p>
+                )}
                 <div className="flex flex-col gap-y-6">
                     {/* Full Name */}
                     <InputWithLabel
@@ -155,6 +161,7 @@ function CreateAccount({ registerHook, progress }) {
                 {/* Submit Button */}
                 <div className="pt-6  flex justify-between items-center">
                     <Button
+                        type="button"
                         onClick={registerHook.prevStep}
                         className="w-fit py-6 px-6 text-base sm:text-lg font-bold border border-white/20 hover:border-primary/50 transition-all"
                     >

@@ -2,10 +2,10 @@ import { successResponse, validationErrorResponse } from '#utils/response.js';
 import { asyncHandler } from '#utils/asyncHandler.js';
 import { db } from '#db/index.js';
 import bcrypt from 'bcrypt';
-import { registrationSession, users, userSessions } from '#db/Schemas/auth/index.js';
+import { users, userSessions } from '#db/Schemas/auth/index.js';
 import { and, eq, gt } from 'drizzle-orm';
 import { AppError } from '#utils/AppError.js';
-import { companies, companyType } from '#db/Schemas/companies/index.js';
+import { companies } from '#db/Schemas/companies/index.js';
 import { generateAccessToken, generateRefreshToken, verifyToken } from '#utils/jwt.js';
 
 // Login
@@ -218,24 +218,3 @@ export const aboutMe = asyncHandler(async (req, res) => {
 
     return successResponse(res, data, 'user Fetch', 200);
 });
-
-
-//Get Registration End Point
-export const getRegistration = asyncHandler(async(req,res)=>{
-    const sessionId = req.cookies.registration_Session_Id;
-    const email = req.cookies.otp_email;
-
-    if(!sessionId || !email){
-       return validationErrorResponse(res,"not get email or sessionId in cookies",{
-            sessionId : sessionId ? null : "not faound session ID",
-            email: email ?  null : "need email id"
-        })
-    }
-
-    const [session] = await db.select().from(registrationSession).where(and(eq(registrationSession.id,sessionId),eq(registrationSession.email,email),gt(registrationSession.expiresAt,new Date()))).limit(1)
-
-    if (!session) {
-           throw new AppError('Session expired', 404);
-       }
-    return successResponse(res,session,"session faound")
-})
