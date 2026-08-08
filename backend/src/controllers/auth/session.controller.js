@@ -5,7 +5,7 @@ import bcrypt from 'bcrypt';
 import { users, userSessions } from '#db/Schemas/auth/index.js';
 import { and, eq, gt } from 'drizzle-orm';
 import { AppError } from '#utils/AppError.js';
-import { companies } from '#db/Schemas/companies/index.js';
+import { companies, companyType } from '#db/Schemas/companies/index.js';
 import { generateAccessToken, generateRefreshToken, verifyToken } from '#utils/jwt.js';
 
 // Login
@@ -110,6 +110,7 @@ export const login = asyncHandler(async (req, res) => {
             role: user.userRole,
             companyId: user.companyId,
             companyName: company.companyName,
+            companyType:company.companyType
         },
         'Login successful',
         200,

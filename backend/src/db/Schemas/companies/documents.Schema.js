@@ -18,7 +18,7 @@ export const documentType = pgEnum('document_type', [
 ]);
 export const documents = pgTable('documents', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId:uuid('userId').references(()=> users.id),
+  userId:uuid('user_id').references(()=> users.id),
   companyId: uuid('company_id').references(() => companies.id),
   documentType: documentType('document_type'),
   fileUrl: varchar('file_url', { length: 1000 }).notNull(),

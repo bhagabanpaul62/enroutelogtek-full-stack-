@@ -38,7 +38,7 @@ export const logOutApi = () => {
 };
 
 //get current user
-export const getMeApi = () => {
+export const aboutMeApi = () => {
     return api.get('/auth/about-me');
 };
 

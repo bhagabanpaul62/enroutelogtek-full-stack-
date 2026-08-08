@@ -5,7 +5,7 @@ export const companyType = pgEnum('company_type', [
     'customer',
     'transporter',
     'broker',
-    'fleetOwner',
+    'flee_owner',
 ]);
 export const companyStatus = pgEnum('company_status', [
     'draft',

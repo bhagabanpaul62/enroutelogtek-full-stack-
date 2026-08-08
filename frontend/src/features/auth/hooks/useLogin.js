@@ -3,14 +3,16 @@
 import { loginApi } from '@/features/auth/api/auth.api';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { checkAuthAction, loginUserAction } from '../state/authAction';
+import { useDispatch } from 'react-redux';
 
 export function useLogin() {
     const [apiError, setApiError] = useState();
     const route = useRouter();
-    
+    const dispatch = useDispatch();
 
     const {
         register,
@@ -18,16 +20,24 @@ export function useLogin() {
         formState: { errors, isSubmitting },
     } = useForm();
 
+    useEffect(() => {
+        (async () => {
+            try {
+                await dispatch(checkAuthAction()).unwrap();
+            } catch (error) {
+               console.log(error.response?.data?.message);
+            }
+        })();
+    }, []);
+
     const onSubmit = async (data) => {
         setApiError('');
         try {
-            const res = await loginApi(data.email, data.password);
-
-        
-            console.log(res.data.data);
+            await dispatch(loginUserAction(data)).unwrap();
         } catch (error) {
             setApiError(error.response?.data?.message || 'Something went wrong');
-            toast.error('invalid user');
+
+            console.log('in side set api error ', apiError);
         }
     };
     return {

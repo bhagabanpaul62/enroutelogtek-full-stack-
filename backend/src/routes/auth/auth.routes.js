@@ -28,7 +28,7 @@ router.post('/logout', logout);
 router.post('/refresh-token', refreshToken);
 router.get('/about-me', authMiddleware, aboutMe);
 
-// Session-registraion
+// Session-registration
 router.get('/get-registration-session', getRegistration);
 
 export default router;

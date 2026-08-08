@@ -13,7 +13,7 @@ import { useLogin } from '@/features/auth/hooks/useLogin';
 function Login() {
     const [isPass, setPass] = useState(true);
 
-    const { register, handleSubmit, errors, isSubmitting, apiError, onSubmit } = useLogin();
+    const { register, handleSubmit, errors, isSubmitting, apiError, onSubmit } = useLogin()
 
     return (
         <section className="min-h-screen w-full bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 text-amber-100 flex justify-center items-center px-4 py-24 md:py-24">
