@@ -1,4 +1,5 @@
-import {S3Client ,PutObjectCommand} from "@aws-sdk/client-s3"
+import { asyncHandler } from '#utils/asyncHandler.js';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 const r2Client = new S3Client({
     region: 'auto',
@@ -9,19 +10,32 @@ const r2Client = new S3Client({
     },
 });
 
-export const uploadToR2= async (file , companyId, documentType )=>{
+export const uploadToR2 = async (file, companyId, documentType) => {
     const extension = file.originalname.split('.').pop();
     const filename = `companies/${companyId}/${documentType}-${Date.now()}.${extension}`;
 
-    await r2Client.send(new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME,    // your bucket name
-        Key: filename,                          // path inside bucket
-        Body: file.buffer,                      // the actual file bytes
-        ContentType: file.mimetype,             // tell R2 what type it is
-    }));
+    await r2Client.send(
+        new PutObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME, // your bucket name
+            Key: filename, // path inside bucket
+            Body: file.buffer, // the actual file bytes
+            ContentType: file.mimetype, // tell R2 what type it is
+        }),
+    );
 
     const publicUrl = `${process.env.R2_PUBLIC_URL}/${filename}`;
     return publicUrl;
+};
 
-} 
+export const deleteDocumentFromR2 = async (fileUrl) => {
+    //extract key
+    const key = fileUrl.replace(`${process.env.R2_PUBLIC_URL}/`, '');
+   
 
+    await r2Client.send(
+        new DeleteObjectCommand({
+            Bucket: process.env.R2_BUCKET_NAME,
+            Key: key,
+        }),
+    );
+};

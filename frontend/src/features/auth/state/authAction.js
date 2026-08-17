@@ -6,7 +6,7 @@ export const loginUserAction = createAsyncThunk('auth/login', async (data, thank
     try {
         const res = await loginApi(data.email, data.password);
         console.log('✅ login api response ::', res.data.data);
-        toast.success('user login successful');
+        
 
         return res.data.data;
     } catch (error) {

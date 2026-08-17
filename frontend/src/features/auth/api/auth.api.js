@@ -24,6 +24,11 @@ export const uploadDocumentApi = (fromData, onProgress) => {
     });
 };
 
+//delete doc
+export const deleteDocument = (documentId) =>{
+    return api.post('documents/deleteDocument' , {documentId})
+}
+
 export const submitRegistration = (companyId) => {
     return api.post('/auth/submit-registration', { companyId });
 };

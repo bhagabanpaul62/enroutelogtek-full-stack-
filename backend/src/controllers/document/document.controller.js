@@ -1,9 +1,10 @@
 import { asyncHandler } from '#utils/asyncHandler.js';
 import { successResponse, validationErrorResponse } from '#utils/response.js';
 import { db } from '#db/index.js';
-import { uploadToR2 } from '#services/storage/r2.service.js';
+import { deleteDocumentFromR2, uploadToR2 } from '#services/storage/r2.service.js';
 import { documents } from '#db/Schemas/companies/documents.Schema.js';
 import { AppError } from '#utils/AppError.js';
+import { eq } from 'drizzle-orm';
 
 export const uploadDocument = asyncHandler(async (req, res) => {
     const { userId, companyId, documentType } = req.body;
@@ -17,19 +18,19 @@ export const uploadDocument = asyncHandler(async (req, res) => {
             file: !file ? 'File is required' : null,
         });
     }
-const validTypes = [
-    'gst',
-    'pan',
-    'logo',
-    'rc',
-    'insurance',
-    'paymentProof',
-    'pod',
-    'lr',
-    'indent',
-    'term&condition',
-    'profileImage',
-];
+    const validTypes = [
+        'gst',
+        'pan',
+        'logo',
+        'rc',
+        'insurance',
+        'paymentProof',
+        'pod',
+        'lr',
+        'indent',
+        'term&condition',
+        'profileImage',
+    ];
 
     if (!validTypes.includes(documentType)) {
         throw new AppError('Invalid document type', 400);
@@ -57,4 +58,21 @@ const validTypes = [
         'Document uploaded successfully',
         201,
     );
+});
+
+export const deleteDocument = asyncHandler(async (req, res) => {
+    const { documentId } = req.body;
+    
+    console.log("doc id ::" , documentId);
+    
+
+    const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
+    if (!doc) {
+        throw new AppError('document not found', 404);
+    }
+
+    await deleteDocumentFromR2(doc.fileUrl);
+
+    await db.delete(documents).where(eq(documents.id,documentId));
+    return successResponse(res,null,'Document deleted',200)
 });

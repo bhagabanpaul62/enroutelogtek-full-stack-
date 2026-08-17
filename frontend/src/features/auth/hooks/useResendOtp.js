@@ -9,10 +9,13 @@ export const useResendOtp = () => {
     useEffect(() => {
         setEmail(sessionStorage.getItem('email'));
     }, []);
+    
 
     const handelResendOtp = async () => {
         try {
             await sendOtpApi(email);
+           
+            
             setCount(30);
             toast.success('otp send');
         } catch (error) {

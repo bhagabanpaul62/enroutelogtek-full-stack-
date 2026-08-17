@@ -7,11 +7,13 @@ import {
     IoCloseCircle,
 } from 'react-icons/io5';
 import ProgressBar from './progressBar';
+import { deleteDocument } from '@/features/auth/api/auth.api';
 
 function UploadFile({ id, title, description, required, onUpload }) {
     const uploadId = id || 'file-upload';
     const [status, setStatus] = useState('idle'); // idle, uploading, done, error
     const [filename, setFileName] = useState('');
+    const [doc, setDoc] = useState();
     const [progress, setProgress] = useState(0);
 
     const handelFileChange = async (e) => {
@@ -23,13 +25,23 @@ function UploadFile({ id, title, description, required, onUpload }) {
         setProgress(0);
 
         try {
-            const success = await onUpload(file, id, (percent) => {
+            const doc = await onUpload(file, id, (percent) => {
                 setProgress(percent);
             });
-            setStatus(success ? 'done' : 'error');
+            setStatus(doc ? 'done' : 'error');
+            setDoc(doc);
+           
         } catch (error) {
             setStatus('error');
         }
+    };
+
+    const handelDeleteFile = async () => {
+        
+        await deleteDocument(doc.documentId);
+        setStatus('idle');
+        setDoc(null);
+        setFileName('');
     };
 
     return (
@@ -69,6 +81,9 @@ function UploadFile({ id, title, description, required, onUpload }) {
                         </p>
                         <p className="text-xs text-green-300/60">{filename}</p>
                     </div>
+                    <button type="button" onClick={() => handelDeleteFile(doc)}>
+                        Replace
+                    </button>
                 </div>
             ) : status === 'error' ? (
                 /* ERROR STATE */
@@ -134,6 +149,7 @@ function UploadFile({ id, title, description, required, onUpload }) {
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
                 className="hidden"
+                capture='user'
                 onChange={handelFileChange}
                 disabled={status === 'uploading' || status === 'done'}
             />

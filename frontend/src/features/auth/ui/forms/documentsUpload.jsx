@@ -24,7 +24,7 @@ const uploadFields = [
     },
     {
         id: 'profileImage',
-        title: 'Passport Size Photo',
+        title: 'Current Passport Size Photo',
         description: 'Upload user Passport Size Photo',
         required: true,
     },

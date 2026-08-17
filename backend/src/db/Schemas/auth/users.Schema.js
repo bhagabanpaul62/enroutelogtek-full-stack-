@@ -7,12 +7,12 @@ import { timestamps } from '../schema.Helper.Columns/column.Helper.js';
 
 export const userStatus = pgEnum('user_status', ['active', 'inactive', 'blocked']);
 export const userRoll = pgEnum('user_role', [
-    'rootAdmin',
+    'root_admin',
     'admin',
     'co-admin',
     'viewer',
-    'bidManager',
-    'TripManager',
+    'bid_manager',
+    'trip_manager',
     'accounts',
 ]);
 
@@ -27,6 +27,7 @@ export const users = pgTable('users', {
     isEmailVerified: boolean('is_email_verified').default(false),
     passwordHash: varchar('password_hash', { length: 1000 }).notNull(),
     phone: varchar('phone', { length: 15 }).unique(),
+    profilePhoto: varchar('logo_url', { length: 500 }),
     userStatus: userStatus('user_status').default('active'),
     userRole: userRoll('user_role').default('admin'),
     lastLogin: timestamp('last_login'),

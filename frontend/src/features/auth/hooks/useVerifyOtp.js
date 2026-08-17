@@ -22,7 +22,8 @@ export const useVerifyOtp = () => {
     const onSubmit = async (data) => {
         try {
             const res = await verifyOtpApi(data.otp);
-            if (res.data.data.userExists) {
+            if (res.data.data.userExaists) {
+                
                 toast.success('user already exist try to login ');
                 router.push('/login');
             } else {

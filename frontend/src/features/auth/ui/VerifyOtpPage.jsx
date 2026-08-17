@@ -21,6 +21,7 @@ function VerifyOtp() {
 
     return (
         <section className="py-24 md:py-40 text-amber-100 ">
+            
             <div className=" flex flex-col justify-center items-center">
                 <div className="w-90 md:w-fit  md:px-10 md:py-10 rounded-2xl sm:border border-white/12 overflow-clip">
                     <div>

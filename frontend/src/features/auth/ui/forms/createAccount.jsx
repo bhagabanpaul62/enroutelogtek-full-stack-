@@ -6,7 +6,7 @@ import { Button } from '@/shared/ui/primitives/button';
 import SelectCheckBox from '@/shared/ui/widgets/selectCheckBox';
 import ProgressBar from '@/shared/ui/widgets/progressBar';
 import DropDown from '@/shared/ui/widgets/dropDowun';
-import { FaArrowLeft, FaArrowRight } from 'react-icons/fa6';
+import { FaArrowLeft, FaArrowRight, FaEye, FaEyeSlash } from 'react-icons/fa6';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 
@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 const countryCodes = ['+1', '+91', '+44', '+81'];
 
 function CreateAccount({ registerHook, progress }) {
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPasswordTwo ,  setShowPasswordTwo] = useState(false)
     const [countryCode, setCountryCode] = useState('+91');
 
     const {
@@ -103,13 +105,13 @@ function CreateAccount({ registerHook, progress }) {
                     </div>
 
                     {/* Password */}
-                    <div>
+                    <div className="relative">
                         <InputWithLabel
                             id="password"
                             label="Password"
                             inputProps={{
                                 placeholder: '********',
-                                type: 'password',
+                                type: !showPassword ? 'password' : 'text',
                                 required: true,
                                 ...register('password', {
                                     required: 'Password is required',
@@ -125,6 +127,13 @@ function CreateAccount({ registerHook, progress }) {
                                 }),
                             }}
                         />
+                        <button
+                            type="button"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-100/70 hover:text-amber-100"
+                            onClick={() => setShowPassword(!showPassword)}
+                        >
+                            {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                        </button>
                         {errors.password && (
                             <p className="text-red-500 text-sm -mt-2 mb-2">
                                 {errors.password.message}
@@ -136,26 +145,35 @@ function CreateAccount({ registerHook, progress }) {
                     </div>
 
                     {/* Confirm Password */}
-                    <InputWithLabel
-                        id="confirmPassword"
-                        label="Confirm Password"
-                        inputProps={{
-                            placeholder: '********',
-                            type: 'password',
-                            required: true,
-                            ...register('confirmPassword', {
-                                required: 'password is required',
-                                validate: (value) => {
-                                    return value === password || 'Password do not match';
-                                },
-                            }),
-                        }}
-                    />
-                    {errors.confirmPassword && (
-                        <p className="text-red-500 text-sm -mt-8 mb-2">
-                            {errors.confirmPassword.message}
-                        </p>
-                    )}
+                    <div className='relative'>
+                        <InputWithLabel
+                            id="confirmPassword"
+                            label="Confirm Password"
+                            inputProps={{
+                                placeholder: '********',
+                                type: !showPasswordTwo ? 'password' : 'text' ,
+                                required: true,
+                                ...register('confirmPassword', {
+                                    required: 'password is required',
+                                    validate: (value) => {
+                                        return value === password || 'Password do not match';
+                                    },
+                                }),
+                            }}
+                        />
+                        <button
+                            type="button"
+                            className="absolute right-3 top-13 -translate-y-1/2 text-amber-100/70 hover:text-amber-100"
+                            onClick={() => setShowPasswordTwo(!showPasswordTwo)}
+                        >
+                            {showPasswordTwo ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+                        </button>
+                        {errors.confirmPassword && (
+                            <p className="text-red-500 text-sm -mt-8 mb-2">
+                                {errors.confirmPassword.message}
+                            </p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Submit Button */}

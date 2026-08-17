@@ -14,6 +14,7 @@ import { and, eq, gt } from 'drizzle-orm';
 import { AppError } from '#utils/AppError.js';
 import { companies, branch, documents } from '#db/Schemas/companies/index.js';
 import { generateEnrouteId } from '#utils/genarateEnrouteId.js';
+import { log } from 'console';
 
 //send OTP
 export const sendOtp = asyncHandler(async (req, res) => {
@@ -199,8 +200,10 @@ export const register = asyncHandler(async (req, res) => {
     }
 
     //check gst length and panNumber length
-    if (gstNumber && gstNumber.length > 15) throw new AppError('GST number must be 15 characters',400);
-    if (panNumber && panNumber.length > 10) throw new AppError('PAN number must me 10 characters',400);
+    if (gstNumber && gstNumber.length > 15)
+        throw new AppError('GST number must be 15 characters', 400);
+    if (panNumber && panNumber.length > 10)
+        throw new AppError('PAN number must me 10 characters', 400);
 
     // Check email is verified via OTP
     const [checkEmail] = await db
@@ -215,18 +218,18 @@ export const register = asyncHandler(async (req, res) => {
     //check phone number duplicate
     const checkPhone = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
     if (checkPhone.length > 0) {
-        throw new AppError('Phone number already registered',409);
+        throw new AppError('Phone number already registered', 409);
     }
 
     //check company phone number duplicate
     const checkCompanyPhone = await db
         .select()
         .from(companies)
-        .where(eq(companies.companyPhoneNumber , companyPhoneNumber))
+        .where(eq(companies.companyPhoneNumber, companyPhoneNumber))
         .limit(1);
-    if(checkCompanyPhone.length > 0){
-        throw new AppError('Company phone number already exist ',409)
-    } 
+    if (checkCompanyPhone.length > 0) {
+        throw new AppError('Company phone number already exist ', 409);
+    }
 
     // Check company email duplicate
     const checkCompanyEmail = await db
@@ -244,8 +247,6 @@ export const register = asyncHandler(async (req, res) => {
         throw new AppError('User email already registered', 409);
     }
 
-
-
     // Check GST duplicate (only if provided)
     if (gstNumber) {
         const checkGst = await db
@@ -256,9 +257,13 @@ export const register = asyncHandler(async (req, res) => {
         if (checkGst.length > 0) throw new AppError('GST number already taken', 409);
     }
 
-    //Check branchCode duplicate 
-    const checkBranchCode = await db.select().from(branch).where(eq(branch.branchCode , branchCode)).limit(1);
-    if(checkBranchCode.length > 0 ) throw new AppError('Branch Code is already exist',409)
+    //Check branchCode duplicate
+    const checkBranchCode = await db
+        .select()
+        .from(branch)
+        .where(eq(branch.branchCode, branchCode))
+        .limit(1);
+    if (checkBranchCode.length > 0) throw new AppError('Branch Code is already exist', 409);
 
     const passwordHash = await bcrypt.hash(password, 12);
     const enrouteCompanyId = generateEnrouteId(companyType);
@@ -355,7 +360,24 @@ export const submitRegistration = asyncHandler(async (req, res) => {
         throw new AppError(`Missing required documents: ${missingDoc.join(', ')}`, 400);
     }
 
-    await db.update(companies).set({ companyStatus: 'pending' }).where(eq(companies.id, companyId));
+    const logoDoc = docs.find((docs) => docs.documentType == 'logo');
+
+    await db
+        .update(companies)
+        .set({
+            companyStatus: 'pending',
+            logoUrl: logoDoc?.fileUrl,
+        })
+        .where(eq(companies.id, companyId));
+
+    const profilePhotoDoc = docs.find((docs) => docs.documentType === 'profileImage');
+
+    await db
+        .update(users)
+        .set({
+            profilePhoto: profilePhotoDoc?.fileUrl,
+        })
+        .where(eq(users.companyId, companyId));
 
     const [user] = await db.select().from(users).where(eq(users.companyId, companyId)).limit(1);
 
@@ -371,7 +393,9 @@ export const submitRegistration = asyncHandler(async (req, res) => {
 //forget password
 export const forgetPassword = asyncHandler(async (req, res) => {
     //get email , otp , new password from req
-    const { email, otp, newPassword } = req.body;
+    const { otp, newPassword } = req.body;
+    const email = req.cookies.otp_email;
+
     //check validation email ,otp , new password
     if (!email || !otp || !newPassword)
         return validationErrorResponse(res, 'required email password and otp ', {
@@ -404,7 +428,7 @@ export const forgetPassword = asyncHandler(async (req, res) => {
         .where(eq(otpVerification.email, email));
     //get user details
     const [ExistingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (!ExistingUser) throw new AppError('user not registered', 401);
+    if (!ExistingUser) throw new AppError('user not registered', 404);
     //make hashed the password
     const passwordHash = await bcrypt.hash(newPassword, 12);
     //update the password
@@ -453,5 +477,5 @@ export const getRegistration = asyncHandler(async (req, res) => {
     if (!session) {
         throw new AppError('Session expired', 404);
     }
-    return successResponse(res, session, 'session faound');
+    return successResponse(res, session, 'session found');
 });

@@ -10,7 +10,7 @@ export function useRegister() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [finalSubmission, setFinalSubmissions] = useState(false);
     const [email, setEmail] = useState(null);
-
+    
     const [registrationResult, setRegistrationResult] = useState(null);
     useEffect(() => {
         const savedFromData = sessionStorage.getItem('fromData');
@@ -75,9 +75,9 @@ export function useRegister() {
         formDataObj.append('userId', registrationResult.userId);
 
         try {
-            await uploadDocumentApi(formDataObj, onProgress);
+            const res = await uploadDocumentApi(formDataObj, onProgress);
             toast.success(`${documentType} uploaded`);
-            return true;
+            return res.data.data ;
         } catch (error) {
             toast.error(error.response?.data?.message || 'Upload failed');
             return false;

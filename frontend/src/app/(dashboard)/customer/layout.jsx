@@ -3,8 +3,8 @@ import React from 'react'
 
 function CustomerLayout({children}) {
   return (
-      <div>
-          <CompanyTypeGuard companyType={'customer'}> {children}</CompanyTypeGuard>
+      <div className=' min-h-screen w-full'>
+          <CompanyTypeGuard  companyType={'customer'}> {children}</CompanyTypeGuard>
       </div>
   );
 }

@@ -1,13 +1,15 @@
 'use client';
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Link } from 'next-view-transitions';
+import  Link  from 'next/link';
 import { usePathname } from 'next/navigation';
 import { HiMenuAlt2, HiX } from 'react-icons/hi';
 import fullLogo from '../../../../public/fullLogo.png';
 import icon from '../../../../public/icon.png';
+import { useNav } from '@/shared/hooks/useNav';
 
 function Nav() {
+    const { user, isLoggedIn } = useNav();
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
 
@@ -76,20 +78,31 @@ function Nav() {
                     </div>
 
                     {/* Right Section: Action CTA Buttons */}
-                    <div className="flex items-center gap-2 sm:gap-3">
-                        <Link
-                            href="/login"
-                            className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-sm font-medium text-amber-100/80 hover:text-amber-100 hover:bg-white/5 transition-all duration-200"
-                        >
-                            Login
-                        </Link>
-                        <Link
-                            href="/register"
-                            className="px-4 py-2 sm:px-6 sm:py-2.5 rounded-full bg-amber-400 hover:bg-amber-300 text-neutral-950 text-sm font-semibold shadow-md shadow-amber-400/10 active:scale-98 transition-all duration-200"
-                        >
-                            Register
-                        </Link>
-                    </div>
+                    {isLoggedIn ? (
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <Link
+                                href={`/${user.companyType}`}
+                                className="px-4 py-2 sm:px-6 sm:py-2.5 rounded-full bg-amber-400 hover:bg-amber-300 text-neutral-950 text-sm font-semibold shadow-md shadow-amber-400/10 active:scale-98 transition-all duration-200"
+                            >
+                                Dashboard
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 sm:gap-3">
+                            <Link
+                                href="/login"
+                                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-sm font-medium text-amber-100/80 hover:text-amber-100 hover:bg-white/5 transition-all duration-200"
+                            >
+                                Login
+                            </Link>
+                            <Link
+                                href="/register"
+                                className="px-4 py-2 sm:px-6 sm:py-2.5 rounded-full bg-amber-400 hover:bg-amber-300 text-neutral-950 text-sm font-semibold shadow-md shadow-amber-400/10 active:scale-98 transition-all duration-200"
+                            >
+                                Register
+                            </Link>
+                        </div>
+                    )}
                 </div>
 
                 {/* Mobile Dropdown Menu */}

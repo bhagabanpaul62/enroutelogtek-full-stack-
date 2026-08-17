@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useDispatch } from 'react-redux';
+import DashboardLoadingScreen from '../ui/primitives/DashboardLoadingScreen';
 
 export default function AuthGuard({ children }) {
     const { isLoggedIn, isLoading } = useSelector((state) => state.auth);
@@ -21,7 +22,7 @@ export default function AuthGuard({ children }) {
         }
     }, [isLoading, isLoggedIn, router]);
 
-    if (isLoading) return <div className='bg-red-500'>Loading...</div>;
+    if (isLoading) return <DashboardLoadingScreen/>;
     if (!isLoggedIn) return null;
 
     return <>{children}</>;
