@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { otpEmailTemplate,welcomeEmailTemplate,approvalEmailTemplate,rejectionEmailTemplate } from './emailTemplates.js';
+import { otpEmailTemplate,welcomeEmailTemplate,approvalEmailTemplate,rejectionEmailTemplate } from './emailTemplates/emailTemplatesForRegistration.js'
 
 //create transporter
 const transporter = nodemailer.createTransport({
