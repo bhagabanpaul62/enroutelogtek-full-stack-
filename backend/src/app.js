@@ -1,8 +1,8 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import { errorHandler } from '#middleware/error/errorHandler.js';
-import { errorResponse } from '#utils/response.js';
+import { errorHandler } from '#shared/middleware/errorHandler.js';
+import { errorResponse } from '#shared/utils/response.js';
 //import router
 import routes from './routes/index.js';
 import cookieParser from 'cookie-parser';

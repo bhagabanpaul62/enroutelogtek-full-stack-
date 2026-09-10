@@ -21,12 +21,8 @@
   },
   "type": "module",
   "imports": {
-    "#db/*": "./src/db/*",
-    "#schemas/*": "./src/db/Schemas/*",
-    "#utils/*": "./src/utils/*",
-    "#services/*": "./src/services/*",
-    "#controllers/*": "./src/controllers/*",
-    "#middleware/*": "./src/middleware/*"
+    "#shared/*": "./src/shared/*",
+    "#features/*": "./src/features/*"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1075.0",
