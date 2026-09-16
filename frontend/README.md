@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# landing page
 
-## Getting Started
+### Completed
 
-First, run the development server:
+# Hero.jsx
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Hero section implemented according to the EnrouteLogTech design.
+- Added responsive layout, background, typography, CTA buttons, and platform image.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# TrustedCompanies.jsx
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+- Trusted Companies section implemented.
+- Added responsive company grid following the provided design.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Stats.jsx
 
-## Learn More
+- Stats section implemented with responsive layout.
+- Added smooth premium count-up animations.
+- Added starting values at 50% of the final statistics.
+- Added formatted numbers and percentage support.
 
-To learn more about Next.js, take a look at the following resources:
+# OperatingSystem.jsx
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Operating System section implemented.
+- Added six freight management feature cards.
+- Added responsive 12-column card layout.
+- Added premium hover, glow, border, and interaction effects.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# ExecutionWorkflow.jsx
 
-## Deploy on Vercel
+- Execution Excellence Workflow section implemented.
+- Added seven-stage freight execution flow.
+- Added responsive workflow layout.
+- Added connected workflow line and numbered stages.
+- Added subtle premium hover and glow effects.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Industries.jsx
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Industries section implemented.
+- Added responsive industry cards with hover effects.
+
+# Pricing.jsx
+
+- Pricing section implemented with responsive pricing cards and premium hover effects.
+
+########
+shared/
+└── ui/
+└── components/
+├── home/
+│ ├── Hero.jsx
+│ ├── Stats.jsx
+│ ├── AnimatedStat.jsx
+│ ├── Marquee.jsx
+│ ├── TrustedCompanies.jsx
+│ ├── OperatingSystem.jsx
+│ ├── ExecutionWorkflow.jsx
+│ ├── Industries.jsx
+│ └── Pricing.jsx
+│
+└── solution/
+├── SolutionHero.jsx
+├── ConnectedEcosystem.jsx
+├── CustomerSolution.jsx
+├── TransporterSolution.jsx
+├── BrokerSolution.jsx
+├── FleetOwnerSolution.jsx
+├── EcosystemTopology.jsx
+├── EnrouteWorkflow.jsx
+├── StrategicExpansion.jsx
+├── SystemArchitecture.jsx
+├── EnterpriseIntegrity.jsx
+└── OnboardingCTA.jsx
