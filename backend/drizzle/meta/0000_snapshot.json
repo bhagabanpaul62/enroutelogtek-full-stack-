@@ -1,5 +1,5 @@
 {
-  "id": "8b23d31a-8cfc-4f60-87bb-1d65945cf134",
+  "id": "9de4e2ca-da23-4ba9-8ed9-041f8a6ab69e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -55,6 +55,12 @@
         "phone": {
           "name": "phone",
           "type": "varchar(15)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "logo_url": {
+          "name": "logo_url",
+          "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false
         },
@@ -473,6 +479,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "address": {
+          "name": "address",
+          "type": "varchar(150)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "city": {
           "name": "city",
           "type": "varchar(100)",
@@ -672,6 +684,162 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.rejected_company": {
+      "name": "rejected_company",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "message": {
+          "name": "message",
+          "type": "varchar(300)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "rejected_company_company_id_companies_id_fk": {
+          "name": "rejected_company_company_id_companies_id_fk",
+          "tableFrom": "rejected_company",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.documents": {
+      "name": "documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "company_id": {
+          "name": "company_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document_type": {
+          "name": "document_type",
+          "type": "document_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_url": {
+          "name": "file_url",
+          "type": "varchar(1000)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "documents_user_id_users_id_fk": {
+          "name": "documents_user_id_users_id_fk",
+          "tableFrom": "documents",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "documents_company_id_companies_id_fk": {
+          "name": "documents_company_id_companies_id_fk",
+          "tableFrom": "documents",
+          "tableTo": "companies",
+          "columnsFrom": [
+            "company_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.company_connections": {
       "name": "company_connections",
       "schema": "",
@@ -695,12 +863,13 @@
           "primaryKey": false,
           "notNull": false
         },
-        "connection_type": {
-          "name": "connection_type",
-          "type": "connection_type",
+        "connection_status": {
+          "name": "connection_status",
+          "type": "connection_status",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "default": "'pending'"
         },
         "updated_at": {
           "name": "updated_at",
@@ -757,8 +926,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.documents": {
-      "name": "documents",
+    "public.notification": {
+      "name": "notification",
       "schema": "",
       "columns": {
         "id": {
@@ -768,30 +937,54 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "userId": {
-          "name": "userId",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "company_id": {
-          "name": "company_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "document_type": {
-          "name": "document_type",
-          "type": "document_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "file_url": {
-          "name": "file_url",
-          "type": "varchar(1000)",
+        "recipient_user_id": {
+          "name": "recipient_user_id",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "data": {
+          "name": "data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_read": {
+          "name": "is_read",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": false
+        },
+        "read_at": {
+          "name": "read_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "updated_at": {
           "name": "updated_at",
@@ -813,35 +1006,51 @@
           "notNull": false
         }
       },
-      "indexes": {},
-      "foreignKeys": {
-        "documents_userId_users_id_fk": {
-          "name": "documents_userId_users_id_fk",
-          "tableFrom": "documents",
-          "tableTo": "users",
-          "columnsFrom": [
-            "userId"
+      "indexes": {
+        "notification_recipient_create_idx": {
+          "name": "notification_recipient_create_idx",
+          "columns": [
+            {
+              "expression": "recipient_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
-        "documents_company_id_companies_id_fk": {
-          "name": "documents_company_id_companies_id_fk",
-          "tableFrom": "documents",
-          "tableTo": "companies",
-          "columnsFrom": [
-            "company_id"
+        "notification_recipient_read_idx": {
+          "name": "notification_recipient_read_idx",
+          "columns": [
+            {
+              "expression": "recipient_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "is_read",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
           ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -1008,12 +1217,12 @@
       "name": "user_role",
       "schema": "public",
       "values": [
-        "rootAdmin",
+        "root_admin",
         "admin",
         "co-admin",
         "viewer",
-        "bidManager",
-        "TripManager",
+        "bid_manager",
+        "trip_manager",
         "accounts"
       ]
     },
@@ -1024,6 +1233,14 @@
         "active",
         "inactive",
         "blocked"
+      ]
+    },
+    "public.registration_step": {
+      "name": "registration_step",
+      "schema": "public",
+      "values": [
+        "OTP_SENT",
+        "OTP_VERIFIED"
       ]
     },
     "public.company_status": {
@@ -1044,27 +1261,7 @@
         "customer",
         "transporter",
         "broker",
-        "fleetOwner"
-      ]
-    },
-    "public.connection_status": {
-      "name": "connection_status",
-      "schema": "public",
-      "values": [
-        "pending",
-        "accepted",
-        "rejected",
-        "blocked"
-      ]
-    },
-    "public.connection_type": {
-      "name": "connection_type",
-      "schema": "public",
-      "values": [
-        "customer",
-        "transposer",
-        "broker",
-        "fleetOwner"
+        "flee_owner"
       ]
     },
     "public.document_type": {
@@ -1080,7 +1277,18 @@
         "pod",
         "lr",
         "indent",
-        "term&condition"
+        "term&condition",
+        "profileImage"
+      ]
+    },
+    "public.connection_status": {
+      "name": "connection_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "accepted",
+        "rejected",
+        "blocked"
       ]
     },
     "public.payment_status": {

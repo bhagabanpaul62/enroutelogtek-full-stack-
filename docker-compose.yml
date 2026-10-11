@@ -1,35 +1,98 @@
+# PRODUCTION setup, made for deploying with Openship on the VPS.
+# For local development use docker-compose.dev.yml instead.
+#
+# How this works on Openship:
+#   - Openship reads this file and creates 3 services: postgres, backend, frontend.
+#   - Openship's own proxy owns ports 80/443 and gets the HTTPS certificates,
+#     so there is no Caddy/Nginx in this file (it would clash with Openship).
+#   - Every ${VAR} below is filled from the project's environment variables in Openship.
+#     .env.example lists all of them - fill a copy and use "Import .env" in Openship.
+#     ${VAR:?...} = required: the deploy stops with that message if the value is missing.
+#   - Domains: frontend -> e.g. enroute.com (port 3000),
+#              backend  -> e.g. api.enroute.com (port 8000).
+#     Openship routes by domain only (no /api path routing), so the API needs its own subdomain.
+#     Postgres stays internal (no domain).
+#   - Database tables are created/updated automatically when the backend starts
+#     (see backend/docker-entrypoint.sh).
+
 services:
 
     #service 1
     postgres:
         image: postgres:18.4
-        ports:
-            - "5432:5432"
+        # Come back up automatically after a crash or a server reboot.
+        restart: unless-stopped
         environment:
-            POSTGRES_DB: enroute
-            POSTGRES_USER: enrouteDb
-            POSTGRES_PASSWORD: enroute09832
-
+            POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB}
+            POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+        # Named volume keeps the data across redeploys and container restarts.
+        # Without it the whole database is wiped.
+        volumes:
+            - postgres_data:/var/lib/postgresql
+        # Reports when Postgres really accepts connections, not just when it has started.
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        # No "ports:" on purpose - only the backend talks to it over the internal network,
+        # so the database is never reachable from the internet.
 
     #service 2
     backend:
         build: ./backend
-        ports:
-            - "8000:8000"
+        restart: unless-stopped
+        # All values are set here (not via backend/.env) because .env files are not in git,
+        # so Openship would never see them.
+        environment:
+            # Turns on "secure" auth cookies.
+            NODE_ENV: production
+            PORT: '8000'
+            # Host is "postgres" (the service name), not localhost - inside a container
+            # localhost means the container itself.
+            DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+            # CORS allowed origin - the real site address.
+            FRONTEND_URL: ${FRONTEND_URL:?set FRONTEND_URL, e.g. https://enroute.com}
+            JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
+            JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
+            JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-30d}
+            EMAIL_HOST: ${EMAIL_HOST:?set EMAIL_HOST}
+            EMAIL_PORT: ${EMAIL_PORT:?set EMAIL_PORT}
+            EMAIL_SECURE: ${EMAIL_SECURE:-false}
+            EMAIL_USER: ${EMAIL_USER:?set EMAIL_USER}
+            EMAIL_PASSWORD: ${EMAIL_PASSWORD:?set EMAIL_PASSWORD}
+            EMAIL_FROM: ${EMAIL_FROM:?set EMAIL_FROM}
+            R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:?set R2_ACCOUNT_ID}
+            R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?set R2_ACCESS_KEY_ID}
+            R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?set R2_SECRET_ACCESS_KEY}
+            R2_BUCKET_NAME: ${R2_BUCKET_NAME:?set R2_BUCKET_NAME}
+            R2_PUBLIC_URL: ${R2_PUBLIC_URL:?set R2_PUBLIC_URL}
+        # Start order. (Openship doesn't wait for the healthcheck, so the backend's
+        # entrypoint also retries until the database is ready.)
         depends_on:
-            - postgres
-        env_file:
-            - ./backend/.env
-
-    frontend:
-        build: ./frontend
+            postgres:
+                condition: service_healthy
+        # The port the app listens on. Openship binds it to 127.0.0.1 only (not public)
+        # and its proxy forwards api.<your-domain> to it.
         ports:
-            - "3000:3000"
+            - '8000'
+
+    #service 3
+    frontend:
+        build:
+            context: ./frontend
+            # NEXT_PUBLIC_* values are baked into the browser JS during "next build",
+            # so they must be given at build time (setting them at runtime does nothing).
+            # After changing it, redeploy so the frontend is rebuilt.
+            args:
+                NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?set NEXT_PUBLIC_APP_URL, e.g. https://api.enroute.com/api/v1}
+        restart: unless-stopped
         depends_on:
             - backend
-        env_file:
-            - ./frontend/.env
-         
+        # Same as the backend: bound to 127.0.0.1 by Openship, its proxy forwards your domain here.
+        ports:
+            - '3000'
 
-
-    
+volumes:
+    postgres_data:

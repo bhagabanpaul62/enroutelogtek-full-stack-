@@ -1,10 +1,10 @@
-CREATE TYPE "public"."user_role" AS ENUM('rootAdmin', 'admin', 'co-admin', 'viewer', 'bidManager', 'TripManager', 'accounts');--> statement-breakpoint
+CREATE TYPE "public"."user_role" AS ENUM('root_admin', 'admin', 'co-admin', 'viewer', 'bid_manager', 'trip_manager', 'accounts');--> statement-breakpoint
 CREATE TYPE "public"."user_status" AS ENUM('active', 'inactive', 'blocked');--> statement-breakpoint
+CREATE TYPE "public"."registration_step" AS ENUM('OTP_SENT', 'OTP_VERIFIED');--> statement-breakpoint
 CREATE TYPE "public"."company_status" AS ENUM('draft', 'pending', 'rejected', 'approved', 'blocked');--> statement-breakpoint
-CREATE TYPE "public"."company_type" AS ENUM('customer', 'transporter', 'broker', 'fleetOwner');--> statement-breakpoint
+CREATE TYPE "public"."company_type" AS ENUM('customer', 'transporter', 'broker', 'flee_owner');--> statement-breakpoint
+CREATE TYPE "public"."document_type" AS ENUM('gst', 'pan', 'logo', 'rc', 'insurance', 'paymentProof', 'pod', 'lr', 'indent', 'term&condition', 'profileImage');--> statement-breakpoint
 CREATE TYPE "public"."connection_status" AS ENUM('pending', 'accepted', 'rejected', 'blocked');--> statement-breakpoint
-CREATE TYPE "public"."connection_type" AS ENUM('customer', 'transposer', 'broker', 'fleetOwner');--> statement-breakpoint
-CREATE TYPE "public"."document_type" AS ENUM('gst', 'pan', 'logo', 'rc', 'insurance', 'paymentProof', 'pod', 'lr', 'indent', 'term&condition');--> statement-breakpoint
 CREATE TYPE "public"."payment_status" AS ENUM('paid', 'pending', 'failed');--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -15,6 +15,7 @@ CREATE TABLE "users" (
 	"is_email_verified" boolean DEFAULT false,
 	"password_hash" varchar(1000) NOT NULL,
 	"phone" varchar(15),
+	"logo_url" varchar(500),
 	"user_status" "user_status" DEFAULT 'active',
 	"user_role" "user_role" DEFAULT 'admin',
 	"last_login" timestamp,
@@ -78,6 +79,7 @@ CREATE TABLE "branch" (
 	"userId" uuid,
 	"branch_name" varchar(255),
 	"branch_code" varchar(50),
+	"address" varchar(150) NOT NULL,
 	"city" varchar(100) NOT NULL,
 	"state" varchar(100) NOT NULL,
 	"pin_code" varchar(10) NOT NULL,
@@ -106,11 +108,10 @@ CREATE TABLE "companies" (
 	CONSTRAINT "companies_company_phone_number_unique" UNIQUE("company_phone_number")
 );
 --> statement-breakpoint
-CREATE TABLE "company_connections" (
+CREATE TABLE "rejected_company" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"source_company_id" uuid,
-	"target_company_id" uuid,
-	"connection_type" "connection_type",
+	"company_id" uuid,
+	"message" varchar(300) NOT NULL,
 	"updated_at" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp
@@ -118,10 +119,35 @@ CREATE TABLE "company_connections" (
 --> statement-breakpoint
 CREATE TABLE "documents" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"userId" uuid,
+	"user_id" uuid,
 	"company_id" uuid,
 	"document_type" "document_type",
 	"file_url" varchar(1000) NOT NULL,
+	"updated_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"deleted_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "company_connections" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"source_company_id" uuid,
+	"target_company_id" uuid,
+	"connection_status" "connection_status" DEFAULT 'pending',
+	"updated_at" timestamp,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"deleted_at" timestamp
+);
+--> statement-breakpoint
+CREATE TABLE "notification" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"recipient_user_id" varchar(255) NOT NULL,
+	"actor_user_id" varchar(255) NOT NULL,
+	"type" varchar(255),
+	"title" varchar(255) NOT NULL,
+	"message" text NOT NULL,
+	"data" jsonb,
+	"is_read" boolean DEFAULT false,
+	"read_at" timestamp,
 	"updated_at" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp
@@ -154,9 +180,12 @@ ALTER TABLE "users" ADD CONSTRAINT "users_branch_id_branch_id_fk" FOREIGN KEY ("
 ALTER TABLE "user_sessions" ADD CONSTRAINT "user_sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "branch" ADD CONSTRAINT "branch_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "branch" ADD CONSTRAINT "branch_userId_users_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "rejected_company" ADD CONSTRAINT "rejected_company_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "documents" ADD CONSTRAINT "documents_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "documents" ADD CONSTRAINT "documents_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_connections" ADD CONSTRAINT "company_connections_source_company_id_companies_id_fk" FOREIGN KEY ("source_company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_connections" ADD CONSTRAINT "company_connections_target_company_id_companies_id_fk" FOREIGN KEY ("target_company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "documents" ADD CONSTRAINT "documents_userId_users_id_fk" FOREIGN KEY ("userId") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "documents" ADD CONSTRAINT "documents_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "company_subscription" ADD CONSTRAINT "company_subscription_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "company_subscription" ADD CONSTRAINT "company_subscription_plan_id_subscription_plan_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."subscription_plan"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "company_subscription" ADD CONSTRAINT "company_subscription_plan_id_subscription_plan_id_fk" FOREIGN KEY ("plan_id") REFERENCES "public"."subscription_plan"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "notification_recipient_create_idx" ON "notification" USING btree ("recipient_user_id","created_at");--> statement-breakpoint
+CREATE INDEX "notification_recipient_read_idx" ON "notification" USING btree ("recipient_user_id","is_read");
