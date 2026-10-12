@@ -49,9 +49,15 @@ services:
             # Turns on "secure" auth cookies.
             NODE_ENV: production
             PORT: '8000'
+            # Database login - the same values the postgres service uses.
+            # docker-entrypoint.sh turns these into DATABASE_URL (safely encoding any
+            # special characters in the password, like @).
             # Host is "postgres" (the service name), not localhost - inside a container
             # localhost means the container itself.
-            DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+            POSTGRES_HOST: postgres
+            POSTGRES_DB: ${POSTGRES_DB}
+            POSTGRES_USER: ${POSTGRES_USER}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
             # CORS allowed origin - the real site address.
             FRONTEND_URL: ${FRONTEND_URL:?set FRONTEND_URL, e.g. https://enroute.com}
             JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
