@@ -9,7 +9,7 @@ export function generateEnrouteCompanyId(companyType) {
         customer: 'CUS',
         transporter: 'TRN',
         broker: 'BRK',
-        fleetOwner: 'FLT',
+        fleet_owner: 'FLT',
     };
 
     const prefix = prefixes[companyType];

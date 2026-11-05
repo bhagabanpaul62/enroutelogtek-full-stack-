@@ -4,7 +4,7 @@ import React from 'react'
 function FleetOwnerLayout({children}) {
   return (
       <div>
-          <CompanyTypeGuard companyType={'fleet-owner'}> {children}</CompanyTypeGuard>
+          <CompanyTypeGuard companyType={'fleet_owner'}> {children}</CompanyTypeGuard>
       </div>
   );
 }

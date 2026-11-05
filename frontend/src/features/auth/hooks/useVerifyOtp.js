@@ -1,12 +1,13 @@
 import { verifyOtpApi } from '@/features/auth/api/auth.api';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
+import { useSessionStorageItem } from '@/shared/hooks/useSessionStorageItem';
 
 export const useVerifyOtp = () => {
     const router = useRouter();
-    const [email, setEmail] = useState('');
+    const email = useSessionStorageItem('email');
 
     const [apiError, setApiError] = useState();
     const {
@@ -14,10 +15,6 @@ export const useVerifyOtp = () => {
         handleSubmit,
         formState: { errors, isSubmitting },
     } = useForm();
-
-    useEffect(() => {
-        setEmail(sessionStorage.getItem('email'));
-    }, []);
 
     const onSubmit = async (data) => {
         try {

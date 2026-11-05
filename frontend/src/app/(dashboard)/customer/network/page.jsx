@@ -1,9 +1,3 @@
-import React from 'react'
+import NetworkPage from '@/features/network/ui/NetworkPage';
 
-function NetworkPage() {
-  return (
-    <div>NetworkPage</div>
-  )
-}
-
-export default NetworkPage
+export default NetworkPage;

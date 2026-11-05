@@ -32,7 +32,7 @@ export function useRegistrationFlow() {
             }
         };
         checkAccess();
-    }, [pathname]);
+    }, [pathname, router]);
 
     return {
         loading,

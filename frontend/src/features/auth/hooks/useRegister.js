@@ -12,6 +12,9 @@ export function useRegister() {
     const [email, setEmail] = useState(null);
     
     const [registrationResult, setRegistrationResult] = useState(null);
+    // Restore saved progress after a reload. This has to run after hydration (sessionStorage
+    // doesn't exist on the server), so here setState inside an effect is intended.
+    /* eslint-disable react-hooks/set-state-in-effect */
     useEffect(() => {
         const savedFromData = sessionStorage.getItem('fromData');
         if (savedFromData) setFormData(JSON.parse(savedFromData));
@@ -26,6 +29,7 @@ export function useRegister() {
             setStep(4);
         }
     }, []);
+    /* eslint-enable react-hooks/set-state-in-effect */
 
     // save data and go next
     const nextStep = (stepData) => {
@@ -96,7 +100,7 @@ export function useRegister() {
 
             sessionStorage.removeItem('registrationResult');
             sessionStorage.removeItem('userExists'); // ← ADD THIS
-            sessionStorage.removeItem('formData');
+            sessionStorage.removeItem('fromData');
             sessionStorage.removeItem('email');
         } catch (error) {
             toast.error(error.response?.data?.message || 'Submission failed');

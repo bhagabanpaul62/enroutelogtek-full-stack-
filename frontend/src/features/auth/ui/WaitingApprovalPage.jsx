@@ -1,15 +1,10 @@
-import React from 'react'
-import Submit from './Submit';
+import ApplicationStatus from './parts/ApplicationStatus';
 
-function page() {
-  return (
-      <section className="py-24 text-white py-4 px-4 ">
-          <div className="container rounded-2xl ">
-              
-    
-          </div>
-      </section>
-  );
+export default function WaitingApprovalPage() {
+    return (
+        <ApplicationStatus
+            title="Waiting for approval."
+            lead="This company is pending. A person checks the GST and PAN documents, and you get an email either way."
+        />
+    );
 }
-
-export default page

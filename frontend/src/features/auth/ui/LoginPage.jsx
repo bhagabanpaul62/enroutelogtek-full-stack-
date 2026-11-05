@@ -1,111 +1,78 @@
 'use client';
-import { Button } from '@/shared/ui/primitives/button';
-import { Input } from '@/shared/ui/primitives/input';
-import { useState } from 'react';
-import { FaArrowRight } from 'react-icons/fa6';
 
-import { Link } from 'next-view-transitions';
-import { FaEye, FaEyeSlash } from 'react-icons/fa';
-import { AiOutlineLoading3Quarters } from 'react-icons/ai';
-
+import Link from 'next/link';
 import { useLogin } from '@/features/auth/hooks/useLogin';
+import AuthShell from './parts/AuthShell';
+import Field from './parts/Field';
+import Notice from './parts/Notice';
+import PasswordInput from './parts/PasswordInput';
+import SubmitButton from './parts/SubmitButton';
 
-function Login() {
-    const [isPass, setPass] = useState(true);
-
-    const { register, handleSubmit, errors, isSubmitting, apiError, onSubmit } = useLogin()
+export default function LoginPage() {
+    const { register, handleSubmit, errors, isSubmitting, apiError, onSubmit } = useLogin();
+    // The API refuses logins for companies that are not approved yet; point those people to the status page.
+    const waiting = /pending|approv/i.test(apiError ?? '');
 
     return (
-        <section className="min-h-screen w-full bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 text-amber-100 flex justify-center items-center px-4 py-24 md:py-24">
-            <div className=" flex flex-col justify-center items-center">
-                <div className=" px-10 py-10 rounded-2xl sm:border border-white/12">
-                    <div>
-                        <div className="py-7">
-                            {' '}
-                            <h2 className="text-4xl font-bold">Welcome back</h2>
-                            <p className="font-medium w-75">
-                                Enter your password to access your logistics dashboard.
-                            </p>
-                        </div>
-                    </div>
-                    <form onSubmit={handleSubmit(onSubmit)}>
-                        <label className="font-medium " htmlFor="email">
-                            Email Address
-                        </label>
-                        <Input
-                            className="h-10 mt-2 mb-3 border border-white/10 placeholder:text-neutral-400"
-                            placeholder="name@company.com"
-                            {...register('email', {
-                                required: 'Email is required',
-                                pattern: {
-                                    value: /^\S+@\S+\.\S+$/,
-                                    message: 'Invalid email',
-                                },
-                            })}
-                        />
-                        {errors.email && (
-                            <p className="text-red-500 text-sm -mt-2 mb-2">
-                                {errors.email.message}
-                            </p>
+        <AuthShell
+            title="Log in."
+            lead="Your company's RFQs, network and trips."
+            foot={
+                <>
+                    New here? <Link href="/register">Register your company</Link>
+                </>
+            }
+        >
+            <form className="au-form" onSubmit={handleSubmit(onSubmit)} noValidate>
+                <Field id="email" label="Email" error={errors.email?.message}>
+                    <input
+                        id="email"
+                        className="au-input"
+                        type="email"
+                        inputMode="email"
+                        autoComplete="email"
+                        placeholder="name@example.com"
+                        aria-invalid={errors.email ? 'true' : undefined}
+                        aria-describedby="email-note"
+                        {...register('email', {
+                            required: 'Email is required',
+                            pattern: { value: /^\S+@\S+\.\S+$/, message: 'That does not look like an email' },
+                        })}
+                    />
+                </Field>
+
+                <Field
+                    id="password"
+                    label="Password"
+                    error={errors.password?.message}
+                    aside={<Link href="/forgot-password">Forgot it?</Link>}
+                >
+                    <PasswordInput
+                        id="password"
+                        autoComplete="current-password"
+                        placeholder="Your password"
+                        aria-invalid={errors.password ? 'true' : undefined}
+                        aria-describedby="password-note"
+                        {...register('password', { required: 'Password is required' })}
+                    />
+                </Field>
+
+                {apiError && (
+                    <Notice tone="error">
+                        {apiError}
+                        {waiting && (
+                            <>
+                                {' '}
+                                <Link href="/waiting-approval">What happens while you wait</Link>
+                            </>
                         )}
-                        <div className="relative">
-                            <div className="flex justify-between">
-                                <label className="font-medium " htmlFor="email">
-                                    Password
-                                </label>
-                                <Link className="font-medium" href={'/forgot-password'}>
-                                    Forgot Password ?
-                                </Link>
-                            </div>
-                            <Input
-                                type={isPass ? 'password' : 'text'}
-                                className="h-10 mt-2 border border-white/10 placeholder:text-neutral-400"
-                                placeholder="Enter a strong password"
-                                {...register('password', {
-                                    required: 'password is required',
-                                })}
-                            />
-                            <button
-                                className="absolute top-11 right-3  z-10"
-                                type="button"
-                                onClick={() => setPass(!isPass)}
-                            >
-                                {isPass === true ? <FaEyeSlash /> : <FaEye />}
-                            </button>
-                        </div>
-                        {errors.password && (
-                            <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
-                        )}
-                        {apiError && (
-                            <p className="text-red-400 text-sm text-center mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                                {apiError}
-                            </p>
-                        )}
-                        <Button
-                            type="submit"
-                            className="flex mx-auto font-bold w-full py-7 text-lg  mt-15"
-                        >
-                            {isSubmitting ? (
-                                <AiOutlineLoading3Quarters className=" !w-8 !h-8 !font-bold  animate-spin" />
-                            ) : (
-                                <>
-                                    Login <FaArrowRight />{' '}
-                                </>
-                            )}
-                        </Button>
-                    </form>
-                    <div className="flex justify-center py-10">
-                        <p className="font-medium text-sm">
-                            Don't have an account?{' '}
-                            <Link href={'/register'} className="font-bold text-md">
-                                Register
-                            </Link>
-                        </p>
-                    </div>
+                    </Notice>
+                )}
+
+                <div className="au-actions au-actions--end">
+                    <SubmitButton busy={isSubmitting}>Log in</SubmitButton>
                 </div>
-            </div>
-        </section>
+            </form>
+        </AuthShell>
     );
 }
-
-export default Login;

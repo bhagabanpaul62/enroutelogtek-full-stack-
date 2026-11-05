@@ -1,23 +1,17 @@
 'use client';
-import InputWithLabel from '@/shared/ui/widgets/inputWithLabel';
-import { Label } from '@/shared/ui/primitives/label';
-import { useEffect, useState } from 'react';
-import { Button } from '@/shared/ui/primitives/button';
-import SelectCheckBox from '@/shared/ui/widgets/selectCheckBox';
-import ProgressBar from '@/shared/ui/widgets/progressBar';
-import DropDown from '@/shared/ui/widgets/dropDowun';
-import { FaArrowLeft, FaArrowRight, FaEye, FaEyeSlash } from 'react-icons/fa6';
+
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import Field from '../parts/Field';
+import Notice from '../parts/Notice';
+import PasswordInput from '../parts/PasswordInput';
+import SelectField from '../parts/SelectField';
+import SubmitButton from '../parts/SubmitButton';
 
-// Country codes for the mobile drop down selector
-const countryCodes = ['+1', '+91', '+44', '+81'];
+const COUNTRY_CODES = ['+91', '+1', '+44', '+81'];
 
-function CreateAccount({ registerHook, progress }) {
-    const [showPassword, setShowPassword] = useState(false);
-    const [showPasswordTwo ,  setShowPasswordTwo] = useState(false)
+export default function CreateAccount({ registerHook }) {
     const [countryCode, setCountryCode] = useState('+91');
-
     const {
         register,
         handleSubmit,
@@ -27,174 +21,96 @@ function CreateAccount({ registerHook, progress }) {
 
     const password = watch('password');
 
-    const handelCountryCode = (value) => {
-        console.log(value);
-        setCountryCode(value);
-    };
-
     const onSubmit = (data) => {
         const { confirmPassword, ...accountData } = data;
         registerHook.submitAccountStep({ ...accountData, phone: `${countryCode}${data.phone}` });
     };
 
     return (
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6">
-            {/* Header Section */}
-            <div className="text-left mb-8">
-                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-amber-100 mb-2">
-                    Create your account
-                </h1>
-                <p className="text-sm sm:text-base text-amber-100/60">
-                    Start your journey with Enroute Logtek logistics.
-                </p>
-            </div>
+        <form className="au-form" onSubmit={handleSubmit(onSubmit)} noValidate>
+            {registerHook.apiError && <Notice tone="error">{registerHook.apiError}</Notice>}
 
-            {/* Progress Bar Container */}
-            <div className="mb-8 w-full px-1">
-                <ProgressBar label="Progress" percentage={progress} />
-            </div>
-
-            {/* Form */}
-            <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-                {/* API Error Display */}
-                {registerHook.apiError && (
-                    <p className="text-red-400 text-sm text-center p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                        {registerHook.apiError}
-                    </p>
-                )}
-                <div className="flex flex-col gap-y-6">
-                    {/* Full Name */}
-                    <InputWithLabel
-                        id="fullName"
-                        label="Full Name"
-                        inputProps={{
-                            placeholder: 'Enter your full name',
-                            required: true,
-                            ...register('name', { required: 'name is required' }),
-                        }}
+            <div className="au-form__row">
+                <Field id="name" label="Your name" error={errors.name?.message}>
+                    <input
+                        id="name"
+                        className="au-input"
+                        autoComplete="name"
+                        placeholder="As on your ID"
+                        aria-invalid={errors.name ? 'true' : undefined}
+                        aria-describedby="name-note"
+                        {...register('name', { required: 'Your name is required' })}
                     />
+                </Field>
 
-                    {/* Mobile Number Container */}
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="mobileNumber" className="text-amber-100 font-medium">
-                            Mobile Number
-                        </Label>
-                        <div className="flex gap-3">
-                            <div className="w-24">
-                                <DropDown
-                                    label=""
-                                    placeholder="+1"
-                                    options={countryCodes}
-                                    onChange={handelCountryCode}
-                                />
-                            </div>
-                            <div className="flex-1">
-                                <InputWithLabel
-                                    id="mobileNumber"
-                                    label=""
-                                    inputProps={{
-                                        placeholder: '555-0123',
-                                        type: 'tel',
-                                        required: true,
-                                        maxLength: 10,
-                                        ...register('phone', { required: 'phone is required' }),
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Password */}
-                    <div className="relative">
-                        <InputWithLabel
-                            id="password"
-                            label="Password"
-                            inputProps={{
-                                placeholder: '********',
-                                type: !showPassword ? 'password' : 'text',
-                                required: true,
-                                ...register('password', {
-                                    required: 'Password is required',
-                                    minLength: {
-                                        value: 8,
-                                        message: 'Password must be at least 8 characters',
-                                    },
-                                    pattern: {
-                                        value: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).+$/,
-                                        message:
-                                            'Must contain uppercase, lowercase, number and special character',
-                                    },
-                                }),
-                            }}
+                <Field id="phone" label="Mobile number" error={errors.phone?.message}>
+                    <div className="au-phone">
+                        <SelectField
+                            id="countryCode"
+                            value={countryCode}
+                            onChange={setCountryCode}
+                            options={COUNTRY_CODES}
+                            placeholder="+91"
                         />
-                        <button
-                            type="button"
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-100/70 hover:text-amber-100"
-                            onClick={() => setShowPassword(!showPassword)}
-                        >
-                            {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
-                        </button>
-                        {errors.password && (
-                            <p className="text-red-500 text-sm -mt-2 mb-2">
-                                {errors.password.message}
-                            </p>
-                        )}
-                        <p className="text-xs text-amber-100/40 mt-1.5">
-                            Must be at least 8 characters with one special symbol.
-                        </p>
-                    </div>
-
-                    {/* Confirm Password */}
-                    <div className='relative'>
-                        <InputWithLabel
-                            id="confirmPassword"
-                            label="Confirm Password"
-                            inputProps={{
-                                placeholder: '********',
-                                type: !showPasswordTwo ? 'password' : 'text' ,
-                                required: true,
-                                ...register('confirmPassword', {
-                                    required: 'password is required',
-                                    validate: (value) => {
-                                        return value === password || 'Password do not match';
-                                    },
-                                }),
-                            }}
+                        <input
+                            id="phone"
+                            className="au-input au-input--mono"
+                            type="tel"
+                            inputMode="tel"
+                            autoComplete="tel-national"
+                            maxLength={10}
+                            placeholder="98765 43210"
+                            aria-invalid={errors.phone ? 'true' : undefined}
+                            aria-describedby="phone-note"
+                            {...register('phone', { required: 'Mobile number is required' })}
                         />
-                        <button
-                            type="button"
-                            className="absolute right-3 top-13 -translate-y-1/2 text-amber-100/70 hover:text-amber-100"
-                            onClick={() => setShowPasswordTwo(!showPasswordTwo)}
-                        >
-                            {showPasswordTwo ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
-                        </button>
-                        {errors.confirmPassword && (
-                            <p className="text-red-500 text-sm -mt-8 mb-2">
-                                {errors.confirmPassword.message}
-                            </p>
-                        )}
                     </div>
-                </div>
+                </Field>
 
-                {/* Submit Button */}
-                <div className="pt-6  flex justify-between items-center">
-                    <Button
-                        type="button"
-                        onClick={registerHook.prevStep}
-                        className="w-fit py-6 px-6 text-base sm:text-lg font-bold border border-white/20 hover:border-primary/50 transition-all"
-                    >
-                        <FaArrowLeft /> Prev
-                    </Button>
-                    <Button
-                        type="submit"
-                        className="w-fit py-6 px-6 text-base sm:text-lg font-bold border border-white/20 hover:border-primary/50 transition-all"
-                    >
-                        Next <FaArrowRight />
-                    </Button>
-                </div>
-            </form>
-        </div>
+                <Field
+                    id="password"
+                    label="Password"
+                    hint="8 or more characters, with a capital, a number and a symbol."
+                    error={errors.password?.message}
+                >
+                    <PasswordInput
+                        id="password"
+                        autoComplete="new-password"
+                        placeholder="Choose a password"
+                        aria-invalid={errors.password ? 'true' : undefined}
+                        aria-describedby="password-note"
+                        {...register('password', {
+                            required: 'Password is required',
+                            minLength: { value: 8, message: 'At least 8 characters' },
+                            pattern: {
+                                value: /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&]).+$/,
+                                message: 'Needs a capital, a small letter, a number and a symbol',
+                            },
+                        })}
+                    />
+                </Field>
+
+                <Field id="confirmPassword" label="The same password again" error={errors.confirmPassword?.message}>
+                    <PasswordInput
+                        id="confirmPassword"
+                        autoComplete="new-password"
+                        placeholder="Repeat it"
+                        aria-invalid={errors.confirmPassword ? 'true' : undefined}
+                        aria-describedby="confirmPassword-note"
+                        {...register('confirmPassword', {
+                            required: 'Repeat the password',
+                            validate: (value) => value === password || 'The passwords do not match',
+                        })}
+                    />
+                </Field>
+            </div>
+
+            <div className="au-actions">
+                <SubmitButton type="button" quiet onClick={registerHook.prevStep} disabled={registerHook.isSubmitting}>
+                    Back
+                </SubmitButton>
+                <SubmitButton busy={registerHook.isSubmitting}>Create the account</SubmitButton>
+            </div>
+        </form>
     );
 }
-
-export default CreateAccount;

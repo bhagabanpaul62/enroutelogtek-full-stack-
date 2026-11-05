@@ -1,0 +1,34 @@
+/* Marketing tokens (Hallmark theme Rim, colourway night, recoloured to the EnrouteLogtek gold).
+ * Names that would collide with shadcn or Tailwind are renamed or scoped to .mk:
+ *   Rim --color-accent → --color-signal, --color-muted → --color-ink-3, --color-muted-2 → --color-ink-4
+ *   --text-xs/sm/lg/xl/2xl/3xl and --ease-* live on .mk, so Tailwind's text-* and ease-* utilities
+ *   keep their values on every other page. */
+:root {
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+  --text-md: 1rem;
+  --text-display-s: clamp(2.25rem, 4vw + 0.5rem, 3.75rem); --text-display: clamp(2.75rem, 5vw + 1rem, 5.25rem);
+  --text-section: clamp(2rem, 2.5vw + 1rem, 3.5rem); --text-title: clamp(1.25rem, 0.75vw + 0.875rem, 1.625rem); --text-lead: clamp(1.125rem, 0.35vw + 1rem, 1.375rem);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --container: 1440px; --gutter: 64px; --gap-columns: 32px; --section-gap-s: 120px; --section-gap: 144px; --section-gap-l: 176px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+
+  /* paper, ink, rules: warm black tinted toward the gold's hue */
+  --color-paper: oklch(10% 0.008 85); --color-paper-2: oklch(13.5% 0.009 85); --color-paper-3: oklch(7% 0.007 85);
+  --color-ink: oklch(94% 0.010 85); --color-ink-2: oklch(84% 0.011 85); --color-ink-3: oklch(68% 0.012 85); --color-ink-4: oklch(50% 0.010 85);
+  --color-rule: oklch(25% 0.010 85); --color-rule-2: oklch(16% 0.009 85);
+  /* the one signal: brand gold #fbbc0e; the second: the project's sky-blue tertiary */
+  --color-signal: oklch(82% 0.18 85); --color-signal-ink: oklch(20% 0.05 80); --color-signal-2: oklch(78% 0.12 230); --color-focus: oklch(84% 0.19 85);
+
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif; --font-body: var(--font-display);
+  --font-outlier: var(--font-geist-mono), ui-monospace, monospace;
+  --radius-card: 0; --radius-pill: 0; --rule-hair: 1px; --shadow-card: none;
+  --tracking-display: -0.03em; --display-weight: 500;
+}
+
+.mk {
+  --text-xs: 0.8125rem; --text-sm: 0.875rem; --text-lg: 1.25rem; --text-xl: 1.5625rem; --text-2xl: 1.953rem; --text-3xl: 2.441rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@media (max-width: 60rem) { :root { --gutter: 24px; --section-gap-s: 80px; --section-gap: 96px; --section-gap-l: 120px; } }
+@media (max-width: 40rem) { :root { --gutter: 16px; --section-gap-s: 56px; --section-gap: 72px; --section-gap-l: 96px; --gap-columns: 16px; } }

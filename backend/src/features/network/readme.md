@@ -672,23 +672,49 @@ blocked
 
 A unblocks B.
 
-The final status should be determined by the business rule.
+Decided rule: **blocked → removed**. The connection row is deleted. Nothing is restored
+without consent; either company can send a fresh request later.
 
-Do not automatically assume that every blocked connection should become `accepted`.
+Only the company that blocked can unblock. The blocked company never sees the blocked
+row (`/network`, requests, discover all hide it), so for them this returns 404.
 
-Possible business rules:
+### Success
 
-blocked → accepted
+{
+  "success": true,
+  "data": null,
+  "message": "Company unblocked successfully"
+}
 
-or
+---
 
-blocked → removed
+# Decided Business Rules
 
-or
+These were open questions in this document; they are now implemented.
 
-blocked → pending
+| Rule | Decision | Where in code |
+|---|---|---|
+| Which company types can connect | Only **different** types (customer ↔ transporter, broker ↔ fleet owner, ...). Same type → 400 | `network.constants.js` → `canCompanyTypesConnect` |
+| Who can change the network | `admin` and `co-admin`. Every role can read (`GET`) | `network.constants.js` → `NETWORK_MANAGER_ROLES` |
+| Unblock | Removes the connection (see above) | `network.service.js` → `unblockConnection` |
+| Request again after rejection | Allowed any time. The old rejected row is replaced by a new pending one. Use Block to stop repeat requests | `network.service.js` → `sendRequest` |
+| Block from which states | Any state that isn't already blocked (pending, accepted, rejected) - also lets a company block someone who keeps sending requests | `network.service.js` → `blockConnection` |
+| Cancel / remove | The row is deleted (not soft-deleted) | `network.service.js` |
+| Discover | Approved companies of an allowed type, excluding your own company and any company you have a pending, accepted or blocked row with | `network.service.js` → `discoverCompanies` |
 
-The final behavior must be defined by the product requirements.
+Database guarantees (migration `0001_network_rules.sql`):
+
+- one row per pair of companies, whatever the direction (unique index on `least/greatest(source, target)`)
+- a company can't connect to itself (check constraint)
+- `blocked_by_company_id` records who blocked
+
+Response details beyond the examples above:
+
+- Every response has `message`. List responses are `{ success, message, data: [...], pagination }`.
+- `/network` items also include `company` (the other company, from your point of view) and
+  `direction` (`outgoing` = you sent the request, `incoming` = they did).
+- Company objects are `{ id, name, type, logoUrl, enrouteCompanyId }` - never GST, PAN, email or phone.
+- Validation errors return **422** with `{ message, error: { field: message } }`. A broken cursor returns 400.
 
 ---
 

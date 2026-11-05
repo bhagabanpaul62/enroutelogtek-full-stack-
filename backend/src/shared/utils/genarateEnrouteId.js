@@ -5,7 +5,7 @@ export const generateEnrouteId = (companyType) => {
         customer: 'CUS',
         transporter: 'TRN',
         broker: 'BRK',
-        fleetOwner: 'FLT',
+        fleet_owner: 'FLT',
     };
 
     if (companyType === 'transporter') {
@@ -17,8 +17,8 @@ export const generateEnrouteId = (companyType) => {
     } else if (companyType === 'broker') {
         const id = `${prefix.broker}${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
         return id;
-    } else if (companyType === 'fleetOwner') {
-        const id = `${prefix.fleetOwner}${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    } else if (companyType === 'fleet_owner') {
+        const id = `${prefix.fleet_owner}${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
         return id;
     } else {
         throw new Error('Invalid company type');

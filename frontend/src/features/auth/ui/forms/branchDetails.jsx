@@ -1,174 +1,118 @@
 'use client';
-import InputWithLabel from '@/shared/ui/widgets/inputWithLabel';
-import { Label } from '@/shared/ui/primitives/label';
-import { useState } from 'react';
-import { Button } from '@/shared/ui/primitives/button';
-import SelectCheckBox from '@/shared/ui/widgets/selectCheckBox';
-import ProgressBar from '@/shared/ui/widgets/progressBar';
-import DropDown from '@/shared/ui/widgets/dropDowun';
-import { FaArrowLeft, FaArrowRight } from 'react-icons/fa6';
-import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
 
-const indianStates = [
-    'Andhra Pradesh',
-    'Arunachal Pradesh',
-    'Assam',
-    'Bihar',
-    'Chhattisgarh',
-    'Goa',
-    'Gujarat',
-    'Haryana',
-    'Himachal Pradesh',
-    'Jharkhand',
-    'Karnataka',
-    'Kerala',
-    'Madhya Pradesh',
-    'Maharashtra',
-    'Manipur',
-    'Meghalaya',
-    'Mizoram',
-    'Nagaland',
-    'Odisha',
-    'Punjab',
-    'Rajasthan',
-    'Sikkim',
-    'Tamil Nadu',
-    'Telangana',
-    'Tripura',
-    'Uttar Pradesh',
-    'Uttarakhand',
-    'West Bengal',
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import Field from '../parts/Field';
+import SelectField from '../parts/SelectField';
+import SubmitButton from '../parts/SubmitButton';
+
+const INDIAN_STATES = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
+    'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
+    'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan',
+    'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
 ];
 
-function BranchDetails({ progress, registerHook }) {
+export default function BranchDetails({ registerHook }) {
     const [state, setState] = useState(registerHook.formData.state || '');
+    const [stateError, setStateError] = useState('');
     const {
         register,
         handleSubmit,
         formState: { errors },
-    } = useForm({
-        defaultValues: registerHook.formData,
-    });
-    const stateHandle = (value) => {
-        setState(value);
-    };
+    } = useForm({ defaultValues: registerHook.formData });
 
     const onSubmit = (data) => {
         if (!state) {
-            toast.error('Please select a state');
+            setStateError('Choose a state');
             return;
         }
         registerHook.nextStep({ ...data, state });
     };
 
     return (
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6">
-            {/* Header Section */}
-            <div className="text-center mb-8">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-amber-100 mb-2">
-                    Branch Details
-                </h1>
-                <p className="text-xs sm:text-sm text-amber-100/60">
-                    Please provide the primary operational location for your organization.
-                </p>
-            </div>
-
-            {/* Progress Bar Container */}
-            <div className="mb-8 w-full px-1">
-                <ProgressBar label="Progress" percentage={progress} />
-            </div>
-
-            {/* Form */}
-            <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    {/* Branch Name */}
-                    <InputWithLabel
+        <form className="au-form" onSubmit={handleSubmit(onSubmit)} noValidate>
+            <div className="au-form__row">
+                <Field id="branchName" label="Branch name" error={errors.branchName?.message}>
+                    <input
                         id="branchName"
-                        label="Branch Name"
-                        inputProps={{
-                            placeholder: 'e.g. Headquarters - North',
-                            required: true,
-                            ...register('branchName', { required: 'branch name required' }),
-                        }}
+                        className="au-input"
+                        placeholder="Head office"
+                        aria-invalid={errors.branchName ? 'true' : undefined}
+                        aria-describedby="branchName-note"
+                        {...register('branchName', { required: 'Branch name is required' })}
                     />
+                </Field>
 
-                    {/* Branch Code */}
-                    <InputWithLabel
+                <Field id="branchCode" label="Branch code" hint="Your own short code for it." error={errors.branchCode?.message}>
+                    <input
                         id="branchCode"
-                        label="Branch Code"
-                        inputProps={{
-                            placeholder: 'Enter your branch code ',
-                            required: true,
-                            ...register('branchCode', { required: 'branch code required' }),
-                        }}
+                        className="au-input au-input--mono"
+                        placeholder="HO-01"
+                        aria-invalid={errors.branchCode ? 'true' : undefined}
+                        aria-describedby="branchCode-note"
+                        {...register('branchCode', { required: 'Branch code is required' })}
                     />
+                </Field>
 
-                    {/* Street Address */}
-                    <InputWithLabel
-                        id="streetAddress"
-                        label="Street Address"
-                        inputProps={{
-                            placeholder: '123 Logistics Way, Suite 400',
-                            type: 'text',
-                            required: true,
-                            ...register('address', { required: ' address is required' }),
-                        }}
+                <Field id="address" label="Street address" error={errors.address?.message}>
+                    <input
+                        id="address"
+                        className="au-input"
+                        autoComplete="street-address"
+                        placeholder="Plot 12, MIDC Phase 2"
+                        aria-invalid={errors.address ? 'true' : undefined}
+                        aria-describedby="address-note"
+                        {...register('address', { required: 'Address is required' })}
                     />
+                </Field>
 
-                    <InputWithLabel
+                <Field id="city" label="City" error={errors.city?.message}>
+                    <input
                         id="city"
-                        label="City"
-                        inputProps={{
-                            placeholder: 'Kolkata',
-                            type: 'text',
-                            required: true,
-                            ...register('city', { required: ' city is required' }),
-                        }}
+                        className="au-input"
+                        autoComplete="address-level2"
+                        placeholder="Pune"
+                        aria-invalid={errors.city ? 'true' : undefined}
+                        aria-describedby="city-note"
+                        {...register('city', { required: 'City is required' })}
                     />
+                </Field>
 
-                    <div className="w-full ">
-                        <DropDown
-                            label={'State'}
-                            className=""
-                            placeholder="Select State"
-                            options={indianStates}
-                            value={state}
-                            onChange={stateHandle}
-                        />
-                    </div>
-
-                    <InputWithLabel
-                        id="Pin"
-                        label="Pin Number"
-                        inputProps={{
-                            placeholder: '700039',
-                            type: 'text',
-                            maxLength: 7,
-                            ...register('pinCode', { required: 'pin code is required' }),
+                <Field id="state" label="State" error={stateError || undefined}>
+                    <SelectField
+                        id="state"
+                        value={state}
+                        onChange={(value) => {
+                            setState(value);
+                            setStateError('');
                         }}
+                        options={INDIAN_STATES}
+                        placeholder="Choose a state"
                     />
-                </div>
+                </Field>
 
-                {/* Submit Button */}
-                <div className="pt-6  flex justify-between items-center">
-                    <Button
-                        type="button"
-                        onClick={registerHook.prevStep}
-                        className="w-fit py-6 px-6 text-base sm:text-lg font-bold border border-white/20 hover:border-primary/50 transition-all"
-                    >
-                        <FaArrowLeft /> Prev
-                    </Button>
-                    <Button
-                        type="submit"
-                        className="w-fit py-6 px-6 text-base sm:text-lg font-bold border border-white/20 hover:border-primary/50 transition-all"
-                    >
-                        Next <FaArrowRight />
-                    </Button>
-                </div>
-            </form>
-        </div>
+                <Field id="pinCode" label="PIN code" error={errors.pinCode?.message}>
+                    <input
+                        id="pinCode"
+                        className="au-input au-input--mono"
+                        inputMode="numeric"
+                        maxLength={6}
+                        autoComplete="postal-code"
+                        placeholder="411001"
+                        aria-invalid={errors.pinCode ? 'true' : undefined}
+                        aria-describedby="pinCode-note"
+                        {...register('pinCode', { required: 'PIN code is required' })}
+                    />
+                </Field>
+            </div>
+
+            <div className="au-actions">
+                <SubmitButton type="button" quiet onClick={registerHook.prevStep}>
+                    Back
+                </SubmitButton>
+                <SubmitButton>Next: your account</SubmitButton>
+            </div>
+        </form>
     );
 }
-
-export default BranchDetails;

@@ -1,13 +1,14 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useSessionStorageItem } from '@/shared/hooks/useSessionStorageItem';
 import { set, useForm } from 'react-hook-form';
 import { forgetPasswordApi } from '../api/auth.api';
 import { toast } from 'sonner';
 
 export const useForgetPassword = () => {
-    const [email, setEmail] = useState(null);
+    const email = useSessionStorageItem('email');
     const [userNotExist, setUserNotExist] = useState(false);
     const [apiError, setApiError] = useState();
     const router = useRouter();
@@ -18,10 +19,6 @@ export const useForgetPassword = () => {
         setError,
         formState: { errors, isSubmitting },
     } = useForm();
-
-    useEffect(() => {
-        setEmail(sessionStorage.getItem('email'));
-    }, []);
 
     const onSubmit = async (data) => {
         try {

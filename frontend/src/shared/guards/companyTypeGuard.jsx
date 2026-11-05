@@ -2,20 +2,14 @@
 import { useRouter } from 'next/navigation';
 import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
-
-const redirectMap = {
-    customer: '/customer',
-    transporter: '/transporter',
-    broker: '/broker',
-    fleetOwner: '/fleet-owner',
-};
+import { dashboardPath } from '@/shared/lib/companyType';
 
 function CompanyTypeGuard({ companyType, children }) {
     const { user } = useSelector((state) => state.auth);
     const router = useRouter();
     useEffect(() => {
         if (user && user.companyType !== companyType) {
-            router.replace(redirectMap[user.companyType]);
+            router.replace(dashboardPath(user.companyType));
         }
     }, [user, companyType, router]);
 

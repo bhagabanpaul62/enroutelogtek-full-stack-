@@ -1,168 +1,132 @@
 'use client';
-import InputWithLabel from '@/shared/ui/widgets/inputWithLabel';
-import { Label } from '@/shared/ui/primitives/label';
+
 import { useState } from 'react';
-import { Button } from '@/shared/ui/primitives/button';
-import SelectCheckBox from '@/shared/ui/widgets/selectCheckBox';
-import ProgressBar from '@/shared/ui/widgets/progressBar';
-import { FaArrowRight } from 'react-icons/fa6';
 import { useForm } from 'react-hook-form';
-import { toast } from 'sonner';
+import Field from '../parts/Field';
+import SubmitButton from '../parts/SubmitButton';
+import TypeChoice from '../parts/TypeChoice';
 
-function CompanyForm({ registerHook, progress }) {
+// Registration asks shippers and transporters for GST and PAN; brokers and fleet owners for PAN.
+const NEEDS_GST = ['customer', 'transporter'];
+
+export default function CompanyForm({ registerHook }) {
     const [companyType, setCompanyType] = useState(registerHook?.formData?.companyType || '');
-
+    const [typeError, setTypeError] = useState('');
     const {
         register,
         handleSubmit,
         formState: { errors },
-    } = useForm({
-        defaultValues: registerHook.formData,
-    });
+    } = useForm({ defaultValues: registerHook.formData });
+
+    const needsGst = NEEDS_GST.includes(companyType);
 
     const onSubmit = (data) => {
         if (!companyType) {
-            toast.error('Please select a company type');
+            setTypeError('Choose a company type');
             return;
         }
         registerHook.nextStep({ ...data, companyType });
     };
 
     return (
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6">
-            {/* Header Section */}
-            <div className="text-center mb-8">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-amber-100 mb-2">
-                    Company Profile
-                </h1>
-                <p className="text-xs sm:text-sm text-amber-100/60">
-                    Please fill in the details below to set up your business account.
-                </p>
+        <form className="au-form" onSubmit={handleSubmit(onSubmit)} noValidate>
+            <TypeChoice
+                value={companyType}
+                onChange={(value) => {
+                    setCompanyType(value);
+                    setTypeError('');
+                }}
+                error={typeError || undefined}
+            />
+
+            <div className="au-form__row">
+                <Field id="companyName" label="Company name" error={errors.companyName?.message}>
+                    <input
+                        id="companyName"
+                        className="au-input"
+                        autoComplete="organization"
+                        placeholder="The legal entity"
+                        aria-invalid={errors.companyName ? 'true' : undefined}
+                        aria-describedby="companyName-note"
+                        {...register('companyName', { required: 'Company name is required' })}
+                    />
+                </Field>
+
+                <Field id="companyEmailId" label="Company email" error={errors.companyEmailId?.message}>
+                    <input
+                        id="companyEmailId"
+                        className="au-input"
+                        type="email"
+                        inputMode="email"
+                        placeholder="office@example.com"
+                        aria-invalid={errors.companyEmailId ? 'true' : undefined}
+                        aria-describedby="companyEmailId-note"
+                        {...register('companyEmailId', { required: 'Company email is required' })}
+                    />
+                </Field>
+
+                <Field id="companyPhoneNumber" label="Company phone" error={errors.companyPhoneNumber?.message}>
+                    <input
+                        id="companyPhoneNumber"
+                        className="au-input au-input--mono"
+                        type="tel"
+                        inputMode="tel"
+                        maxLength={15}
+                        placeholder="+91 98765 43210"
+                        aria-invalid={errors.companyPhoneNumber ? 'true' : undefined}
+                        aria-describedby="companyPhoneNumber-note"
+                        {...register('companyPhoneNumber', { required: 'Company phone is required' })}
+                    />
+                </Field>
+
+                <Field
+                    id="gstNumber"
+                    label={
+                        needsGst ? (
+                            'GST number'
+                        ) : (
+                            <>
+                                GST number <small>(optional)</small>
+                            </>
+                        )
+                    }
+                    hint="15 characters"
+                    error={errors.gstNumber?.message}
+                >
+                    <input
+                        id="gstNumber"
+                        className="au-input au-input--mono"
+                        maxLength={15}
+                        autoCapitalize="characters"
+                        placeholder="22AAAAA0000A1Z5"
+                        aria-invalid={errors.gstNumber ? 'true' : undefined}
+                        aria-describedby="gstNumber-note"
+                        {...register('gstNumber', {
+                            validate: (value) =>
+                                !needsGst ||
+                                Boolean(value?.trim()) ||
+                                'GST is required for shippers and transporters',
+                        })}
+                    />
+                </Field>
+
+                <Field id="panNumber" label="PAN" hint="10 characters" error={errors.panNumber?.message}>
+                    <input
+                        id="panNumber"
+                        className="au-input au-input--mono"
+                        maxLength={10}
+                        autoCapitalize="characters"
+                        placeholder="ABCDE1234F"
+                        aria-invalid={errors.panNumber ? 'true' : undefined}
+                        aria-describedby="panNumber-note"
+                        {...register('panNumber', { required: 'PAN is required' })}
+                    />
+                </Field>
             </div>
 
-            {/* Progress Bar Container */}
-            <div className="mb-8 w-full px-1">
-                <ProgressBar label="Progress" percentage={progress} />
+            <div className="au-actions au-actions--end">
+                <SubmitButton>Next: branch</SubmitButton>
             </div>
-
-            {/* Form */}
-            <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    {/* Company Name */}
-                    <div>
-                        <InputWithLabel
-                            id="companyName"
-                            label="Company Name"
-                            inputProps={{
-                                placeholder: 'Legal Entity Name',
-                                ...register('companyName', {
-                                    required: 'Company name is required',
-                                }),
-                            }}
-                        />
-                        {errors.companyName && (
-                            <p className="text-red-500 text-xs mt-1">
-                                {errors.companyName.message}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Company Type — spans full width on mobile, fits in grid on desktop */}
-                    <div>
-                        <Label className="text-sm font-medium text-foreground">Company Type</Label>
-                        <SelectCheckBox
-                            list={[
-                                { id: 1, name: 'Customer', value: 'customer' },
-                                { id: 2, name: 'Transporter', value: 'transporter' },
-                                { id: 3, name: 'Broker', value: 'broker' },
-                                { id: 4, name: 'Fleet Owner', value: 'fleetOwner' },
-                            ]}
-                            value={companyType}
-                            onChange={setCompanyType}
-                        />
-                    </div>
-
-                    {/* Work Email */}
-                    <div>
-                        <InputWithLabel
-                            id="workEmail"
-                            label="Company Email"
-                            inputProps={{
-                                placeholder: 'corp@company.com',
-                                type: 'email',
-                                ...register('companyEmailId', {
-                                    required: 'Company email is required',
-                                }),
-                            }}
-                        />
-                        {errors.companyEmailId && (
-                            <p className="text-red-500 text-xs mt-1">
-                                {errors.companyEmailId.message}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* Phone Number */}
-                    <div>
-                        <InputWithLabel
-                            id="phoneNumber"
-                            label="Company Phone Number"
-                            inputProps={{
-                                placeholder: '+91 98765 43210',
-                                type: 'tel',
-                                maxLength: 15,
-                                minLength: 10,
-                                ...register('companyPhoneNumber', {
-                                    required: 'Company phone number is required',
-                                }),
-                            }}
-                        />
-                        {errors.companyPhoneNumber && (
-                            <p className="text-red-500 text-xs mt-1">
-                                {errors.companyPhoneNumber.message}
-                            </p>
-                        )}
-                    </div>
-
-                    {/* GST Number */}
-                    <InputWithLabel
-                        id="gst"
-                        label="GST Number"
-                        inputProps={{
-                            placeholder: '22AAAAA0000A1Z5',
-                            type: 'text',
-                            maxLength: 15,
-                            required: ['Customer', 'Transporter'].includes(companyType) && true,
-                            ...register('gstNumber'),
-                        }}
-                    />
-
-                    {/* PAN Number */}
-                    <InputWithLabel
-                        id="pan"
-                        label="Company PAN Number"
-                        inputProps={{
-                            placeholder: 'ABCDE1234F',
-                            type: 'text',
-                            maxLength: 10,
-                            required: ['Customer', 'Transporter'].includes(companyType) && true,
-                            ...register('panNumber'),
-                        }}
-                    />
-                </div>
-
-                {/* Submit Button */}
-                <div className="pt-6  flex justify-end items-center">
-                    <Button
-                        type="submit"
-                        className="w-fit py-6 px-6 text-base sm:text-lg font-bold border border-white/20 hover:border-primary/50 transition-all"
-                    >
-                        Next <FaArrowRight />
-                    </Button>
-                </div>
-            </form>
-        </div>
+        </form>
     );
 }
-
-export default CompanyForm;

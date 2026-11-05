@@ -3,7 +3,7 @@ import { getMyCompany, updateMyCompany } from '#features/company/controllers/com
 
 const router = express.Router();
 
-// TODO: Add authMiddleware when built
+// authMiddleware is applied to all of /companies in routes/index.js.
 router.get('/me', getMyCompany);
 router.patch('/me', updateMyCompany);
 

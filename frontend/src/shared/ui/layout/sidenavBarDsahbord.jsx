@@ -24,6 +24,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import Image from 'next/image';
+import { dashboardPath } from '@/shared/lib/companyType';
 
 // Icon mapping based on link paths or names
 const getIcon = (name) => {
@@ -49,46 +50,6 @@ const getIcon = (name) => {
     return map[name] || <FileText size={16} />;
 };
 
-const options = {
-    general: [
-        { name: 'Overview', link: '/customer' },
-        { name: 'Network', link: '/network' },
-    ],
-    main: {
-        customer: [
-            { name: 'RFQs', link: '/customer/rfqs' },
-            { name: 'Contracts', link: '/customer/contracts' },
-            { name: 'Trips', link: '/customer/trips' },
-        ],
-        transporter: [
-            { name: 'RFQs', link: '/transporter/rfqs' },
-            { name: 'Bids', link: '/transporter/bids' },
-            { name: 'Contracts', link: '/transporter/contracts' },
-            { name: 'Fleet', link: '/transporter/fleet' },
-            { name: 'Drivers', link: '/transporter/drivers' },
-            { name: 'Trips', link: '/transporter/trips' },
-        ],
-        broker: [
-            { name: 'Loads', link: '/broker/loads' },
-            { name: 'Transporters', link: '/broker/transporters' },
-            { name: 'Fleet Owners', link: '/broker/fleet-owners' },
-            { name: 'Trips', link: '/broker/trips' },
-        ],
-        fleetOwner: [
-            { name: 'Loads', link: '/fleetOwner/loads' },
-            { name: 'Vehicles', link: '/fleetOwner/vehicles' },
-            { name: 'Drivers', link: '/fleetOwner/drivers' },
-            { name: 'Trips', link: '/fleetOwner/trips' },
-            { name: 'Earnings', link: '/fleetOwner/earnings' },
-        ],
-    },
-    administration: [
-        { name: 'Reports', link: '/customer/reports' },
-        { name: 'Team Management', link: '/team' },
-        { name: 'Settings', link: '/settings' },
-    ],
-};
-
 function SidenavBarDashboard() {
     const pathName = usePathname();
     const [isOpen, setIsOpen] = useState(false);
@@ -97,11 +58,12 @@ function SidenavBarDashboard() {
     console.log('from side bar ', user);
 
     const companyType = user.companyType;
+    const basePath = dashboardPath(companyType);
 
     const options = {
         general: [
-            { name: 'Overview', link: `/${user.companyType}` },
-            { name: 'Network', link: `/${user.companyType}/network` },
+            { name: 'Overview', link: basePath },
+            { name: 'Network', link: `${basePath}/network` },
         ],
         main: {
             customer: [
@@ -123,18 +85,18 @@ function SidenavBarDashboard() {
                 { name: 'Fleet Owners', link: '/broker/fleet-owners' },
                 { name: 'Trips', link: '/broker/trips' },
             ],
-            fleetOwner: [
-                { name: 'Loads', link: '/fleetOwner/loads' },
-                { name: 'Vehicles', link: '/fleetOwner/vehicles' },
-                { name: 'Drivers', link: '/fleetOwner/drivers' },
-                { name: 'Trips', link: '/fleetOwner/trips' },
-                { name: 'Earnings', link: '/fleetOwner/earnings' },
+            fleet_owner: [
+                { name: 'Loads', link: '/fleet-owner/loads' },
+                { name: 'Vehicles', link: '/fleet-owner/vehicles' },
+                { name: 'Drivers', link: '/fleet-owner/drivers' },
+                { name: 'Trips', link: '/fleet-owner/trips' },
+                { name: 'Earnings', link: '/fleet-owner/earnings' },
             ],
         },
         administration: [
-            { name: 'Reports', link: `/${user.companyType}/reports` },
-            { name: 'Team Management', link: `/${user.companyType}/team` },
-            { name: 'Settings', link: `/${user.companyType}/settings` },
+            { name: 'Reports', link: `${basePath}/reports` },
+            { name: 'Team Management', link: `${basePath}/team` },
+            { name: 'Settings', link: `${basePath}/settings` },
         ],
     };
 

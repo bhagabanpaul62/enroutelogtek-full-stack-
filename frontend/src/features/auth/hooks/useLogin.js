@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { checkAuthAction, loginUserAction } from '../state/authAction';
 import { useDispatch } from 'react-redux';
+import { dashboardPath } from '@/shared/lib/companyType';
 
 export function useLogin() {
     const [apiError, setApiError] = useState();
@@ -41,10 +42,11 @@ export function useLogin() {
             if (res.role === 'root_admin') {
                 router.push('/rootAdmin');
             } else {
-                router.push(`/${res.companyType}`);
+                router.push(dashboardPath(res.companyType));
             }
         } catch (error) {
-            setApiError(error.response?.data?.message || 'Something went wrong');
+            // unwrap() throws the thunk's rejectWithValue payload: the API message as a string
+            setApiError(typeof error === 'string' ? error : error?.message || 'Something went wrong');
 
             console.log('in side set api error ', apiError);
         }

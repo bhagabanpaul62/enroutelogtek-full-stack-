@@ -1,14 +1,11 @@
 import { sendOtpApi } from '@/features/auth/api/auth.api';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useSessionStorageItem } from '@/shared/hooks/useSessionStorageItem';
 
 export const useResendOtp = () => {
     const [count, setCount] = useState(0);
-    const [email, setEmail] = useState('');
-
-    useEffect(() => {
-        setEmail(sessionStorage.getItem('email'));
-    }, []);
+    const email = useSessionStorageItem('email');
     
 
     const handelResendOtp = async () => {

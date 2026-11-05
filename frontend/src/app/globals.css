@@ -79,9 +79,10 @@
 
 @theme inline {
   /* ── Font Families ── */
+  /* Space Grotesk is loaded in app/layout.jsx as --font-space-grotesk */
   --font-heading: var(--font-sans);
-  --font-sans: var(--font-geist);
-  --font-geist:var(--font-geist);
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-geist: var(--font-sans);
 
   /* ── Shadcn Core Colors (mapped to :root variables) ── */
   --color-background: var(--background);
@@ -161,6 +162,12 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
   
+}
+
+/* Nothing on the site may cause sideways scrolling; clip keeps sticky/fixed elements working. */
+html,
+body {
+  overflow-x: clip;
 }
 
 /* Chrome / Edge Autofill Fix */

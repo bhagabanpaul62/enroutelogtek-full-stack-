@@ -3,8 +3,7 @@ import { getPendingCompanies, approveCompany, rejectCompany } from '#features/pl
 
 const router = express.Router();
 
-// All admin routes will need authMiddleware + roleMiddleware(['rootAdmin'])
-// TODO: Add middleware when built
+// authMiddleware + roleMiddleware(['root_admin']) are applied to all of /platform in routes/index.js.
 
 router.get('/companies', getPendingCompanies);
 router.patch('/companies/:id/approve', approveCompany);

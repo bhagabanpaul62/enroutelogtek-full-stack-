@@ -12,7 +12,7 @@ import { sendOtpEmail, sendWelcomeEmail } from '#shared/services/email/email.ser
 import crypto from 'crypto';
 import { and, eq, gt } from 'drizzle-orm';
 import { AppError } from '#shared/utils/AppError.js';
-import { companies, branch } from '#features/company/schemas/index.js';
+import { companies, branch, companyType as companyTypeEnum } from '#features/company/schemas/index.js';
 import { documents } from '#features/document/schemas/index.js';
 import { generateEnrouteId } from '#shared/utils/genarateEnrouteId.js';
 import { log } from 'console';
@@ -200,6 +200,12 @@ export const register = asyncHandler(async (req, res) => {
         });
     }
 
+    if (!companyTypeEnum.enumValues.includes(companyType)) {
+        return validationErrorResponse(res, 'Invalid company type', {
+            companyType: `Company type must be one of: ${companyTypeEnum.enumValues.join(', ')}`,
+        });
+    }
+
     //check gst length and panNumber length
     if (gstNumber && gstNumber.length > 15)
         throw new AppError('GST number must be 15 characters', 400);
@@ -344,7 +350,7 @@ export const submitRegistration = asyncHandler(async (req, res) => {
         customer: ['gst', 'pan'],
         transporter: ['gst', 'pan'],
         broker: ['pan'],
-        fleetOwner: ['pan'],
+        fleet_owner: ['pan'],
     };
 
     const [company] = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);

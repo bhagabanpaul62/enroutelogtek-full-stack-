@@ -7,6 +7,16 @@ export function successResponse(res, data, message = 'Success', statusCode = 200
     });
 }
 
+//paginated list response - the items in data, cursor info in pagination
+export function paginatedResponse(res, data, pagination, message = 'Success') {
+    return res.status(200).json({
+        success: true,
+        message,
+        data,
+        pagination,
+    });
+}
+
 //error response
 export function errorResponse(res, message = 'error', statusCode = 500, error = null) {
     return res.status(statusCode).json({
