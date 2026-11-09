@@ -18,9 +18,8 @@ export const userRoll = pgEnum('user_role', [
 
 export const users = pgTable('users', {
     id: uuid('id').defaultRandom().primaryKey(),
-    companyId: uuid('company_id')
-        .notNull()
-        .references(() => companies.id),
+    // Nullable only for root_admin (the platform's own staff); every company user has one.
+    companyId: uuid('company_id').references(() => companies.id),
     branchId: uuid('branch_id').references(() => branch.id),
     name: varchar('name', { length: 255 }).notNull(),
     email: varchar('email', { length: 255 }).notNull().unique(),

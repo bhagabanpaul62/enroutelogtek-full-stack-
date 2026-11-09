@@ -1,9 +1,7 @@
-import React from 'react'
+import ComingSoon from '@/shared/ui/layout/ComingSoon';
 
-function RfqsPage() {
-  return (
-    <div>RfqsPage</div>
-  )
+export const metadata = { title: 'RFQs' };
+
+export default function Page() {
+    return <ComingSoon companyType="customer" slug="rfqs" />;
 }
-
-export default RfqsPage

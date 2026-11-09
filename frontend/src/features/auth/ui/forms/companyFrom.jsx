@@ -21,15 +21,19 @@ export default function CompanyForm({ registerHook }) {
     const needsGst = NEEDS_GST.includes(companyType);
 
     const onSubmit = (data) => {
-        if (!companyType) {
-            setTypeError('Choose a company type');
-            return;
-        }
+        if (!companyType) return;
         registerHook.nextStep({ ...data, companyType });
     };
 
+    // react-hook-form only calls onSubmit once its own fields are valid, so the company type
+    // (kept outside the form) is checked here too: every missing field shows on the first press.
+    const submit = (event) => {
+        if (!companyType) setTypeError('Choose a company type');
+        return handleSubmit(onSubmit)(event);
+    };
+
     return (
-        <form className="au-form" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <form className="au-form" onSubmit={submit} noValidate>
             <TypeChoice
                 value={companyType}
                 onChange={(value) => {

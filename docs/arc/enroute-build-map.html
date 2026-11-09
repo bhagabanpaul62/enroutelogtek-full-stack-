@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Enroute Build Map</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one 72ch reading column for prose; diagrams, module grid and dashboards break out to a 1120px band.
+   Palette follows the product's own dashboard (amber on near-black) in dark, and a slate-tinted paper in light. */
+:root {
+  --bg: #f3f4f7;
+  --surface: #ffffff;
+  --surface-2: #e9ebf0;
+  --fg: #15171c;
+  --muted: #5a6275;
+  --line: #d6dae2;
+  --accent: #fbbc0e;
+  --accent-ink: #1a1a1a;
+  --accent-text: #7a5200;
+  --ok: #1d7f49;
+  --ok-bg: #e2f4e9;
+  --part: #2457b3;
+  --part-bg: #e3ebfa;
+  --open: #b4521b;
+  --open-bg: #fbe9df;
+  --font-display: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131313; --surface: #111111; --surface-2: #1c1c1c; --fg: #e5e2e1; --muted: #9aa1b5; --line: #272727;
+    --accent: #fbbc0e; --accent-ink: #131313; --accent-text: #fbbc0e;
+    --ok: #3ccf7a; --ok-bg: #10301d; --part: #7fb0ff; --part-bg: #14223a; --open: #f0955a; --open-bg: #3a2416;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131313; --surface: #111111; --surface-2: #1c1c1c; --fg: #e5e2e1; --muted: #9aa1b5; --line: #272727;
+  --accent: #fbbc0e; --accent-ink: #131313; --accent-text: #fbbc0e;
+  --ok: #3ccf7a; --ok-bg: #10301d; --part: #7fb0ff; --part-bg: #14223a; --open: #f0955a; --open-bg: #3a2416;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); line-height: 1.55; font-size: 16px; }
+.page {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 72px;
+}
+.wrap { max-width: 1120px; margin: 0 auto; }
+.prose { max-width: 72ch; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(32px, 5vw, 48px); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: clamp(22px, 3vw, 28px); font-weight: 600; }
+h3 { font-size: 17px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lead { font-size: 18px; color: var(--muted); max-width: 60ch; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+a { color: var(--accent-text); }
+small { color: var(--muted); }
+
+header.top { display: grid; gap: 14px; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; padding-top: 6px; }
+.legend-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.legend-group .eyebrow { margin-right: 4px; }
+
+section { padding-block: 44px; border-bottom: 1px solid var(--line); display: grid; gap: 22px; }
+section:last-of-type { border-bottom: 0; }
+.sec-head { display: grid; gap: 8px; max-width: 72ch; }
+.sec-head p { color: var(--muted); }
+
+/* chips: module/code status */
+.chip { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; border: 1px solid transparent; white-space: nowrap; }
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.chip.done { color: var(--ok); background: var(--ok-bg); }
+.chip.half { color: var(--part); background: var(--part-bg); }
+.chip.schema { color: var(--muted); background: var(--surface-2); }
+.chip.schema::before { background: transparent; border: 1.5px solid currentColor; }
+.chip.todo { color: var(--muted); border-color: var(--line); }
+.chip.todo::before { background: transparent; border: 1.5px solid currentColor; }
+
+/* tags: decision state */
+.tag { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; white-space: nowrap; }
+.tag.confirmed { background: var(--accent); color: var(--accent-ink); }
+.tag.proposed { border: 1px dashed var(--accent-text); color: var(--accent-text); }
+.tag.open { background: var(--open-bg); color: var(--open); }
+
+/* flow chain */
+.gate { display: flex; gap: 12px; align-items: flex-start; padding: 12px 16px; background: var(--surface-2); border-left: 3px solid var(--accent); }
+.gate strong { font-weight: 600; }
+.chain { display: flex; align-items: stretch; }
+.chain .arrow { flex: 0 0 26px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 20px; }
+.chain .arrow::before { content: "→"; }
+.stage { flex: 1 1 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); padding: 14px 14px 16px; display: grid; gap: 8px; align-content: start; }
+.stage .who { font-family: var(--font-display); font-weight: 600; font-size: 16px; }
+.stage .ex { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.stage ul { margin: 0; padding-left: 16px; font-size: 14px; display: grid; gap: 3px; }
+.stage .foot { padding-top: 6px; border-top: 1px dashed var(--line); font-size: 13px; color: var(--muted); }
+.aside-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.aside { border: 1px dashed var(--line); padding: 12px 14px; display: grid; gap: 6px; font-size: 14px; }
+.aside .who { font-weight: 600; }
+@media (max-width: 820px) {
+  .chain { flex-direction: column; }
+  .chain .arrow { flex-basis: 30px; }
+  .chain .arrow::before { content: "↓"; }
+  .aside-row { grid-template-columns: 1fr; }
+}
+
+/* lifecycle timeline */
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--line); }
+.timeline li { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px 16px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.timeline .n { font-family: var(--font-mono); font-size: 13px; color: var(--muted); padding-top: 3px; }
+.timeline .t { display: grid; gap: 3px; min-width: 0; }
+.timeline .t strong { font-weight: 600; }
+.timeline .t span { font-size: 14px; color: var(--muted); }
+@media (max-width: 600px) {
+  .timeline li { grid-template-columns: 36px 1fr; }
+  .timeline li .chip { grid-column: 2; justify-self: start; }
+}
+
+/* data chain record cards */
+.records { display: grid; gap: 18px; }
+.record-row { display: flex; align-items: stretch; }
+.record-row .arrow { flex: 0 0 24px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 18px; }
+.record-row .arrow::before { content: "→"; }
+.record { flex: 1 1 0; min-width: 0; background: var(--surface); border: 1px solid var(--line); padding: 12px; display: grid; gap: 8px; align-content: start; }
+.record .name { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.record .name strong { font-family: var(--font-display); font-weight: 600; font-size: 15px; }
+.record .fields { font-family: var(--font-mono); font-size: 12px; color: var(--muted); line-height: 1.5; display: grid; gap: 1px; }
+.record .fields b { color: var(--fg); font-weight: 500; }
+.record .owner { font-size: 12.5px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 6px; }
+.row-label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.feeds { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 820px) {
+  .record-row { flex-direction: column; }
+  .record-row .arrow { flex-basis: 28px; }
+  .record-row .arrow::before { content: "↓"; }
+  .feeds { grid-template-columns: 1fr; }
+}
+
+/* modules */
+.modules { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.layer { background: var(--surface); border: 1px solid var(--line); padding: 14px; display: grid; gap: 10px; align-content: start; }
+.layer h3 { font-size: 15px; }
+.layer p { font-size: 13px; color: var(--muted); }
+.layer ul { list-style: none; margin: 0; padding: 0; display: grid; }
+.layer li { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.layer li span { min-width: 0; }
+@media (max-width: 960px) { .modules { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .modules { grid-template-columns: 1fr; } }
+
+/* dashboards */
+.dash { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.dash .col { display: grid; gap: 0; align-content: start; border-top: 3px solid var(--accent); background: var(--surface); border-left: 1px solid var(--line); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.dash .col h3 { padding: 12px 14px 4px; font-size: 15px; }
+.dash .col .sub { padding: 0 14px 10px; font-size: 13px; color: var(--muted); }
+.dash .col ul { list-style: none; margin: 0; padding: 0; }
+.dash .col li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 14px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; border: 1.5px solid var(--muted); }
+.dot.done { background: var(--ok); border-color: var(--ok); }
+.dot.half { background: var(--part); border-color: var(--part); }
+.dash-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); align-items: center; }
+.dash-legend span { display: inline-flex; align-items: center; gap: 6px; }
+@media (max-width: 960px) { .dash { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .dash { grid-template-columns: 1fr; } }
+
+/* today */
+.notice { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+.notice .mono { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.85; padding-top: 3px; white-space: nowrap; }
+.slices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.slice { background: var(--surface); border: 1px solid var(--line); display: grid; align-content: start; }
+.slice header { padding: 14px 14px 10px; display: grid; gap: 4px; border-bottom: 1px solid var(--line); }
+.slice header .eyebrow { color: var(--accent-text); }
+.slice .block { padding: 12px 14px; display: grid; gap: 6px; border-bottom: 1px solid var(--line); }
+.slice .block:last-child { border-bottom: 0; }
+.slice .block .eyebrow { font-size: 11px; }
+.slice ul { margin: 0; padding-left: 16px; font-size: 14px; display: grid; gap: 4px; }
+.slice p { font-size: 14px; }
+.slice code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 3px; }
+@media (max-width: 960px) { .slices { grid-template-columns: 1fr; } }
+.asks { display: grid; gap: 10px; }
+.ask { display: grid; grid-template-columns: 28px 1fr; gap: 12px; padding: 12px 14px; border: 1px solid var(--line); background: var(--surface); }
+.ask .n { font-family: var(--font-mono); color: var(--accent-text); font-weight: 500; }
+.ask strong { font-weight: 600; }
+.ask p { font-size: 14px; color: var(--muted); }
+
+/* ledger */
+.ledger { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.ledger .col { display: grid; gap: 10px; align-content: start; }
+.ledger .col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ledger .col li { font-size: 14px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); }
+.ledger .col li b { font-weight: 600; }
+.ledger .col li .was { display: block; font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+@media (max-width: 960px) { .ledger { grid-template-columns: 1fr; } }
+
+footer { padding-top: 28px; color: var(--muted); font-size: 13.5px; max-width: 72ch; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) { a { transition: color 120ms; } }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+</head>
+<body>
+<div class="page"><div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Enroute Logtek · system map · 8 November 2026</p>
+  <h1>Enroute Build Map</h1>
+  <p class="lead">How the six actors, seventeen modules and four dashboards connect, where the code stands right now, and what is proposed for today's build.</p>
+  <div class="legend">
+    <div class="legend-group"><span class="eyebrow">Code</span>
+      <span class="chip done">Done</span><span class="chip half">Half done</span><span class="chip schema">Schema only</span><span class="chip todo">Not started</span>
+    </div>
+    <div class="legend-group"><span class="eyebrow">Decisions</span>
+      <span class="tag confirmed">Confirmed</span><span class="tag proposed">Proposed</span><span class="tag open">Open</span>
+    </div>
+  </div>
+</header>
+
+<!-- 1. Actors -->
+<section id="actors">
+  <div class="sec-head">
+    <p class="eyebrow">1 · Six actors, one load</p>
+    <h2>How a load moves through Enroute</h2>
+    <p>Four company types do the business. Drivers and the Master Admin are actors, not company types. Read left to right: this is one Customer's requirement for 100 trucks, Kolkata to Siliguri.</p>
+  </div>
+
+  <div class="gate">
+    <span class="chip done">Done</span>
+    <div><strong>Gate: the Master Admin approves every company first.</strong> Nobody logs in while pending. Approve, reject with a reason, block and unblock work from /rootAdmin, with the decision emails.</div>
+  </div>
+
+  <div class="chain">
+    <div class="stage">
+      <span class="eyebrow">Customer</span>
+      <div class="who">Needs goods moved</div>
+      <div class="ex">500 t cement · Kolkata → Siliguri<br>32 ft MXL × 100 · load 12–14 Nov</div>
+      <ul>
+        <li>Connects with transporters</li>
+        <li>Raises an RFQ or an Ad Hoc</li>
+        <li>Compares bids, awards one</li>
+        <li>Tracks trips to POD</li>
+      </ul>
+      <div class="foot">Dashboard: Overview, Network, RFQs, Contracts, Trips, Reports</div>
+    </div>
+    <div class="arrow"></div>
+    <div class="stage">
+      <span class="eyebrow">Requirement</span>
+      <div class="who">RFQ or Ad Hoc</div>
+      <div class="ex">RFQ-2026-000123<br>window closes 09 Nov 18:00 IST</div>
+      <ul>
+        <li>RFQ: a lane or volume over a period</li>
+        <li>Ad Hoc: one load, one date</li>
+        <li>Invitation only to connected transporters</li>
+        <li>Clock on every window</li>
+      </ul>
+      <div class="foot">Exact line between the two is still <span class="tag open">Open</span></div>
+    </div>
+    <div class="arrow"></div>
+    <div class="stage">
+      <span class="eyebrow">Transporter</span>
+      <div class="who">Bids, wins, accepts</div>
+      <div class="ex">base ₹58,000 / truck + 6 % margin<br>= ₹61,480 · rank L2 · attempt 3 of 5</div>
+      <ul>
+        <li>Sees own rank, never rivals</li>
+        <li>Up to five attempts, history kept</li>
+        <li>Wins, then accepts the contract</li>
+        <li>Owns 40 trucks, needs 100</li>
+      </ul>
+      <div class="foot">Dashboard: adds Bids, Fleet, Drivers</div>
+    </div>
+    <div class="arrow"></div>
+    <div class="stage">
+      <span class="eyebrow">Allocation</span>
+      <div class="who">Contract splits into loads</div>
+      <div class="ex">Load A · 40 trucks · own fleet<br>Load B · 35 · Fleet Owner X<br>Load C · 25 · Fleet Owner Y</div>
+      <ul>
+        <li>Transporter keeps responsibility</li>
+        <li>Fleet Owners accept or decline a load</li>
+        <li>Broker may arrange capacity here</li>
+      </ul>
+      <div class="foot">The Load is the handover unit between companies</div>
+    </div>
+    <div class="arrow"></div>
+    <div class="stage">
+      <span class="eyebrow">Execution</span>
+      <div class="who">Vehicle, driver, trip</div>
+      <div class="ex">WB 23 C 4471 · driver assigned<br>Dispatched → In transit → Delivered → POD</div>
+      <ul>
+        <li>One trip per truck per load</li>
+        <li>Driver starts, updates, confirms</li>
+        <li>POD closes the trip</li>
+        <li>Customer watches every status</li>
+      </ul>
+      <div class="foot">Fleet Owner dashboard: Loads, Vehicles, Drivers, Trips, Earnings</div>
+    </div>
+  </div>
+
+  <div class="aside-row">
+    <div class="aside">
+      <span class="eyebrow">Broker</span>
+      <div class="who">Coordinates demand and capacity</div>
+      <p>Connects with all three other types, manages loads, finds trucks. Whether a Broker can bid on a Customer's requirement or only receive loads from a Transporter is <span class="tag open">Open</span>. The landing page currently says brokers bid.</p>
+    </div>
+    <div class="aside">
+      <span class="eyebrow">Driver</span>
+      <div class="who">Runs the truck</div>
+      <p>Views the assigned trip, vehicle, pickup and drop, starts and updates the trip, confirms delivery. Separate mobile app or company-managed account is <span class="tag open">Open</span>. Drivers can start as records without a login.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Lifecycle -->
+<section id="lifecycle">
+  <div class="sec-head">
+    <p class="eyebrow">2 · Lifecycle</p>
+    <h2>Ten steps, and where the code is for each</h2>
+    <p>The order is real: nothing in a later step exists without the earlier one. Status is what the repository holds today, not what is planned.</p>
+  </div>
+  <ol class="timeline">
+    <li><span class="n">01</span><div class="t"><strong>Company registration</strong><span>OTP, user, company, branch, documents by type (GST and PAN, or PAN alone), submit.</span></div><span class="chip done">Done</span></li>
+    <li><span class="n">02</span><div class="t"><strong>Company verification</strong><span>Master Admin opens the company, checks its documents, then approves, rejects with a reason, blocks or unblocks. Blocking ends every session of that company.</span></div><span class="chip done">Done</span></li>
+    <li><span class="n">03</span><div class="t"><strong>Company network</strong><span>Discover, request, accept, reject, cancel, remove, block. Only different types connect.</span></div><span class="chip done">Done</span></li>
+    <li><span class="n">04</span><div class="t"><strong>Transportation requirement</strong><span>Customer raises an RFQ or Ad Hoc and invites connected transporters.</span></div><span class="chip todo">Not started</span></li>
+    <li><span class="n">05</span><div class="t"><strong>Bidding</strong><span>Transporters bid, revise up to five times, see own rank only.</span></div><span class="chip todo">Not started</span></li>
+    <li><span class="n">06</span><div class="t"><strong>Contract award</strong><span>Customer awards one bid, transporter accepts, a Contract is created.</span></div><span class="chip todo">Not started</span></li>
+    <li><span class="n">07</span><div class="t"><strong>Fleet allocation</strong><span>Contract splits into loads: own fleet or subcontracted to Fleet Owners.</span></div><span class="chip todo">Not started</span></li>
+    <li><span class="n">08</span><div class="t"><strong>Driver assignment</strong><span>Vehicle and driver attached to each trip. No vehicle or driver entity exists yet.</span></div><span class="chip todo">Not started</span></li>
+    <li><span class="n">09</span><div class="t"><strong>Trip execution</strong><span>Dispatched, in transit, delivered, POD uploaded. Document type <span class="mono">pod</span> already exists.</span></div><span class="chip todo">Not started</span></li>
+    <li><span class="n">10</span><div class="t"><strong>Completion and reporting</strong><span>Earnings per trip and vehicle, reports across RFQs and trips.</span></div><span class="chip todo">Not started</span></li>
+  </ol>
+</section>
+
+<!-- 3. Data chain -->
+<section id="data">
+  <div class="sec-head">
+    <p class="eyebrow">3 · The data chain</p>
+    <h2>One record hands off to the next</h2>
+    <p>RFQ is the requirement, Bid is the offer, Contract is the awarded business, Load is the handover, Trip is the execution. Each row below is one Postgres table; the fields shown are the ones that link them.</p>
+  </div>
+
+  <div class="records">
+    <div>
+      <p class="row-label">Commercial chain</p>
+      <div class="record-row">
+        <div class="record">
+          <div class="name"><strong>Company</strong><span class="chip done">Done</span></div>
+          <div class="fields"><span><b>type</b> customer | transporter | broker | fleet_owner</span><span><b>status</b> draft · pending · approved · rejected · blocked</span><span><b>enrouteCompanyId</b></span></div>
+          <div class="owner">Has users with roles, branches, documents</div>
+        </div>
+        <div class="arrow"></div>
+        <div class="record">
+          <div class="name"><strong>Connection</strong><span class="chip done">Done</span></div>
+          <div class="fields"><span><b>pair</b> one row per company pair</span><span><b>status</b> pending · accepted · rejected · blocked</span><span><b>blockedBy</b></span></div>
+          <div class="owner">Required before any invitation</div>
+        </div>
+        <div class="arrow"></div>
+        <div class="record">
+          <div class="name"><strong>RFQ</strong><span class="chip todo">Planned</span></div>
+          <div class="fields"><span><b>kind</b> rfq | ad_hoc</span><span><b>customerCompanyId</b></span><span><b>lane, material, tons, vehicle type, count</b></span><span><b>closesAt</b> · status draft → open → closed → awarded → contracted</span></div>
+          <div class="owner">Invitations: one row per invited transporter</div>
+        </div>
+        <div class="arrow"></div>
+        <div class="record">
+          <div class="name"><strong>Bid</strong><span class="chip todo">Planned</span></div>
+          <div class="fields"><span><b>rfqId + companyId</b> unique</span><span><b>baseRate, margin, finalRate</b></span><span><b>attempt</b> 1–5, history kept</span><span><b>rank</b> computed, own only</span></div>
+          <div class="owner">Status submitted · withdrawn · awarded · accepted · declined · lost</div>
+        </div>
+        <div class="arrow"></div>
+        <div class="record">
+          <div class="name"><strong>Contract</strong><span class="chip todo">Planned</span></div>
+          <div class="fields"><span><b>rfqId, bidId</b></span><span><b>customer, transporter</b></span><span><b>agreed rate, quantity, terms</b></span><span><b>validFrom / validTo</b> for RFQ kind</span></div>
+          <div class="owner">Created when the transporter accepts the award</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <p class="row-label">Operations chain</p>
+      <div class="record-row">
+        <div class="record">
+          <div class="name"><strong>Contract</strong><span class="chip todo">Planned</span></div>
+          <div class="fields"><span><b>quantity</b> 100 trucks</span><span><b>allocated</b> 100 of 100</span></div>
+          <div class="owner">Transporter splits it</div>
+        </div>
+        <div class="arrow"></div>
+        <div class="record">
+          <div class="name"><strong>Load</strong><span class="chip todo">Planned</span></div>
+          <div class="fields"><span><b>contractId</b></span><span><b>executor</b> own fleet | fleet owner company</span><span><b>trucks</b> 40 · 35 · 25</span><span><b>status</b> offered · accepted · declined · in progress · done</span></div>
+          <div class="owner">The one record a Fleet Owner or Broker sees under Loads</div>
+        </div>
+        <div class="arrow"></div>
+        <div class="record">
+          <div class="name"><strong>Trip</strong><span class="chip todo">Planned</span></div>
+          <div class="fields"><span><b>loadId</b></span><span><b>vehicleId, driverId</b></span><span><b>status</b> assigned → dispatched → in transit → delivered → POD</span><span><b>customer can see it</b></span></div>
+          <div class="owner">One per truck. POD and LR are document types already</div>
+        </div>
+        <div class="arrow"></div>
+        <div class="record">
+          <div class="name"><strong>Earnings and reports</strong><span class="chip todo">Planned</span></div>
+          <div class="fields"><span><b>per trip, per vehicle</b></span><span><b>per contract, per RFQ</b></span></div>
+          <div class="owner">Computed from contracts and trips; no payment module yet</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="feeds">
+      <div class="record">
+        <div class="name"><strong>Vehicle</strong><span class="chip todo">Planned</span></div>
+        <div class="fields"><span><b>ownerCompanyId</b> transporter or fleet owner</span><span><b>registration</b> WB 23 C 4471 · type · capacity</span><span><b>documents</b> RC and insurance already in the document enum</span><span><b>availability</b></span></div>
+        <div class="owner">Feeds Trip</div>
+      </div>
+      <div class="record">
+        <div class="name"><strong>Driver</strong><span class="chip todo">Planned</span></div>
+        <div class="fields"><span><b>companyId</b></span><span><b>name, phone, licence</b></span><span><b>login</b> none at first; app or company account later</span><span><b>availability</b></span></div>
+        <div class="owner">Feeds Trip</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Modules -->
+<section id="modules">
+  <div class="sec-head">
+    <p class="eyebrow">4 · Seventeen modules</p>
+    <h2>Grouped by the layer they serve</h2>
+    <p>Each later layer depends on the one before it. Foundation must be whole before the commercial layer is worth building.</p>
+  </div>
+  <div class="modules">
+    <div class="layer">
+      <h3>Foundation</h3>
+      <p>Who is on the platform and what each person may do.</p>
+      <ul>
+        <li><span>Authentication</span><span class="chip done">Done</span></li>
+        <li><span>Company registration</span><span class="chip done">Done</span></li>
+        <li><span>Company verification</span><span class="chip done">Done</span></li>
+        <li><span>Company network</span><span class="chip done">Done</span></li>
+        <li><span>Company discovery</span><span class="chip done">Done</span></li>
+        <li><span>Team management</span><span class="chip todo">Todo</span></li>
+        <li><span>Notifications</span><span class="chip schema">Schema</span></li>
+        <li><span>Platform administration</span><span class="chip half">Half</span></li>
+      </ul>
+    </div>
+    <div class="layer">
+      <h3>Commercial</h3>
+      <p>Requirement, offer, awarded business.</p>
+      <ul>
+        <li><span>RFQ management</span><span class="chip todo">Todo</span></li>
+        <li><span>Ad Hoc bidding</span><span class="chip todo">Todo</span></li>
+        <li><span>Contract management</span><span class="chip todo">Todo</span></li>
+      </ul>
+    </div>
+    <div class="layer">
+      <h3>Operations</h3>
+      <p>Trucks, people and the trip itself.</p>
+      <ul>
+        <li><span>Load management</span><span class="chip todo">Todo</span></li>
+        <li><span>Fleet management</span><span class="chip todo">Todo</span></li>
+        <li><span>Driver management</span><span class="chip todo">Todo</span></li>
+        <li><span>Trip management</span><span class="chip todo">Todo</span></li>
+      </ul>
+    </div>
+    <div class="layer">
+      <h3>Money and insight</h3>
+      <p>What was earned and what the numbers say.</p>
+      <ul>
+        <li><span>Earnings</span><span class="chip todo">Todo</span></li>
+        <li><span>Reports and analytics</span><span class="chip todo">Todo</span></li>
+        <li><span>Subscriptions</span><span class="chip schema">Schema</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 5. Dashboards -->
+<section id="dashboards">
+  <div class="sec-head">
+    <p class="eyebrow">5 · Four dashboards</p>
+    <h2>Same shell, different sections</h2>
+    <p>Each company type has its own route tree and sidebar. The sections match the product document. Every section now opens a page: Overview and Network work, the rest say plainly that they are not built yet.</p>
+  </div>
+  <div class="dash-legend"><span><i class="dot done"></i> Working page</span><span><i class="dot half"></i> Placeholder page</span><span><i class="dot"></i> No page yet</span></div>
+  <div class="dash">
+    <div class="col">
+      <h3>Customer</h3><p class="sub">Buys transport</p>
+      <ul>
+        <li>Overview<i class="dot done"></i></li><li>Network<i class="dot done"></i></li><li>RFQs<i class="dot half"></i></li><li>Contracts<i class="dot half"></i></li><li>Trips<i class="dot half"></i></li><li>Reports<i class="dot half"></i></li><li>Team<i class="dot half"></i></li><li>Settings<i class="dot half"></i></li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>Transporter</h3><p class="sub">Wins and runs work</p>
+      <ul>
+        <li>Overview<i class="dot done"></i></li><li>Network<i class="dot done"></i></li><li>RFQs<i class="dot half"></i></li><li>Bids<i class="dot half"></i></li><li>Contracts<i class="dot half"></i></li><li>Fleet<i class="dot half"></i></li><li>Drivers<i class="dot half"></i></li><li>Trips<i class="dot half"></i></li><li>Team<i class="dot half"></i></li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>Broker</h3><p class="sub">Matches demand to trucks</p>
+      <ul>
+        <li>Overview<i class="dot done"></i></li><li>Network<i class="dot done"></i></li><li>Loads<i class="dot half"></i></li><li>Transporters<i class="dot half"></i></li><li>Fleet Owners<i class="dot half"></i></li><li>Trips<i class="dot half"></i></li><li>Team<i class="dot half"></i></li>
+      </ul>
+    </div>
+    <div class="col">
+      <h3>Fleet Owner</h3><p class="sub">Provides trucks and drivers</p>
+      <ul>
+        <li>Overview<i class="dot done"></i></li><li>Network<i class="dot done"></i></li><li>Loads<i class="dot half"></i></li><li>Vehicles<i class="dot half"></i></li><li>Drivers<i class="dot half"></i></li><li>Trips<i class="dot half"></i></li><li>Earnings<i class="dot half"></i></li><li>Team<i class="dot half"></i></li>
+      </ul>
+    </div>
+  </div>
+  <p class="prose" style="color: var(--muted); font-size: 14px;">Master Admin has its own area at <span class="mono">/rootAdmin</span>: companies by status, each one&#8217;s documents, branch and users, and the approve, reject, block and unblock actions. Built.</p>
+</section>
+
+<!-- 6. Today -->
+<section id="today">
+  <div class="sec-head">
+    <p class="eyebrow">6 · Today</p>
+    <h2>Proposed for today's build</h2>
+    <p>Three slices, in order. Each one is useful on its own. Together they make the foundation whole so that the commercial layer has something to stand on.</p>
+  </div>
+  <div class="notice"><span class="mono">Slices A and B done</span><span>Both shipped and were verified on 8 and 9 November. Slice C, the RFQ and Ad Hoc PRD, still waits on the four decisions below.</span></div>
+
+  <div class="slices">
+    <div class="slice">
+      <header><span class="eyebrow">Slice A · Phase 1.5</span><h3>Finish the dashboard shell</h3><div><span class="chip done">Done</span></div></header>
+      <div class="block"><span class="eyebrow">Scope</span>
+        <ul>
+          <li>404 page</li>
+          <li>Real logout: API call, clear store, go to login</li>
+          <li>Profile menu reads the logged-in user, not hardcoded text</li>
+          <li>One sidebar config file; every linked page exists, with an honest "coming soon"</li>
+          <li>Remove fake notifications, fake status, debug logs</li>
+        </ul>
+      </div>
+      <div class="block"><span class="eyebrow">Verified</span><p>Lint: 0 errors and the same 1 pre-existing warning. Build: passes with 56 routes, up from 41. Production server run: public pages return 200, unknown URLs return 404 with the new page. Logout and the dashboard pages were verified by build only, since the backend was not running.</p></div>
+      <div class="block"><span class="eyebrow">Touches</span><p><code>app/not-found.jsx</code>, <code>shared/lib/dashboardNav.js</code>, <code>shared/ui/layout/*</code>, <code>features/auth/state/*</code>, <code>features/auth/hooks/*</code>, and 34 route files under <code>app/(dashboard)</code></p></div>
+    </div>
+    <div class="slice">
+      <header><span class="eyebrow">Slice B · Verification</span><h3>Make approve and reject real</h3><div><span class="chip done">Done</span></div></header>
+      <div class="block"><span class="eyebrow">Scope</span>
+        <ul>
+          <li>Pending companies list with documents</li>
+          <li>Approve: status approved, welcome email</li>
+          <li>Reject: reason saved, rejection email</li>
+          <li>Master Admin page at /rootAdmin to do it</li>
+          <li>Block and unblock, ending the company&#8217;s sessions</li>
+          <li>Master Admin account: a user with no company, created by a seed script from env variables (migration 0003)</li>
+        </ul>
+      </div>
+      <div class="block"><span class="eyebrow">Verified</span><p>40 API checks against a throwaway local server with test rows, all passing: root admin login without a company, list, counts, detail, validation errors, reject, approve, block ending sessions, unblock, role check. The mail server was pointed at a closed port, so the &#8220;decision stood but email failed&#8221; path was exercised, not a real send. Frontend lint and build pass with 58 routes. The admin pages themselves were verified by build only.</p></div>
+      <div class="block"><span class="eyebrow">Touches</span><p><code>backend/src/features/platform/*</code>, <code>session.controller.js</code>, <code>users.Schema.js</code> + <code>drizzle/0003</code>, <code>scripts/seedRootAdmin.js</code>; <code>frontend/src/features/platform/*</code>, <code>app/(admin)/*</code>, shared list hook and dialogs moved to <code>shared/</code></p></div>
+    </div>
+    <div class="slice">
+      <header><span class="eyebrow">Slice C · Design</span><h3>RFQ and Ad Hoc PRD</h3></header>
+      <div class="block"><span class="eyebrow">Scope</span>
+        <ul>
+          <li>Settle the RFQ versus Ad Hoc line</li>
+          <li>Bid calculator, rank, five attempts, award and acceptance rules</li>
+          <li>Tables, endpoints, screens, statuses, failure cases</li>
+          <li>Written as a spec file for your review, no code</li>
+        </ul>
+      </div>
+      <div class="block"><span class="eyebrow">Could break</span><p>Nothing. It is a document. It blocks on the decisions below.</p></div>
+      <div class="block"><span class="eyebrow">Touches</span><p><code>docs/superpowers/specs/2026-11-08-rfq-design.md</code></p></div>
+    </div>
+  </div>
+
+  <div class="sec-head"><h3>Decisions I need from you today</h3></div>
+  <div class="asks">
+    <div class="ask"><span class="n">1</span><div><strong>Roles.</strong><p>Code: root_admin is the platform admin, admin runs the company, co-admin exists. Document: Root Admin is the company's top role, no co-admin, Master Admin is the platform. Which names do we keep? This decides team management.</p></div></div>
+    <div class="ask"><span class="n">2</span><div><strong>RFQ versus Ad Hoc.</strong><p>Is the difference what is bought (period rate versus one load), how bidding works (quotation versus ranked attempts), or both? My guess is both.</p></div></div>
+    <div class="ask"><span class="n">3</span><div><strong>Truck types.</strong><p>The list your customers actually use, for the vehicle type field. For example 32 ft SXL, 32 ft MXL, 20 ft container, 40 ft trailer, tanker, tipper, open body.</p></div></div>
+    <div class="ask"><span class="n">4</span><div><strong>A test runner.</strong><p>Both apps have zero tests. Bidding and award logic should not ship without them. Adding one is a new dev dependency, so I need your yes.</p></div></div>
+  </div>
+</section>
+
+<!-- 7. Ledger -->
+<section id="decisions">
+  <div class="sec-head">
+    <p class="eyebrow">7 · Decision ledger</p>
+    <h2>Confirmed, proposed, open</h2>
+    <p>Kept apart on purpose, as your product document asks. Only the first column is settled.</p>
+  </div>
+  <div class="ledger">
+    <div class="col">
+      <span class="tag confirmed">Confirmed</span>
+      <ul>
+        <li><b>Four company types, one type per company.</b> Driver and Master Admin are actors, not types.</li>
+        <li><b>Connection required before any invitation.</b></li>
+        <li><b>Transporter bids, wins, accepts, then allocates.</b> Own fleet or subcontract to Fleet Owners.</li>
+        <li><b>Five bid attempts per transporter, history visible to that transporter only.</b></li>
+        <li><b>Competitor names and amounts stay hidden.</b> A transporter may see its own rank.</li>
+        <li><b>Bid calculator:</b> base rate plus percentage or fixed margin, system computes the final bid.</li>
+        <li><b>Lowest price does not automatically win.</b> The Customer chooses.</li>
+        <li><b>RFQ = requirement, Bid = offer, Contract = awarded business, Trip = execution.</b></li>
+        <li><b>Master Admin is a user with no company,</b> created once by a seed script from environment variables.</li>
+      </ul>
+    </div>
+    <div class="col">
+      <span class="tag proposed">Proposed by me</span>
+      <ul>
+        <li><b>One RFQ table with a kind column</b> (rfq, ad_hoc), one bids table, one award flow.</li>
+        <li><b>Invitations are a snapshot</b> of connected transporters chosen at publish time.</li>
+        <li><b>Award needs transporter acceptance within 24 hours</b>, or the Customer awards again.</li>
+        <li><b>The Load is its own table</b> between Contract and Trip, and is what Fleet Owners see.</li>
+        <li><b>Rank and the closing clock run on polling</b> and an in-process timer first. WebSockets later.</li>
+        <li><b>Drivers start as company records</b> with no login.</li>
+        <li><b>Build order:</b> shell and approval, roles and team, notifications, RFQ and Ad Hoc with contracts, fleet and drivers, loads and trips, earnings and reports.<span class="was">Earlier I proposed that brokers and fleet owners also bid. Withdrawn after reading the product document.</span></li>
+      </ul>
+    </div>
+    <div class="col">
+      <span class="tag open">Open</span>
+      <ul>
+        <li><b>Customer-side Ad Hoc creation</b> and how it differs from an RFQ.</li>
+        <li><b>Public versus invitation-only bidding.</b></li>
+        <li><b>Broker's role</b> in RFQ and Ad Hoc. Landing page says brokers bid; document says they manage loads.</li>
+        <li><b>Role names</b>: root_admin and co-admin in code versus Root Admin and Master Admin in the document.</li>
+        <li><b>Contract cancellation and modification rules.</b></li>
+        <li><b>Payment, invoicing and settlement.</b></li>
+        <li><b>Driver login</b>: mobile app or company account.</li>
+        <li><b>Subscription pricing, disputes and penalties, document verification depth.</b></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Built from the master product context you shared and the repository as of commit <span class="mono">4a85e10</span>. Code status reflects files in the tree, not intentions. Slices A and B sit in the working tree, uncommitted, for your review.</p>
+</footer>
+
+</div></div>
+</body>
+</html>

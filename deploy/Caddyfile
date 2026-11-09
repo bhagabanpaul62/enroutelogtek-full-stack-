@@ -1,0 +1,25 @@
+# HTTPS for the site and its API on one domain. SITE_DOMAIN comes from the server's .env
+# (via docker-compose.vps.yml). Caddy gets and renews the certificate by itself.
+
+{$SITE_DOMAIN} {
+	encode zstd gzip
+
+	# The backend mounts every route under /api/v1, so the path is passed through unchanged.
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}
+
+# One canonical address: www goes to the bare domain.
+www.{$SITE_DOMAIN} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}

@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import icon from '../../../../public/icon.png';
 import { useNav } from '@/shared/hooks/useNav';
-import { dashboardPath } from '@/shared/lib/companyType';
+import { homePath } from '@/shared/lib/companyType';
 
 const navLinks = [
     { name: 'Solution', href: '/solution' },
@@ -34,7 +34,7 @@ function Nav() {
     ));
 
     const actions = isLoggedIn ? (
-        <Link className="mk-btn mk-btn--quiet" href={dashboardPath(user.companyType)}>
+        <Link className="mk-btn mk-btn--quiet" href={homePath(user)}>
             Open dashboard
         </Link>
     ) : (

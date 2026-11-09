@@ -1,9 +1,7 @@
-import React from 'react'
+import ComingSoon from '@/shared/ui/layout/ComingSoon';
 
-function SettingsPage() {
-  return (
-    <div>SettingsPage</div>
-  )
+export const metadata = { title: 'Settings' };
+
+export default function Page() {
+    return <ComingSoon companyType="customer" slug="settings" />;
 }
-
-export default SettingsPage

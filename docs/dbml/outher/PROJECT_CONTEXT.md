@@ -26,20 +26,20 @@ Build these pages in Next.js connecting to real backend APIs:
 
 ```
 PUBLIC PAGES:
-□ Landing page
-□ Login (email + password)
-□ OTP verification
-□ Registration (multi-step: user + company + branch)
-□ Document upload
-□ Waiting for approval page
-□ Forgot password
-□ 404 page
+☑ Landing page
+☑ Login (email + password)
+☑ OTP verification
+☑ Registration (multi-step: user + company + branch)
+☑ Document upload
+☑ Waiting for approval page
+☑ Forgot password
+☑ 404 page
 
 DASHBOARD (shell only - no business modules):
-□ Layout (sidebar + header)
-□ Protected routes (redirect if not logged in)
-□ Profile menu
-□ Logout
+☑ Layout (sidebar + header)
+☑ Protected routes (redirect if not logged in)
+☑ Profile menu
+☑ Logout
 ```
 
 ### Backend API Reference (All Working):
@@ -389,52 +389,52 @@ backend/src/db/
 - [x] Tech stack decided
 - [x] Project structure planned
 - [x] Project context documentation created
-- [ ] Docker PostgreSQL setup
-- [ ] Drizzle ORM configuration
-- [ ] Schema files created (Drizzle format)
-- [ ] First migration generated
-- [ ] Express-PostgreSQL connection established
-- [ ] Database connection test
+- [x] Docker PostgreSQL setup
+- [x] Drizzle ORM configuration
+- [x] Schema files created (Drizzle format)
+- [x] First migration generated
+- [x] Express-PostgreSQL connection established
+- [x] Database connection test
 
 ### Phase 2: Authentication & Onboarding 📋 Planned
 
-- [ ] Registration API
-- [ ] OTP verification (email)
-- [ ] Login/Logout APIs
-- [ ] JWT middleware
-- [ ] Role-based access control middleware
-- [ ] Document upload (Cloudflare R2 integration)
-- [ ] Admin approval workflow API
-- [ ] Password reset flow
+- [x] Registration API
+- [x] OTP verification (email)
+- [x] Login/Logout APIs
+- [x] JWT middleware
+- [x] Role-based access control middleware
+- [x] Document upload (Cloudflare R2 integration)
+- [x] Admin approval workflow API
+- [x] Password reset flow
 
 ### Phase 3: Company Management 📋 Planned
 
-- [ ] Company profile CRUD
+- [ ] Company profile CRUD (routes exist, handlers still empty)
 - [ ] Branch management CRUD
 - [ ] User management (seat enforcement logic)
 - [ ] Subscription management APIs
-- [ ] Connection request system
-- [ ] Connection approval/rejection workflow
-- [ ] Company search (by Enroute ID)
+- [x] Connection request system
+- [x] Connection approval/rejection workflow
+- [x] Company search (by Enroute ID)
 
 ### Phase 4: RFQ System 📋 Planned
 
-- [ ] RFQ creation
-- [ ] RFQ invitations (connection-based filtering)
-- [ ] Live bidding system (WebSocket)
-- [ ] Bid submission
-- [ ] Contract awarding
-- [ ] RFQ status tracking
+- [x] RFQ creation (Ad Hoc loads; contract RFQs not built yet)
+- [x] RFQ invitations (connection-based filtering)
+- [ ] Live bidding system (WebSocket) (bidding works with a 30 s page refresh; WebSocket not built)
+- [x] Bid submission (5 attempts, own rank only)
+- [x] Contract awarding (customer picks, transporter accepts within 24 h)
+- [x] RFQ status tracking
 
 ### Phase 5: Trip Management 📋 Planned
 
 - [ ] Indent management
 - [ ] Trip creation
-- [ ] Vehicle assignment
-- [ ] Driver assignment
+- [ ] Vehicle assignment (partly: truck number typed on an accepted Ad Hoc load, no fleet records)
+- [ ] Driver assignment (partly: driver name and phone typed on an accepted Ad Hoc load)
 - [ ] GPS tracking integration
 - [ ] POD (Proof of Delivery) upload
-- [ ] Trip completion workflow
+- [ ] Trip completion workflow (partly: the customer marks an Ad Hoc load delivered; no POD)
 
 ### Phase 6: Analytics & Reporting 📋 Planned
 
@@ -454,16 +454,16 @@ backend/src/db/
 ### Today's Goals (June 13, 2026):
 
 1. [x] Create PROJECT_CONTEXT.md documentation
-2. [ ] Set up PostgreSQL in Docker
-3. [ ] Configure Drizzle ORM
-4. [ ] Create first schema files
+2. [x] Set up PostgreSQL in Docker
+3. [x] Configure Drizzle ORM
+4. [x] Create first schema files
 
 ### This Week's Goals:
 
-- [ ] Complete database setup
-- [ ] Generate first migration
-- [ ] Test database connection
-- [ ] Create user and company schemas in Drizzle format
+- [x] Complete database setup
+- [x] Generate first migration
+- [x] Test database connection
+- [x] Create user and company schemas in Drizzle format
 
 ### Blockers:
 

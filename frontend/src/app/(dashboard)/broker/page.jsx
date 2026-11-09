@@ -1,3 +1,7 @@
-import BrokerDashboardPage from '@/features/dashboard/ui/BrokerDashboardPage';
+import DashboardOverview from '@/shared/ui/layout/DashboardOverview';
 
-export default BrokerDashboardPage;
+export const metadata = { title: 'Overview' };
+
+export default function Page() {
+    return <DashboardOverview companyType="broker" />;
+}

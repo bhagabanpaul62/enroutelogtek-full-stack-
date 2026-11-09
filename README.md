@@ -43,7 +43,7 @@
 
 ```
 ENROUTE/
-├── frontend/                    # Next.js frontend (Phase 1.5 - building)
+├── frontend/                    # Next.js frontend (shell + network UI done)
 ├── backend/
 │   └── src/
 │       ├── controllers/
@@ -198,31 +198,40 @@ R2_PUBLIC_URL=https://pub-***.r2.dev
    ✅ Email system (Nodemailer + templates)
    ✅ JWT + session management
    ✅ authMiddleware + roleMiddleware
+   ✅ Platform (Master Admin): list by status, detail, approve, reject (reason kept), block (ends sessions), unblock
+   ✅ Master Admin UI at /rootAdmin · first root admin: pnpm seed:root-admin (ROOT_ADMIN_EMAIL / ROOT_ADMIN_PASSWORD)
 
-🎨 Phase 1.5 — Authentication UI (CURRENT — BUILDING NOW)
+✅ Phase 1.5 — Authentication UI (COMPLETE)
    → Frontend in Next.js
    Public pages:
-     □ Landing page
-     □ Login
-     □ OTP verification
-     □ Registration (user + company + branch)
-     □ Document upload
-     □ Waiting for approval
-     □ 404 page
+     ✅ Landing page (+ solution, about, pricing, support)
+     ✅ Login
+     ✅ OTP verification
+     ✅ Registration (user + company + branch)
+     ✅ Document upload
+     ✅ Waiting for approval
+     ✅ 404 page
    Dashboard:
-     □ Dashboard layout (sidebar + header)
-     □ Protected routes
-     □ Profile menu
-     □ Logout
-   NO business modules yet — just shell
+     ✅ Dashboard layout (sidebar + header)
+     ✅ Protected routes
+     ✅ Profile menu (real user from session; Settings, Help, Sign out)
+     ✅ Logout (calls /auth/logout, clears the session, returns to login)
+     ✅ Sidebar links: every page exists (one nav config; unbuilt pages say "coming soon")
+   Business modules not started yet — shell only
 
-🔜 Phase 2 — Company Network
-   POST /network/send-request
-   POST /network/accept-request
-   POST /network/reject-request
-   DELETE /network/remove
-   GET  /network/my-network
-   GET  /network/pending
+✅ Phase 2 — Company Network (COMPLETE — backend + frontend)
+   GET    /network                        ← my connections (filter: status, companyType, search)
+   GET    /network/discover               ← approved companies of other types
+   GET    /network/requests/incoming
+   GET    /network/requests/outgoing
+   POST   /network/requests               ← send request { companyId }
+   PATCH  /network/requests/:id/accept
+   PATCH  /network/requests/:id/reject
+   DELETE /network/requests/:id           ← cancel (sender only)
+   DELETE /network/:connectionId          ← remove connection
+   PATCH  /network/:connectionId/block
+   PATCH  /network/:connectionId/unblock  ← deletes the row; a fresh request is needed
+   Frontend: /<type>/network with Connections, Requests, Discover, Blocked tabs
 
 🔜 Phase 3 — RFQ System
    POST /rfq
@@ -322,7 +331,7 @@ pnpm start
 
 1. Read this README for full project context
 2. Check `DbDesing/PROJECT_CONTEXT.md` for what was done last session
-3. Current task: **Building Phase 1.5 UI (Next.js frontend)**
+3. Current task: **Roles decision, then team management (invite users, assign roles)**
 4. Backend API base URL: `http://localhost:8000/api/v1`
 5. All auth APIs are complete and tested
 

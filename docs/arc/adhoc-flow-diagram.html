@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ad Hoc Load Flow</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: two bands of five blocks joined by arrows (create, then bid-to-delivery); stacks to one column on phones.
+   Tokens follow the Enroute dashboard: amber on near-black in dark, slate paper in light. */
+:root {
+  --bg: #f3f4f7; --surface: #ffffff; --surface-2: #eef0f4; --fg: #15171c; --muted: #5a6275; --line: #d0d5de;
+  --accent: #fbbc0e; --accent-ink: #1a1a1a; --accent-text: #7a5200; --accent-bg: #fff4d1;
+  --cus: #2457b3; --cus-bg: #e3ebfa; --trn: #1d7f49; --trn-bg: #e2f4e9; --sys: #7a5200; --sys-bg: #fff4d1;
+  --branch: #b4521b; --branch-bg: #fbe9df;
+  --font-body: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131313; --surface: #1a1a1a; --surface-2: #222222; --fg: #e5e2e1; --muted: #9aa1b5; --line: #333333;
+    --accent: #fbbc0e; --accent-ink: #131313; --accent-text: #fbbc0e; --accent-bg: #2c2206;
+    --cus: #7fb0ff; --cus-bg: #14223a; --trn: #3ccf7a; --trn-bg: #10301d; --sys: #fbbc0e; --sys-bg: #2c2206;
+    --branch: #f0955a; --branch-bg: #3a2416;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131313; --surface: #1a1a1a; --surface-2: #222222; --fg: #e5e2e1; --muted: #9aa1b5; --line: #333333;
+  --accent: #fbbc0e; --accent-ink: #131313; --accent-text: #fbbc0e; --accent-bg: #2c2206;
+  --cus: #7fb0ff; --cus-bg: #14223a; --trn: #3ccf7a; --trn-bg: #10301d; --sys: #fbbc0e; --sys-bg: #2c2206;
+  --branch: #f0955a; --branch-bg: #3a2416;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+.page { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 48px; }
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+header { display: grid; gap: 8px; }
+h1 { margin: 0; font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { margin: 0; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend .who { font-style: normal; }
+
+.band { display: grid; gap: 10px; }
+.band-title { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.flow { display: flex; align-items: stretch; }
+.arrow { flex: none; width: 30px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 20px; }
+.block { flex: 1 1 0; min-width: 0; background: var(--surface); border: 1.5px solid var(--line); border-radius: 6px; display: flex; flex-direction: column; }
+.block .head { padding: 10px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+.block .top { display: flex; align-items: center; gap: 8px; }
+.block .n { font-family: var(--font-mono); font-size: 12px; font-weight: 500; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--accent); color: var(--accent-ink); flex: none; }
+.block h2 { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.25; }
+.who { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; justify-self: start; }
+.who.cus { background: var(--cus-bg); color: var(--cus); }
+.who.trn { background: var(--trn-bg); color: var(--trn); }
+.who.sys { background: var(--sys-bg); color: var(--sys); }
+.block ul { list-style: none; margin: 0; padding: 10px 12px; display: grid; gap: 6px; font-size: 13.5px; flex: 1; align-content: start; }
+.block li { padding: 5px 8px; background: var(--surface-2); border-radius: 3px; }
+.block li.opt { color: var(--muted); }
+.block li.opt::after { content: " (optional)"; font-size: 12px; }
+.block li.auto { font-style: italic; }
+.branch { margin: 0 12px 12px; padding: 7px 9px; border: 1.5px dashed var(--branch); background: var(--branch-bg); color: var(--fg); border-radius: 4px; font-size: 13px; }
+.branch b { color: var(--branch); }
+
+.join { display: flex; justify-content: center; }
+.pill { display: inline-flex; align-items: center; gap: 10px; padding: 8px 16px; border-radius: 999px; border: 1.5px solid var(--accent); background: var(--accent-bg); font-weight: 600; font-size: 14px; }
+.pill .ar { color: var(--muted); font-weight: 400; }
+.end { border-color: var(--trn); background: var(--trn-bg); }
+
+@media (max-width: 960px) {
+  .flow { flex-direction: column; }
+  .arrow { width: auto; height: 30px; }
+  .arrow span { display: inline-block; transform: rotate(90deg); }
+}
+</style>
+</head>
+<body>
+<div class="page"><div class="wrap">
+
+<header>
+  <h1>Ad Hoc Load Flow</h1>
+  <p class="sub">One load, one date. The customer creates it, connected transporters bid, the customer picks the winner.</p>
+  <div class="legend">
+    <span><i class="who cus">Customer</i></span>
+    <span><i class="who trn">Transporter</i></span>
+    <span><i class="who sys">Enroute</i></span>
+    <span>Grey field = optional</span>
+    <span>Dashed box = what happens if it fails</span>
+  </div>
+</header>
+
+<section class="band" aria-label="Customer creates the load">
+  <div class="band-title">Part 1 · Customer creates the load</div>
+  <div class="flow">
+    <div class="block">
+      <div class="head"><div class="top"><span class="n">1</span><h2>Route and schedule</h2></div><span class="who cus">Customer</span></div>
+      <ul>
+        <li>Pickup PIN code</li>
+        <li>Pickup address</li>
+        <li>Drop PIN code</li>
+        <li>Drop address</li>
+        <li>Pickup date</li>
+        <li>Pickup time window</li>
+      </ul>
+    </div>
+    <div class="arrow" aria-hidden="true"><span>→</span></div>
+    <div class="block">
+      <div class="head"><div class="top"><span class="n">2</span><h2>Material and truck</h2></div><span class="who cus">Customer</span></div>
+      <ul>
+        <li>Material</li>
+        <li>Total weight (tons)</li>
+        <li>Truck type</li>
+        <li>Number of trucks</li>
+        <li class="opt">Special needs</li>
+        <li class="opt">Notes</li>
+        <li class="opt">Attachment PDF</li>
+      </ul>
+    </div>
+    <div class="arrow" aria-hidden="true"><span>→</span></div>
+    <div class="block">
+      <div class="head"><div class="top"><span class="n">3</span><h2>Price and bid rules</h2></div><span class="who cus">Customer</span></div>
+      <ul>
+        <li>Price basis: per truck, per ton or per km</li>
+        <li>Bidding closes at (date and time)</li>
+        <li>Bids per transporter: 5</li>
+        <li class="opt">Target price ₹, hidden</li>
+      </ul>
+    </div>
+    <div class="arrow" aria-hidden="true"><span>→</span></div>
+    <div class="block">
+      <div class="head"><div class="top"><span class="n">4</span><h2>Invite transporters</h2></div><span class="who cus">Customer</span></div>
+      <ul>
+        <li>List of connected transporters</li>
+        <li>Select one or more</li>
+        <li class="opt">Search</li>
+      </ul>
+    </div>
+    <div class="arrow" aria-hidden="true"><span>→</span></div>
+    <div class="block">
+      <div class="head"><div class="top"><span class="n">5</span><h2>Review and publish</h2></div><span class="who cus">Customer</span></div>
+      <ul>
+        <li>Summary of steps 1 to 4</li>
+        <li>Edit link for each part</li>
+        <li>Accept terms</li>
+        <li>Publish button</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="join"><span class="pill">Publish <span class="ar">→</span> Load is live, invites sent</span></div>
+
+<section class="band" aria-label="Bidding to delivery">
+  <div class="band-title">Part 2 · Bidding to delivery</div>
+  <div class="flow">
+    <div class="block">
+      <div class="head"><div class="top"><span class="n">6</span><h2>Transporter bids</h2></div><span class="who trn">Transporter</span></div>
+      <ul>
+        <li>Base rate ₹</li>
+        <li>Margin, % or ₹</li>
+        <li class="auto">Final bid, calculated</li>
+        <li>Attempt 1 of 5</li>
+        <li class="auto">My rank: L1, L2…</li>
+      </ul>
+    </div>
+    <div class="arrow" aria-hidden="true"><span>→</span></div>
+    <div class="block">
+      <div class="head"><div class="top"><span class="n">7</span><h2>Bidding closes</h2></div><span class="who sys">Enroute</span></div>
+      <ul>
+        <li>Closes at the set time</li>
+        <li>All bids locked</li>
+      </ul>
+      <div class="branch"><b>No bids:</b> customer extends the time or publishes again</div>
+    </div>
+    <div class="arrow" aria-hidden="true"><span>→</span></div>
+    <div class="block">
+      <div class="head"><div class="top"><span class="n">8</span><h2>Customer picks winner</h2></div><span class="who cus">Customer</span></div>
+      <ul>
+        <li>Bid list: transporter, amount, rank</li>
+        <li>Award button</li>
+        <li class="opt">Reason</li>
+      </ul>
+    </div>
+    <div class="arrow" aria-hidden="true"><span>→</span></div>
+    <div class="block">
+      <div class="head"><div class="top"><span class="n">9</span><h2>Winner accepts</h2></div><span class="who trn">Transporter</span></div>
+      <ul>
+        <li>Accept or decline</li>
+        <li>Within 24 hours</li>
+      </ul>
+      <div class="branch"><b>Declines or no reply:</b> back to step 8</div>
+    </div>
+    <div class="arrow" aria-hidden="true"><span>→</span></div>
+    <div class="block">
+      <div class="head"><div class="top"><span class="n">10</span><h2>Trip and delivery</h2></div><span class="who trn">Transporter</span></div>
+      <ul>
+        <li>Truck number</li>
+        <li>Driver name</li>
+        <li>Driver phone</li>
+        <li>Delivery proof upload</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="join"><span class="pill end">Load completed</span></div>
+
+</div></div>
+</body>
+</html>

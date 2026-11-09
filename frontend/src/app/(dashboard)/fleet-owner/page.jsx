@@ -1,3 +1,7 @@
-import FleetOwnerDashboardPage from '@/features/dashboard/ui/FleetOwnerDashboardPage';
+import DashboardOverview from '@/shared/ui/layout/DashboardOverview';
 
-export default FleetOwnerDashboardPage;
+export const metadata = { title: 'Overview' };
+
+export default function Page() {
+    return <DashboardOverview companyType="fleet_owner" />;
+}

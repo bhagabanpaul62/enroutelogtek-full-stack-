@@ -22,6 +22,34 @@
       "when": 1793462676528,
       "tag": "0002_rename_fleet_owner",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794162547029,
+      "tag": "0003_root_admin_nullable_company",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794163502201,
+      "tag": "0004_adhoc_loads",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794163546737,
+      "tag": "0005_seed_masters",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794195643989,
+      "tag": "0006_load_events",
+      "breakpoints": true
     }
   ]
 }

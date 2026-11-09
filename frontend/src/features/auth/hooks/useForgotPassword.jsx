@@ -39,13 +39,10 @@ export const useForgetPassword = () => {
             
         } catch (error) {
             const errorMessage = error.response?.data?.message;
-            console.log(errorMessage);
             setApiError(errorMessage);
             toast.error(errorMessage);
-            console.log('status code ::', error.response.status);
             
-            const rest = error.response.status === 404
-            console.log(" status code res :: " ,rest);
+            const rest = error.response?.status === 404
             setUserNotExist(rest)
             
           

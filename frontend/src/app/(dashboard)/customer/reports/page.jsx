@@ -1,9 +1,7 @@
-import React from 'react'
+import ComingSoon from '@/shared/ui/layout/ComingSoon';
 
-function ReportsPage() {
-  return (
-    <div>ReportsPage</div>
-  )
+export const metadata = { title: 'Reports' };
+
+export default function Page() {
+    return <ComingSoon companyType="customer" slug="reports" />;
 }
-
-export default ReportsPage

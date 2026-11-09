@@ -4,11 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { Truck, ShieldCheck, Activity, Cpu } from 'lucide-react';
 
 const SYSTEM_CHECKS = [
-    'Establishing Encrypted Gateway...',
-    'Authenticating EnrouteLogtek Credentials...',
-    'Initializing Fleet Telemetry & Node Networks...',
-    'Synchronizing Real-Time Route Metrics...',
-    'Dashboard Environment Ready.',
+    'Checking your session...',
+    'Loading your company...',
+    'Opening your dashboard...',
 ];
 
 export default function DashboardLoadingScreen() {
@@ -72,7 +70,7 @@ export default function DashboardLoadingScreen() {
 
                 <div className="flex items-center gap-2 text-[#525B7A] font-mono text-[11px] uppercase tracking-wider">
                     <Activity size={14} className="text-[#fbbc0e] animate-spin" />
-                    <span>System Initialization</span>
+                    <span>Signing you in</span>
                 </div>
             </div>
 
@@ -113,14 +111,14 @@ export default function DashboardLoadingScreen() {
             <div className="relative z-10 border-t border-[#1c1b1b] pt-6 flex flex-col md:flex-row items-center justify-between gap-4 text-[#525B7A] font-mono text-[11px] uppercase tracking-wider">
                 <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1.5 text-[#e5e2e1]">
-                        <ShieldCheck size={14} className="text-[#10b981]" /> 256-BIT TLS ENCRYPTED
+                        <ShieldCheck size={14} className="text-[#10b981]" /> Secure session
                     </span>
                     <span className="hidden sm:inline">•</span>
                     <span className="hidden sm:inline">enroutelogtek.in</span>
                 </div>
 
                 <div>
-                    <span>SECURE OPERATIONAL GATEWAY v2.4.0</span>
+                    <span>EnrouteLogtek</span>
                 </div>
             </div>
         </div>

@@ -19,19 +19,24 @@ export default function BranchDetails({ registerHook }) {
     const {
         register,
         handleSubmit,
+        getValues,
         formState: { errors },
     } = useForm({ defaultValues: registerHook.formData });
 
     const onSubmit = (data) => {
-        if (!state) {
-            setStateError('Choose a state');
-            return;
-        }
+        if (!state) return;
         registerHook.nextStep({ ...data, state });
     };
 
+    // The state lives outside react-hook-form; check it on every press so its error shows
+    // together with the other fields' errors.
+    const submit = (event) => {
+        if (!state) setStateError('Choose a state');
+        return handleSubmit(onSubmit)(event);
+    };
+
     return (
-        <form className="au-form" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <form className="au-form" onSubmit={submit} noValidate>
             <div className="au-form__row">
                 <Field id="branchName" label="Branch name" error={errors.branchName?.message}>
                     <input
@@ -108,7 +113,11 @@ export default function BranchDetails({ registerHook }) {
             </div>
 
             <div className="au-actions">
-                <SubmitButton type="button" quiet onClick={registerHook.prevStep}>
+                <SubmitButton
+                    type="button"
+                    quiet
+                    onClick={() => registerHook.prevStep({ ...getValues(), state })}
+                >
                     Back
                 </SubmitButton>
                 <SubmitButton>Next: your account</SubmitButton>

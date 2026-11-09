@@ -1,40 +1,20 @@
-'use client'
-import { checkAuthAction } from "@/features/auth/state/authAction";
-import { useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { useSelector } from "react-redux"
+'use client';
 
-  
-export const useNav = ()=>{
-  const dispatch = useDispatch()
-  const { user, isLoggedIn } = useSelector((state) => state.auth);
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { checkAuthAction } from '@/features/auth/state/authAction';
 
+/**
+ * Session state for the public nav: restores the session once on mount so a signed-in visitor
+ * sees "Open dashboard" instead of "Log in". A failed check simply leaves them signed out.
+ */
+export const useNav = () => {
+    const dispatch = useDispatch();
+    const { user, isLoggedIn } = useSelector((state) => state.auth);
 
-  useEffect(()=>{
-    const checkAuth = async()=>{
-      try {
-        await dispatch(checkAuthAction())
-      } catch (error) {
-        console.log(error.response?.data?.message)
-      }
-    }
+    useEffect(() => {
+        dispatch(checkAuthAction());
+    }, [dispatch]);
 
-    checkAuth()
-  },[dispatch])
-
-
-
-
-
-  
-
-
-
-
-
-
-  return {
-    user , isLoggedIn
-  }
-  
-} 
+    return { user, isLoggedIn };
+};

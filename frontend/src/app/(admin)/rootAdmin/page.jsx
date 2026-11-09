@@ -1,9 +1,7 @@
-import React from 'react'
+import CompaniesPage from '@/features/platform/ui/CompaniesPage';
 
-function page() {
-  return (
-    <div>page</div>
-  )
+export const metadata = { title: 'Companies' };
+
+export default function Page() {
+    return <CompaniesPage />;
 }
-
-export default page

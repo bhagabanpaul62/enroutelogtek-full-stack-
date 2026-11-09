@@ -1,0 +1,165 @@
+# Production: every push to main is checked (ci.yml), built into two images that go to GitHub's
+# container registry (GHCR), and deployed to the VPS over SSH. Run it by hand from the Actions
+# tab with an older commit SHA in "image_tag" to roll back without rebuilding.
+#
+# Needs, in the repository's "production" environment (Settings -> Environments):
+#   secrets   VPS_HOST, VPS_USER, VPS_SSH_KEY, VPS_KNOWN_HOSTS
+#   variables SITE_DOMAIN, NEXT_PUBLIC_APP_URL, (optional) VPS_PORT, APP_DIR
+# deploy/README.md has the setup, step by step.
+name: Deploy
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+        inputs:
+            image_tag:
+                description: Commit SHA to redeploy (rollback). Leave empty to build and deploy the latest main.
+                type: string
+                required: false
+
+# One deploy at a time; a newer push waits instead of cancelling one that is half done.
+concurrency:
+    group: production
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    checks:
+        name: Checks
+        if: ${{ !inputs.image_tag }}
+        uses: ./.github/workflows/ci.yml
+        with:
+            build_images: false
+
+    images:
+        name: Build and push images
+        needs: checks
+        if: ${{ !inputs.image_tag }}
+        runs-on: ubuntu-24.04
+        environment: production
+        permissions:
+            contents: read
+            packages: write
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: Image names
+              env:
+                  NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+              run: |
+                  # GHCR names must be lower case
+                  echo "IMAGE_REGISTRY=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+                  if [ -z "$NEXT_PUBLIC_APP_URL" ]; then
+                      echo "::error::Set the NEXT_PUBLIC_APP_URL variable in the production environment (deploy/README.md)"
+                      exit 1
+                  fi
+
+            - uses: docker/setup-buildx-action@v3
+            - uses: docker/login-action@v3
+              with:
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Backend image
+              uses: docker/build-push-action@v6
+              with:
+                  context: ./backend
+                  push: true
+                  tags: |
+                      ${{ env.IMAGE_REGISTRY }}/enroute-backend:${{ github.sha }}
+                      ${{ env.IMAGE_REGISTRY }}/enroute-backend:latest
+                  labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                  cache-from: type=gha,scope=backend
+                  cache-to: type=gha,scope=backend,mode=max
+
+            - name: Frontend image
+              uses: docker/build-push-action@v6
+              with:
+                  context: ./frontend
+                  push: true
+                  build-args: |
+                      NEXT_PUBLIC_APP_URL=${{ vars.NEXT_PUBLIC_APP_URL }}
+                  tags: |
+                      ${{ env.IMAGE_REGISTRY }}/enroute-frontend:${{ github.sha }}
+                      ${{ env.IMAGE_REGISTRY }}/enroute-frontend:latest
+                  labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+                  cache-from: type=gha,scope=frontend
+                  cache-to: type=gha,scope=frontend,mode=max
+
+    deploy:
+        name: Deploy to the VPS
+        needs: images
+        # Runs after a successful build, or straight away for a rollback (images is skipped then).
+        if: ${{ always() && (needs.images.result == 'success' || inputs.image_tag) }}
+        runs-on: ubuntu-24.04
+        environment:
+            name: production
+            url: https://${{ vars.SITE_DOMAIN }}
+        permissions:
+            contents: read
+            packages: read
+        env:
+            IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+            APP_DIR: ${{ vars.APP_DIR || '/opt/enroute' }}
+            SSH_TARGET: ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}
+            SSH_PORT: ${{ vars.VPS_PORT || '22' }}
+        steps:
+            - uses: actions/checkout@v5
+
+            - name: SSH key
+              env:
+                  VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+                  VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+              run: |
+                  install -m 700 -d ~/.ssh
+                  printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+                  chmod 600 ~/.ssh/deploy_key
+                  # Pinned host key: the job refuses to talk to a server that is not yours.
+                  printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+                  echo "IMAGE_REGISTRY=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+                  echo "SSH=ssh -i $HOME/.ssh/deploy_key -p $SSH_PORT -o BatchMode=yes" >> "$GITHUB_ENV"
+
+            - name: Copy the compose files
+              run: |
+                  $SSH "$SSH_TARGET" "mkdir -p '$APP_DIR/deploy'"
+                  scp -i ~/.ssh/deploy_key -P "$SSH_PORT" -o BatchMode=yes \
+                      docker-compose.yml docker-compose.vps.yml "$SSH_TARGET:$APP_DIR/"
+                  scp -i ~/.ssh/deploy_key -P "$SSH_PORT" -o BatchMode=yes \
+                      deploy/Caddyfile deploy/remote-deploy.sh "$SSH_TARGET:$APP_DIR/deploy/"
+
+            - name: Pull and restart
+              env:
+                  GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  GHCR_USER: ${{ github.actor }}
+              run: |
+                  # Short-lived login: this job's token, valid only while the job runs.
+                  printf '%s' "$GHCR_TOKEN" | \
+                      $SSH "$SSH_TARGET" "docker login ghcr.io -u '$GHCR_USER' --password-stdin"
+                  $SSH "$SSH_TARGET" "bash '$APP_DIR/deploy/remote-deploy.sh' '$IMAGE_TAG' '$IMAGE_REGISTRY'"
+
+            - name: Log out of GHCR on the server
+              if: always()
+              run: $SSH "$SSH_TARGET" "docker logout ghcr.io" || true
+
+            - name: Health check
+              env:
+                  SITE_DOMAIN: ${{ vars.SITE_DOMAIN }}
+              run: |
+                  # The backend runs migrations before it listens, so give it time.
+                  for _ in $(seq 1 36); do
+                      # Keep retrying connection/TLS failures under the runner's set -e.
+                      site=$(curl --connect-timeout 5 --max-time 10 -s -o /dev/null -w '%{http_code}' "https://$SITE_DOMAIN/") || site=000
+                      api=$(curl --connect-timeout 5 --max-time 10 -s -o /dev/null -w '%{http_code}' "https://$SITE_DOMAIN/api/v1/network") || api=000
+                      if [ "$site" = 200 ] && [ "$api" = 401 ]; then
+                          echo "Live: site $site, API $api (401 = up and asking for a login)"
+                          exit 0
+                      fi
+                      echo "Waiting: site $site, API $api"
+                      sleep 5
+                  done
+                  echo "::error::The site did not come up. On the server: cd $APP_DIR && docker compose -f docker-compose.yml -f docker-compose.vps.yml logs --tail 100"
+                  exit 1

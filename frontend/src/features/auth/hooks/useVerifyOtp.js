@@ -28,7 +28,6 @@ export const useVerifyOtp = () => {
                 router.push('/register/register-form');
             }
         } catch (error) {
-            console.log('use otp error ::', error.response?.data?.message);
             setApiError(error.response?.data?.message);
             toast.error(error.response?.data?.message);
         }

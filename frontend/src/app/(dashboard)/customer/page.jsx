@@ -1,3 +1,7 @@
-import CustomerDashboardPage from '@/features/dashboard/ui/CustomerDashboardPage';
+import DashboardOverview from '@/shared/ui/layout/DashboardOverview';
 
-export default CustomerDashboardPage;
+export const metadata = { title: 'Overview' };
+
+export default function Page() {
+    return <DashboardOverview companyType="customer" />;
+}

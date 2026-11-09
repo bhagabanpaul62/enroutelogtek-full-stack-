@@ -7,7 +7,7 @@ import { Eye } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { COMPANY_TYPE_LABELS, NETWORK_TABS } from '../constants';
 import { getIncomingRequestsApi } from '../api/network.api';
-import { useCursorList } from '../hooks/useCursorList';
+import { useCursorList } from '@/shared/hooks/useCursorList';
 import { useCanManageNetwork } from '../hooks/useCanManageNetwork';
 import ConnectionsTab from './tabs/ConnectionsTab';
 import RequestsTab from './tabs/RequestsTab';

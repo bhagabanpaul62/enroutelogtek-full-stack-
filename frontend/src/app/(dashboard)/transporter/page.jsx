@@ -1,3 +1,7 @@
-import TransporterDashboardPage from '@/features/dashboard/ui/TransporterDashboardPage';
+import DashboardOverview from '@/shared/ui/layout/DashboardOverview';
 
-export default TransporterDashboardPage;
+export const metadata = { title: 'Overview' };
+
+export default function Page() {
+    return <DashboardOverview companyType="transporter" />;
+}

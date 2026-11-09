@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test \"src/**/*.test.js\"",
     "start": "node src/index.js ",
-    "dev": "nodemon --legacy-watch src/index.js "
-
+    "dev": "nodemon --legacy-watch src/index.js ",
+    "seed:root-admin": "node src/scripts/seedRootAdmin.js"
   },
   "keywords": [],
   "author": "",

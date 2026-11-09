@@ -15,7 +15,7 @@ export default function StepList({ current }) {
                         <span className="measure" aria-hidden="true">
                             {number}
                         </span>
-                        {name}
+                        <span className="au-steps__name">{name}</span>
                     </li>
                 );
             })}

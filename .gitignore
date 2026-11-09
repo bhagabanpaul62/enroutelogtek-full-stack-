@@ -20,3 +20,6 @@ out/
 
 # Logs
 *.log
+
+# Deploy history written on the server by deploy/remote-deploy.sh
+deploy/history.log

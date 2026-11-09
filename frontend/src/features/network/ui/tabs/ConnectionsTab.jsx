@@ -5,12 +5,12 @@ import { Ban, Compass, UserMinus, Users } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { blockCompanyApi, getNetworkApi, removeConnectionApi } from '../../api/network.api';
-import { useCursorList } from '../../hooks/useCursorList';
+import { useCursorList } from '@/shared/hooks/useCursorList';
 import { useNetworkAction } from '../../hooks/useNetworkAction';
 import CompanyRow from '../components/CompanyRow';
-import CursorList from '../components/CursorList';
+import CursorList from '@/shared/ui/components/CursorList';
 import FilterBar from '../components/FilterBar';
-import { useConfirm } from '../components/ConfirmDialog';
+import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
 
 export default function ConnectionsTab({ canManage, typeOptions, onGoToDiscover }) {
     const [search, setSearch] = useState('');

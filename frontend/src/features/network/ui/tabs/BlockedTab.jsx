@@ -3,11 +3,11 @@
 import { ShieldCheck, Unlock } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
 import { getNetworkApi, unblockCompanyApi } from '../../api/network.api';
-import { useCursorList } from '../../hooks/useCursorList';
+import { useCursorList } from '@/shared/hooks/useCursorList';
 import { useNetworkAction } from '../../hooks/useNetworkAction';
 import CompanyRow from '../components/CompanyRow';
-import CursorList from '../components/CursorList';
-import { useConfirm } from '../components/ConfirmDialog';
+import CursorList from '@/shared/ui/components/CursorList';
+import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
 
 // Companies this company blocked. (Blocks made by others are never shown.)
 export default function BlockedTab({ canManage }) {

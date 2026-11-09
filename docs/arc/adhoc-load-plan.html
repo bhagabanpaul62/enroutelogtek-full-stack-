@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ad Hoc Load Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one 72ch reading column for prose; screen cards, step cards, the lane timeline and the status diagram
+   break out to a 1120px band. Tokens follow the product dashboard (amber on near-black) in dark and slate paper
+   in light, the same set as docs/arc/enroute-build-map.html so the two planning pages read as one series. */
+:root {
+  --bg: #f3f4f7; --surface: #ffffff; --surface-2: #e9ebf0; --fg: #15171c; --muted: #5a6275; --line: #d6dae2;
+  --accent: #fbbc0e; --accent-ink: #1a1a1a; --accent-text: #7a5200; --accent-bg: #fff4d1;
+  --ok: #1d7f49; --ok-bg: #e2f4e9; --warn: #b4521b; --warn-bg: #fbe9df; --bad: #b3261e; --bad-bg: #fae1df;
+  --info: #2457b3; --info-bg: #e3ebfa;
+  --lane-customer: #2457b3; --lane-system: #7a5200; --lane-transporter: #1d7f49;
+  --font-body: "Space Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131313; --surface: #111111; --surface-2: #1c1c1c; --fg: #e5e2e1; --muted: #9aa1b5; --line: #272727;
+    --accent: #fbbc0e; --accent-ink: #131313; --accent-text: #fbbc0e; --accent-bg: #2c2206;
+    --ok: #3ccf7a; --ok-bg: #10301d; --warn: #f0955a; --warn-bg: #3a2416; --bad: #ff8a80; --bad-bg: #3b1a18;
+    --info: #7fb0ff; --info-bg: #14223a;
+    --lane-customer: #7fb0ff; --lane-system: #fbbc0e; --lane-transporter: #3ccf7a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131313; --surface: #111111; --surface-2: #1c1c1c; --fg: #e5e2e1; --muted: #9aa1b5; --line: #272727;
+  --accent: #fbbc0e; --accent-ink: #131313; --accent-text: #fbbc0e; --accent-bg: #2c2206;
+  --ok: #3ccf7a; --ok-bg: #10301d; --warn: #f0955a; --warn-bg: #3a2416; --bad: #ff8a80; --bad-bg: #3b1a18;
+  --info: #7fb0ff; --info-bg: #14223a;
+  --lane-customer: #7fb0ff; --lane-system: #fbbc0e; --lane-transporter: #3ccf7a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); line-height: 1.55; font-size: 16px; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.page { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 32px 80px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 56px; }
+.wrap > * { min-width: 0; }
+.prose { max-width: 72ch; }
+h1, h2, h3, h4 { text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 46px); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: clamp(22px, 3vw, 28px); font-weight: 600; }
+h3 { font-size: 17px; font-weight: 600; }
+h4 { font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+ul { margin: 0; padding-left: 20px; }
+li + li { margin-top: 4px; }
+a { color: var(--accent-text); }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lead { font-size: 18px; color: var(--muted); max-width: 62ch; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.small { font-size: 13px; }
+b { font-weight: 600; }
+
+/* top bar */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); margin: -32px -16px 0; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); }
+.top-in { max-width: 1120px; margin: 0 auto; display: flex; gap: 10px 18px; align-items: center; flex-wrap: wrap; }
+.top-in .brand { font-weight: 600; margin-right: auto; }
+.top-in nav { display: flex; gap: 4px 14px; flex-wrap: wrap; font-size: 14px; }
+.top-in nav a { color: var(--muted); text-decoration: none; }
+.top-in nav a:hover { color: var(--fg); }
+
+header.hero { display: grid; gap: 16px; }
+.howto { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 16px 18px; max-width: 72ch; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+section { display: grid; gap: 18px; scroll-margin-top: 72px; }
+.sec-head { display: grid; gap: 6px; }
+.sec-head .n { font-family: var(--font-mono); font-size: 13px; color: var(--accent-text); }
+
+/* chain diagram */
+.chain { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chain .node { background: var(--surface); border: 1px solid var(--line); padding: 8px 12px; font-size: 14px; display: grid; gap: 2px; min-width: 120px; }
+.chain .node small { color: var(--muted); font-size: 12px; }
+.chain .node.hot { border-color: var(--accent); background: var(--accent-bg); }
+.chain .arrow { color: var(--muted); font-size: 18px; }
+.chain .gap { flex-basis: 100%; height: 0; }
+
+/* cards */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.card .head { display: flex; gap: 10px; align-items: baseline; }
+.card .num { font-family: var(--font-mono); font-size: 13px; color: var(--accent-text); background: var(--accent-bg); padding: 2px 8px; flex: none; }
+.card .body { font-size: 14px; display: grid; gap: 6px; }
+.card .body .k { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+.card .issue { border-left: 3px solid var(--warn); padding-left: 10px; }
+.card .goes { font-size: 13px; color: var(--muted); }
+.card .goes b { color: var(--fg); }
+.step { grid-column: 1 / -1; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px 28px; }
+.step .intro { display: grid; gap: 10px; }
+.step .fields { display: grid; gap: 6px; }
+.field { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; padding: 8px 10px; background: var(--surface-2); font-size: 14px; }
+.field small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+@media (max-width: 760px) { .step { grid-template-columns: 1fr; } }
+
+/* controls */
+.seg { display: inline-flex; border: 1px solid var(--line); background: var(--surface); }
+.seg button { font: inherit; font-size: 13px; padding: 6px 12px; border: 0; background: transparent; color: var(--muted); cursor: pointer; min-height: 36px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.on { color: var(--fg); font-weight: 600; }
+.seg button.on.v-keep, .seg button.on.v-agree, .seg button.on.v-yes { background: var(--ok-bg); color: var(--ok); }
+.seg button.on.v-change, .seg button.on.v-later { background: var(--warn-bg); color: var(--warn); }
+.seg button.on.v-merge { background: var(--info-bg); color: var(--info); }
+.seg button.on.v-drop, .seg button.on.v-no { background: var(--bad-bg); color: var(--bad); }
+.tri { font: inherit; font-size: 12px; padding: 4px 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; min-height: 32px; min-width: 88px; font-family: var(--font-mono); }
+.tri.v-req { background: var(--info-bg); color: var(--info); border-color: transparent; }
+.tri.v-opt { color: var(--muted); }
+.tri.v-hide { background: var(--bad-bg); color: var(--bad); border-color: transparent; text-decoration: line-through; }
+.opts { display: grid; gap: 6px; }
+.opt { font: inherit; font-size: 14px; text-align: left; padding: 8px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; display: flex; gap: 10px; align-items: center; min-height: 40px; }
+.opt::before { content: ""; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--muted); flex: none; }
+.opt.on { border-color: var(--accent); background: var(--accent-bg); }
+.opt.on::before { border-color: var(--accent-text); background: var(--accent-text); box-shadow: inset 0 0 0 3px var(--accent-bg); }
+.rec { font-family: var(--font-mono); font-size: 11px; color: var(--accent-text); margin-left: auto; letter-spacing: 0.04em; text-transform: uppercase; }
+.note { font: inherit; font-size: 14px; width: 100%; min-height: 44px; padding: 8px 10px; border: 1px dashed var(--line); background: var(--surface); color: var(--fg); resize: vertical; }
+.note:focus, button:focus-visible, .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.pill { font-family: var(--font-mono); font-size: 11px; padding: 2px 8px; border: 1px solid var(--line); color: var(--muted); }
+.pill.p1 { color: var(--bad); border-color: var(--bad); }
+.pill.p2 { color: var(--warn); border-color: var(--warn); }
+.pill.p3 { color: var(--muted); }
+.btn { font: inherit; font-size: 14px; font-weight: 600; padding: 8px 14px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; min-height: 40px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.danger { color: var(--bad); }
+
+/* table */
+.tbl { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; background: var(--surface-2); }
+td:first-child { color: var(--muted); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+.assume { color: var(--warn); font-family: var(--font-mono); font-size: 11px; }
+
+/* lanes */
+.lanes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 14px; }
+.lhead { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; padding: 6px 0; border-bottom: 2px solid var(--line); }
+.lhead.customer { color: var(--lane-customer); border-color: var(--lane-customer); }
+.lhead.system { color: var(--lane-system); border-color: var(--lane-system); }
+.lhead.transporter { color: var(--lane-transporter); border-color: var(--lane-transporter); }
+.lcard { background: var(--surface); border: 1px solid var(--line); border-left-width: 4px; padding: 12px 14px; display: grid; gap: 4px; font-size: 14px; min-width: 0; }
+.lcard b { font-size: 15px; }
+.lcard.lane-customer { border-left-color: var(--lane-customer); }
+.lcard.lane-system { border-left-color: var(--lane-system); }
+.lcard.lane-transporter { border-left-color: var(--lane-transporter); }
+.lchip { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); display: none; }
+@media (max-width: 760px) {
+  .lanes { display: flex; flex-direction: column; }
+  .lhead { display: none; }
+  .lchip { display: block; }
+}
+.diagram { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); padding: 12px; }
+.diagram svg { display: block; min-width: 820px; width: 100%; height: auto; color: var(--fg); }
+.diagram .box { fill: var(--surface); stroke: var(--muted); stroke-width: 1.2; }
+.diagram .box.hot { stroke: var(--accent); stroke-width: 2; fill: var(--accent-bg); }
+.diagram .box.done { stroke: var(--ok); fill: var(--ok-bg); }
+.diagram .box.off { stroke: var(--bad); fill: var(--bad-bg); }
+.diagram text { fill: currentColor; font-family: var(--font-body); font-size: 13px; }
+.diagram text.lbl { font-size: 11px; fill: var(--muted); font-family: var(--font-mono); }
+.diagram .ln { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+.diagram .ln.dash { stroke-dasharray: 5 4; }
+
+/* groups */
+.group { display: grid; gap: 10px; }
+.item { background: var(--surface); border: 1px solid var(--line); padding: 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: start; }
+.item .t { display: grid; gap: 4px; font-size: 14px; min-width: 0; }
+.item .t b { font-size: 15px; }
+.item .note { grid-column: 1 / -1; }
+@media (max-width: 560px) { .item { grid-template-columns: 1fr; } }
+
+/* export */
+#out { width: 100%; min-height: 260px; font-family: var(--font-mono); font-size: 12.5px; padding: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.flash { font-size: 13px; color: var(--ok); min-height: 1.4em; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; }
+@media (prefers-reduced-motion: no-preference) { .opt, .seg button, .tri { transition: background-color .12s, color .12s; } }
+</style>
+</head>
+<body>
+<div class="page">
+<div class="top"><div class="top-in">
+  <span class="brand">Ad Hoc Load Plan</span>
+  <nav>
+    <a href="#drawn">1 As drawn</a><a href="#modes">2 Modes</a><a href="#flow">3 Create flow</a><a href="#lifecycle">4 After publish</a>
+    <a href="#look">5 Look</a><a href="#needs">6 Build list</a><a href="#decisions">7 Decisions</a><a href="#export">Export</a>
+  </nav>
+  <button class="btn primary" id="copy-top" type="button">Copy my marks</button>
+</div></div>
+
+<div class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">Enroute · Create Load · planning sheet · 08 Nov 2026</p>
+  <h1>How an Ad Hoc load is created and bid on</h1>
+  <p class="lead">The Figma file draws an eight-screen Create Load wizard. This page reads those screens, maps them to the Ad Hoc flow Enroute actually needs, and lets you mark what to keep, change or drop before anyone builds it.</p>
+  <div class="howto">
+    <b>How to mark this page</b>
+    <p class="small">Every screen, step, field, fix and decision has a control. Click to mark it, type a note under it, then press <b>Copy my marks</b> and paste the text back to me. Marks are saved in this browser only.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--ok)"></i>Keep / Agree / Yes</span>
+      <span><i class="dot" style="background:var(--warn)"></i>Change / Later</span>
+      <span><i class="dot" style="background:var(--info)"></i>Merge · Required field</span>
+      <span><i class="dot" style="background:var(--bad)"></i>Drop / No / Hidden field</span>
+      <span class="mono">Recommended = my pick, change it freely</span>
+    </div>
+  </div>
+  <div class="prose small muted">
+    <p>Vocabulary used here, from the product document: an <b>Ad Hoc load</b> is one load on one date raised by a Customer. A <b>bid</b> is a transporter's offer on it. An <b>award</b> is the Customer picking one bid. The awarded bid becomes a <b>contract</b> for that load, then a <b>trip</b>. "Create a bid" in everyday talk means the Customer creating the load that transporters bid on.</p>
+  </div>
+</header>
+
+<!-- 1 · as drawn -->
+<section id="drawn">
+  <div class="sec-head">
+    <span class="n">1 · The design as drawn</span>
+    <h2>Eight screens, one success screen, one compact four-step variant</h2>
+    <p class="prose muted">Read from step 1 on the right of the Figma board to the success screen on the left. Each card lists what the screen shows, what breaks, and where it lands in the recommended flow. Mark each one.</p>
+  </div>
+  <div class="chain" id="chain-drawn"></div>
+  <div class="grid" id="design-grid"></div>
+  <div class="card" style="border-left:4px solid var(--info)">
+    <div class="head"><span class="num">ALT</span><h3>The four-step frame at the bottom of the board</h3></div>
+    <div class="body">
+      <p>A second, shorter version exists: numbered circle stepper, "Step 1: Pickup and Material", pickup address and drop address as the first fields. This is closer to what an Ad Hoc needs than the eight-screen version. The recommended flow below starts from it and adds bid rules and invitations.</p>
+    </div>
+    <div class="row" id="alt-seg"></div>
+    <textarea class="note" data-note="alt" placeholder="Note on the four-step variant"></textarea>
+  </div>
+</section>
+
+<!-- 2 · modes -->
+<section id="modes">
+  <div class="sec-head">
+    <span class="n">2 · Daily, Contract, Ad Hoc</span>
+    <h2>Where Ad Hoc sits among the three load modes</h2>
+    <p class="prose muted">Step 1 of the design offers three modes. The product document defines Contract (an RFQ: a lane or volume over a period) and Ad Hoc (one load, one date). It never defines Daily. The Daily column is my assumption and is decision D1 below.</p>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Daily <span class="assume">assumed</span></th><th>Contract (RFQ)</th><th>Ad Hoc</th></tr></thead>
+    <tbody>
+      <tr><td>What is bought</td><td>One day's dispatch against a rate that already exists</td><td>A lane or a volume for weeks or months</td><td>One load, one pickup date</td></tr>
+      <tr><td>Bidding</td><td>None. The rate is fixed by the contract</td><td>Quotation per lane, compared, awarded</td><td>Ranked attempts inside a short window, then award</td></tr>
+      <tr><td>Price basis</td><td>Contract rate</td><td>Per vehicle or per ton for the period</td><td>Per vehicle by default, per ton or per km when asked</td></tr>
+      <tr><td>Time horizon</td><td>Today or tomorrow</td><td>Weeks to months</td><td>Hours to a few days</td></tr>
+      <tr><td>Who sees it</td><td>The contracted transporter</td><td>Invited connections only</td><td>Invited connections only</td></tr>
+      <tr><td>Bid attempts</td><td>None</td><td>One quotation, revisable until close</td><td>Up to five, history kept, own rank visible</td></tr>
+      <tr><td>Ends in</td><td>A trip</td><td>A contract, then many loads</td><td>A contract for that one load, then a trip</td></tr>
+      <tr><td>Entry point</td><td>Contracts page, Place indent</td><td>RFQs page, New RFQ</td><td>Loads page, New Ad Hoc</td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose small muted">Because the mode decides which wizard opens, the mode chip does not belong inside the wizard. The Customer picks "New Ad Hoc" first and never sees the Daily or Contract chips again.</p>
+</section>
+
+<!-- 3 · create flow -->
+<section id="flow">
+  <div class="sec-head">
+    <span class="n">3 · Ad Hoc create flow</span>
+    <h2>Five steps instead of eight</h2>
+    <p class="prose muted">The eight screens hold about five minutes of typing. Grouping by the question the transporter asks (where and when, what and which truck, how much and until when, who, confirm) gives five steps. Each field below is a toggle: click to cycle Required, Optional, Hidden.</p>
+  </div>
+  <div class="chain" id="chain-flow"></div>
+  <div class="grid" id="steps-grid"></div>
+</section>
+
+<!-- 4 · after publish -->
+<section id="lifecycle">
+  <div class="sec-head">
+    <span class="n">4 · After publish</span>
+    <h2>How the bidding runs once the load is live</h2>
+    <p class="prose muted">Three lanes: the Customer, the Enroute system, the Transporter. Rules in these cards come from the product document and the earlier build map (five attempts, own rank only, Customer chooses, acceptance within 24 hours).</p>
+  </div>
+  <div class="lanes" id="lanes">
+    <div class="lhead customer">Customer</div><div class="lhead system">Enroute</div><div class="lhead transporter">Transporter</div>
+  </div>
+  <h3>Status of one Ad Hoc load</h3>
+  <div class="diagram">
+    <svg viewBox="0 0 960 250" role="img" aria-label="Status diagram: draft, live, closed, awarded, accepted, in execution, completed, with cancelled, expired and award-again branches">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs>
+      <g>
+        <rect class="box" x="10" y="50" width="100" height="40" rx="3"/><text x="60" y="75" text-anchor="middle">Draft</text>
+        <rect class="box hot" x="150" y="50" width="100" height="40" rx="3"/><text x="200" y="75" text-anchor="middle">Live</text>
+        <rect class="box" x="290" y="50" width="100" height="40" rx="3"/><text x="340" y="75" text-anchor="middle">Closed</text>
+        <rect class="box hot" x="430" y="50" width="100" height="40" rx="3"/><text x="480" y="75" text-anchor="middle">Awarded</text>
+        <rect class="box" x="570" y="50" width="100" height="40" rx="3"/><text x="620" y="75" text-anchor="middle">Accepted</text>
+        <rect class="box" x="710" y="50" width="100" height="40" rx="3"/><text x="760" y="75" text-anchor="middle">In execution</text>
+        <rect class="box done" x="850" y="50" width="100" height="40" rx="3"/><text x="900" y="75" text-anchor="middle">Completed</text>
+      </g>
+      <g>
+        <line class="ln" x1="110" y1="70" x2="150" y2="70" marker-end="url(#ah)"/><text class="lbl" x="130" y="42" text-anchor="middle">publish</text>
+        <line class="ln" x1="250" y1="70" x2="290" y2="70" marker-end="url(#ah)"/><text class="lbl" x="270" y="42" text-anchor="middle">window closes</text>
+        <line class="ln" x1="390" y1="70" x2="430" y2="70" marker-end="url(#ah)"/><text class="lbl" x="410" y="42" text-anchor="middle">customer awards</text>
+        <line class="ln" x1="530" y1="70" x2="570" y2="70" marker-end="url(#ah)"/><text class="lbl" x="550" y="42" text-anchor="middle">accepts in 24 h</text>
+        <line class="ln" x1="670" y1="70" x2="710" y2="70" marker-end="url(#ah)"/><text class="lbl" x="690" y="42" text-anchor="middle">vehicle + driver</text>
+        <line class="ln" x1="810" y1="70" x2="850" y2="70" marker-end="url(#ah)"/><text class="lbl" x="830" y="42" text-anchor="middle">POD</text>
+      </g>
+      <g>
+        <path class="ln dash" d="M480,90 V125 H340 V90" marker-end="url(#ah)"/>
+        <text class="lbl" x="500" y="129">declined or silent for 24 h: award again</text>
+        <rect class="box off" x="120" y="160" width="100" height="40" rx="3"/><text x="170" y="185" text-anchor="middle">Cancelled</text>
+        <line class="ln" x1="170" y1="90" x2="170" y2="160" marker-end="url(#ah)"/><text class="lbl" x="178" y="130">cancel</text>
+        <rect class="box off" x="250" y="160" width="100" height="40" rx="3"/><text x="300" y="185" text-anchor="middle">Expired</text>
+        <line class="ln" x1="300" y1="90" x2="300" y2="160" marker-end="url(#ah)"/><text class="lbl" x="262" y="130">no bids</text>
+        <path class="ln dash" d="M300,200 V225 H235 V90" marker-end="url(#ah)"/>
+        <text class="lbl" x="240" y="243">edit and publish again, or extend the window</text>
+      </g>
+    </svg>
+  </div>
+  <div class="card">
+    <div class="head"><span class="num">RULES</span><h3>Rules the diagram relies on</h3></div>
+    <div class="body">
+      <ul>
+        <li><b>Invitations are a snapshot</b> taken at publish. Adding a transporter later is a new invitation with its own timestamp.</li>
+        <li><b>Window must close before pickup.</b> Validation at publish, and the clock job closes the window on time.</li>
+        <li><b>Five attempts per transporter</b>, every attempt stored. Rank recomputed on each attempt, ties broken by earlier time.</li>
+        <li><b>Own rank only.</b> A transporter sees L1, L2, L3 for itself, never a rival's name or amount. The Customer sees everything.</li>
+        <li><b>Lowest does not auto-win.</b> The Customer awards any bid and may record a reason.</li>
+        <li><b>Acceptance within 24 hours</b> (proposed). Silence or decline sends the load back to Closed for a second award.</li>
+        <li><b>Cancel rules are open.</b> Before award: free. After award: needs a decision (D6 note).</li>
+      </ul>
+    </div>
+    <div class="row" id="rules-seg"></div>
+    <textarea class="note" data-note="rules" placeholder="Rules to add or change"></textarea>
+  </div>
+</section>
+
+<!-- 5 · look -->
+<section id="look">
+  <div class="sec-head">
+    <span class="n">5 · Fix the look</span>
+    <h2>What to change in the screens before building</h2>
+    <p class="prose muted">P1 blocks the build, P2 should go in the first version, P3 is polish. Mark Yes, Later or No on each.</p>
+  </div>
+  <div id="fixes"></div>
+</section>
+
+<!-- 6 · needs -->
+<section id="needs">
+  <div class="sec-head">
+    <span class="n">6 · What we need to build</span>
+    <h2>Tables, endpoints, screens, rules</h2>
+    <p class="prose muted">Nothing here exists in the code yet. The backend has auth, company, network, documents and subscriptions. The frontend has auth and network. Everything Ad Hoc is new.</p>
+  </div>
+  <div id="needs-list"></div>
+</section>
+
+<!-- 7 · decisions -->
+<section id="decisions">
+  <div class="sec-head">
+    <span class="n">7 · Decisions</span>
+    <h2>Ten choices that change what gets built</h2>
+    <p class="prose muted">Pick one per question. The recommended option is marked. A note field sits under each for the reason or a different answer.</p>
+  </div>
+  <div class="group" id="decisions-list"></div>
+</section>
+
+<!-- export -->
+<section id="export">
+  <div class="sec-head">
+    <span class="n">Export</span>
+    <h2>Your marks as text</h2>
+    <p class="prose muted">Updated every time you mark something. Copy it and paste it back into the chat, or into a Linear issue.</p>
+  </div>
+  <div class="row">
+    <button class="btn primary" id="copy" type="button">Copy my marks</button>
+    <button class="btn danger" id="reset" type="button">Reset all marks</button>
+    <span class="flash" id="flash"></span>
+  </div>
+  <textarea id="out" readonly aria-label="Exported marks"></textarea>
+</section>
+
+<footer>Source: Figma board "Create Load" (10 frames), docs/arc/enroute-build-map.html, docs/dbml/outher/PROJECT_CONTEXT.md. Enroute amber and Space Grotesk from frontend/src/app/globals.css.</footer>
+</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var KEY = "enroute-adhoc-plan-v1";
+  var TRI = { req: "Required", opt: "Optional", hide: "Hidden" };
+  var MARKS = [{ v: "keep", l: "Keep" }, { v: "change", l: "Change" }, { v: "merge", l: "Merge" }, { v: "drop", l: "Drop" }];
+  var AGREE = [{ v: "agree", l: "Agree" }, { v: "change", l: "Change" }, { v: "drop", l: "Drop" }];
+  var YLN = [{ v: "yes", l: "Yes" }, { v: "later", l: "Later" }, { v: "no", l: "No" }];
+
+  var DESIGN = [
+    { id: "d1", n: "1", title: "Select Load Type", def: "change",
+      shows: "FTL and PTL cards, load mode chips Daily / Contract / Adhoc, a Route Intelligence photo card.",
+      issue: "Two different questions on one screen. The mode decides which wizard opens, so it should be chosen before the wizard (New Ad Hoc button on the Loads page). The Daily chip text is unreadable (blue on blue). The photo card carries no data.",
+      goes: "Entry point, plus one FTL/PTL field in step 2" },
+    { id: "d2", n: "2", title: "Select Route", def: "keep",
+      shows: "Map, pickup PIN or city, destination PIN or city, recent hubs chips.",
+      issue: "PIN or city is not enough for a truck to arrive. Needs the address or a saved branch. Pickup date belongs on the same screen because it is the second thing every transporter asks.",
+      goes: "Step 1 Route and schedule" },
+    { id: "d3", n: "3", title: "Material Specifications", def: "keep",
+      shows: "Commodity dropdown, total weight in tons, number of vehicles stepper, Heavy Duty and Insured Cargo chips, a Capacity Intelligence note.",
+      issue: "Number of vehicles belongs with the vehicle choice. The chips and the intelligence note are copy, not fields.",
+      goes: "Step 2 Material and vehicle" },
+    { id: "d4", n: "4", title: "Vehicle, schedule and preview", def: "change",
+      shows: "Image placeholder, seven vehicle categories, required capacity, placement date and time with a Flexible toggle, expected transit stepper, a load summary preview.",
+      issue: "Three jobs on one screen. Trailer and Trola are the same vehicle. The preview shows Kolkata to Delhi steel coils that were never typed in. The transit stepper shows a colon instead of a value.",
+      goes: "Schedule to step 1, vehicle to step 2" },
+    { id: "d5", n: "5", title: "Pricing and Budget", def: "change",
+      shows: "Per Ton / Per KM / Per Vehicle cards, target budget in dollars, a recommended range, a container photo with an algorithm note.",
+      issue: "Dollars and the East Coast. Nothing says when bidding closes or how many attempts a transporter gets. Whether bidders see the budget is undefined.",
+      goes: "Step 3 Price and bid rules" },
+    { id: "d6", n: "6", title: "Special Requirements", def: "merge",
+      shows: "Quick tags (Fragile, Urgent, Temperature Control), notes textarea, T&C PDF upload up to 10 MB, a warehouse photo.",
+      issue: "Good fields, too thin for a whole screen. Fold them under the vehicle block as a collapsed section.",
+      goes: "Step 2, collapsed block" },
+    { id: "d7", n: "7", title: "Select Transporters", def: "keep",
+      shows: "Search and filter, transporter cards with rating, trips and tags such as Verified Asset, Instant Booking, Eco-Friendly, checkboxes.",
+      issue: "Must list only connected, approved transporters (product rule). The tags are marketing. Show the Enroute ID, fleet size and loads done with this customer instead.",
+      goes: "Step 4 Invite transporters" },
+    { id: "d8", n: "8", title: "Review and Submit", def: "keep",
+      shows: "Route, load, vehicle and pricing summary, three selected transporters, terms checkbox, Submit Load button.",
+      issue: "Savannah to Chicago, flatbed, $4,250, kilograms: none of it matches the earlier screens, and the transporter names differ from step 7. Each block needs an Edit link.",
+      goes: "Step 5 Review and publish" },
+    { id: "d9", n: "✓", title: "Load Created Successfully", def: "keep",
+      shows: "Success tick, Live for bidding, load ID, route, View Bids and Go to Dashboard buttons.",
+      issue: "Chicago to Denver, Dry Van, 24,000 lbs: a third different load. It is missing the one number that matters now, when the bid window closes, and how many transporters were invited.",
+      goes: "End of step 5, after publish" }
+  ];
+
+  var STEPS = [
+    { id: "s1", n: "1", title: "Route and schedule", from: "Design step 2 plus the schedule block of step 4",
+      why: "Where and when is the first thing a transporter prices. Putting both on screen one lets the system estimate distance and check that the bid window can close before pickup.",
+      fields: [
+        { id: "s1f1", l: "Load mode: Ad Hoc", def: "req", help: "Set by the entry point, shown as a read-only chip" },
+        { id: "s1f2", l: "Pickup: PIN code or city, then address or a saved branch", def: "req" },
+        { id: "s1f3", l: "Drop: PIN code or city, then address or a saved branch", def: "req" },
+        { id: "s1f4", l: "Extra stops (multi-drop)", def: "hide", help: "Version 2" },
+        { id: "s1f5", l: "Pickup date and time window (from, to)", def: "req" },
+        { id: "s1f6", l: "Placement flexibility, plus or minus days", def: "opt", help: "Replaces the Flexible toggle" },
+        { id: "s1f7", l: "Expected delivery date", def: "opt", help: "Estimated from distance, editable" }
+      ],
+      options: { id: "s1o", q: "How to capture the address", opts: [
+        { k: "a", l: "PIN code lookup fills city and state, free-text address line, saved branches as chips", rec: true },
+        { k: "b", l: "PIN code or city only, as drawn" },
+        { k: "c", l: "Map pin plus address line (needs a maps dependency)" } ] } },
+    { id: "s2", n: "2", title: "Material and vehicle", from: "Design steps 3, 4 (vehicle part) and 6",
+      why: "Commodity, weight and vehicle type together decide the rate. Keeping them on one screen lets capacity per vehicle fill in from the vehicle type and warn when weight exceeds it.",
+      fields: [
+        { id: "s2f1", l: "Commodity from a master list, with Other", def: "req" },
+        { id: "s2f2", l: "Total weight in tons", def: "req" },
+        { id: "s2f3", l: "Packaging: bags, pallets, loose, coils, drums", def: "opt" },
+        { id: "s2f4", l: "Load type FTL or PTL", def: "opt", help: "Hidden if decision D2 says FTL only" },
+        { id: "s2f5", l: "Vehicle type from the Indian master: 32 ft SXL, 32 ft MXL, 20 to 24 ft open or closed, 40 ft trailer, tanker, reefer, tipper, ODC", def: "req" },
+        { id: "s2f6", l: "Number of vehicles", def: "req" },
+        { id: "s2f7", l: "Capacity per vehicle, prefilled from the type", def: "opt" },
+        { id: "s2f8", l: "Special requirement tags: fragile, hazmat, temperature, tarpaulin, ODC permit, loading labour", def: "opt" },
+        { id: "s2f9", l: "Notes to the transporter", def: "opt" },
+        { id: "s2f10", l: "Attach PDF: terms or loading instructions, 10 MB", def: "opt" }
+      ],
+      options: { id: "s2o", q: "Vehicle picker", opts: [
+        { k: "a", l: "One list where type and body are merged (32 ft MXL closed, 24 ft open) and capacity fills itself", rec: true },
+        { k: "b", l: "Category grid first, then size dropdown, as drawn" } ] } },
+    { id: "s3", n: "3", title: "Price and bid rules", from: "Design step 5, plus rules the design does not have",
+      why: "This is the screen that makes it an Ad Hoc rather than a form. The bid window and the attempt limit are what the transporter side runs on.",
+      fields: [
+        { id: "s3f1", l: "Price basis: per vehicle, per ton, per km", def: "req", help: "Default per vehicle for FTL" },
+        { id: "s3f2", l: "Target price in rupees, hidden from bidders, used for rank alerts", def: "opt", help: "Decision D4" },
+        { id: "s3f3", l: "Bid window closes at: quick picks 2 h, 6 h, 12 h, 24 h, or custom; must be before pickup", def: "req" },
+        { id: "s3f4", l: "Maximum attempts per transporter, default 5", def: "req", help: "Shown, not editable in version 1" },
+        { id: "s3f5", l: "Payment terms: advance percent, balance on POD, credit days", def: "opt" },
+        { id: "s3f6", l: "Extend the window automatically once if no bids arrive", def: "opt" }
+      ],
+      options: { id: "s3o", q: "Rate history helper", opts: [
+        { k: "a", l: "Show this customer's last three awarded rates on the same lane and vehicle, nothing else", rec: true },
+        { k: "b", l: "Show a platform-wide suggested range, as the design's recommended budget does" },
+        { k: "c", l: "No helper in version 1" } ] } },
+    { id: "s4", n: "4", title: "Invite transporters", from: "Design step 7",
+      why: "Connection first is a product rule, so the list is the customer's accepted transporter connections. The customer should see facts, not badges.",
+      fields: [
+        { id: "s4f1", l: "List of connected and approved transporters only", def: "req" },
+        { id: "s4f2", l: "Card shows name, TRN ID, fleet size, loads done with you, on-time percent, rating", def: "req" },
+        { id: "s4f3", l: "Search and filters: lane history, vehicle type owned, rating", def: "opt" },
+        { id: "s4f4", l: "Invite all connected, with the count", def: "opt" },
+        { id: "s4f5", l: "At least one transporter selected before Next", def: "req" },
+        { id: "s4f6", l: "Blocked when the customer has no connections: link to Network", def: "req" }
+      ],
+      options: { id: "s4o", q: "Default selection", opts: [
+        { k: "a", l: "Nothing selected, customer picks", rec: true },
+        { k: "b", l: "Everyone selected, customer unticks" },
+        { k: "c", l: "Transporters used on this lane before are preselected" } ] } },
+    { id: "s5", n: "5", title: "Review and publish", from: "Design step 8 and the success screen",
+      why: "One summary rendered from the same form state the steps wrote to, so the preview, the review and the success card can never disagree.",
+      fields: [
+        { id: "s5f1", l: "Summary blocks with an Edit link each: route, schedule, material, vehicle, price and rules, invited", def: "req" },
+        { id: "s5f2", l: "Terms checkbox linking to the real Enroute terms", def: "req" },
+        { id: "s5f3", l: "Button reads Publish and invite N transporters", def: "req" },
+        { id: "s5f4", l: "Save draft on every step, auto-saved, resumable from the Loads list", def: "req" },
+        { id: "s5f5", l: "Success: load ID such as AH-2026-000123, closes-in countdown, invited count, View bids", def: "req" },
+        { id: "s5f6", l: "Share link to the load for colleagues", def: "opt" }
+      ],
+      options: { id: "s5o", q: "Draft behaviour", opts: [
+        { k: "a", l: "Auto-save each step on Next; Save draft button only closes the wizard", rec: true },
+        { k: "b", l: "Save only when the customer presses Save draft, as drawn" } ] } }
+  ];
+
+  var LIFE = [
+    { lane: "customer", n: 1, title: "Create and publish", body: "The five steps above. Publish takes a snapshot of the invited transporters and starts the window clock. Status: Live." },
+    { lane: "system", n: 2, title: "Notify and open the window", body: "In-app and email to every invited transporter now, WhatsApp later. The clock runs on polling and an in-process timer first, WebSockets later." },
+    { lane: "transporter", n: 3, title: "Bid with the calculator", body: "Base rate plus margin (percent or fixed) gives the final amount. Up to five attempts, each stored. Sees its own rank, never rivals." },
+    { lane: "customer", n: 4, title: "Watch the bid board", body: "Live table: transporter, amount, attempts used, time of last attempt, rank. Can extend the window or cancel before award." },
+    { lane: "system", n: 5, title: "Close the window", body: "Status: Closed. No bids at all makes it Expired; the customer edits and publishes again or extends." },
+    { lane: "customer", n: 6, title: "Award", body: "Picks any bid, with an optional reason. Status: Awarded. The other bidders are told they were not selected." },
+    { lane: "transporter", n: 7, title: "Accept within 24 hours", body: "Accept creates the contract for this load. Decline or silence sends it back to the customer to award again." },
+    { lane: "transporter", n: 8, title: "Allocate and execute", body: "Own fleet or a Fleet Owner. Vehicle and driver assigned, trip created, tracked to POD. Status: Completed." }
+  ];
+  var LANE_COL = { customer: 1, system: 2, transporter: 3 };
+  var LANE_NAME = { customer: "Customer", system: "Enroute", transporter: "Transporter" };
+
+  var FIXES = [
+    { group: "Brand and theme", items: [
+      { id: "f1", p: "P1", title: "Match the product theme", body: "The screens are blue on white. The dashboard is amber on near-black in Space Grotesk. Either reskin the wizard with the product tokens or add a light form theme to the product first; do not ship two brands." },
+      { id: "f2", p: "P2", title: "Remove the photo cards", body: "Steps 1, 4, 5 and 6 each carry a decorative image that costs a full phone screen and holds no data. Replace with the route map on step 1 and the lane rate history on step 3." } ] },
+    { group: "Navigation and progress", items: [
+      { id: "f3", p: "P1", title: "One progress pattern", body: "The frames use three: segmented bar with Step x of 8, a percent bar with 50 percent, and a numbered circle stepper. Keep the segmented bar, show the step name, drop the percentages." },
+      { id: "f4", p: "P2", title: "One header and one button label", body: "Headers switch between Create Load, Load Details and Select Transporters, and buttons between Next Step and Continue. Use New Ad Hoc load as the title, the step name as subtitle, and Next." },
+      { id: "f5", p: "P2", title: "Five steps, not eight", body: "Fewer screens means fewer places to lose a draft. Section 3 has the grouping." } ] },
+    { group: "Content and copy", items: [
+      { id: "f6", p: "P1", title: "One source of truth for the summary", body: "The step 4 preview, the step 8 review and the success card each show a different load. Render all three from the same form state." },
+      { id: "f7", p: "P2", title: "No marketing copy inside a form", body: "Capacity Intelligence, Pricing algorithms are optimizing, Route Intelligence. Helper text should state a rule or a fact, such as the window must close before pickup." },
+      { id: "f8", p: "P2", title: "Fix the broken controls", body: "Expected Transit shows a colon instead of a number. The selected Daily chip has invisible text. Trailer and Trola appear as two vehicle types." } ] },
+    { group: "Localization", items: [
+      { id: "f9", p: "P1", title: "Indian units and money everywhere", body: "Rupees not dollars, tons and kilograms not pounds, PIN codes and Indian lanes, dates as 20 May 2026, one time format." },
+      { id: "f10", p: "P1", title: "Indian vehicle master", body: "32 ft SXL and MXL, 20 to 24 ft open and closed, 40 ft trailer, tanker, reefer, tipper, ODC. Not Dry Van or Flatbed." } ] },
+    { group: "Components", items: [
+      { id: "f11", p: "P2", title: "Transporter card with Enroute facts", body: "Name, TRN ID, connection badge, fleet size, loads done with you, on-time percent, rating. Drop Instant Booking and Eco-Friendly." },
+      { id: "f12", p: "P2", title: "Review screen with Edit links", body: "An Edit link per block, the terms link opening the real terms, and the button reading Publish and invite N transporters." },
+      { id: "f13", p: "P2", title: "Success screen with the clock", body: "Closes-in countdown, invited count, share link, and View bids as the primary action." },
+      { id: "f14", p: "P3", title: "Touch targets and contrast", body: "Controls at 44 px or more, muted grey text that passes contrast on white, uppercase micro labels at 12 px minimum with letter spacing." } ] },
+    { group: "Layout", items: [
+      { id: "f15", p: "P1", title: "A desktop layout", body: "The dashboard is a Next.js web app and the design is phone-only. Desktop: step rail on the left, form in the middle at 640 px, sticky summary on the right. Phone: as drawn, with the bottom bar." },
+      { id: "f16", p: "P3", title: "Keep what works", body: "Bottom bar with Save draft and Next, card-style single choices, recent hubs chips, quick-add tags, the four-step variant's numbered stepper." } ] }
+  ];
+
+  var NEEDS = [
+    { group: "Data", items: [
+      { id: "n1", p: "v1", title: "rfqs table with a kind column (rfq, ad_hoc)", body: "Customer company and branch, status, pickup and drop (PIN, city, state, address), pickup window, commodity, weight, packaging, vehicle type, vehicle count, price basis, target price, window_closes_at, max_attempts, payment terms, notes, published_at. One table for both kinds, as the build map proposed." },
+      { id: "n2", p: "v1", title: "rfq_invitations", body: "Snapshot at publish: rfq, transporter company, invited_at, viewed_at, declined_at." },
+      { id: "n3", p: "v1", title: "bids and bid_attempts", body: "One bid row per transporter per load; attempts 1 to 5 with base rate, margin type, margin value, final amount, rank at submit, submitted_at." },
+      { id: "n4", p: "v1", title: "awards", body: "rfq, bid, awarded_at, accept_by, accepted_at, declined_at, reason, status." },
+      { id: "n5", p: "v1", title: "Masters: vehicle_types, commodities, PIN lookup", body: "Seeded lists, editable by the platform admin. PIN to city and state from a static table first." },
+      { id: "n6", p: "v1", title: "Draft state", body: "status draft plus last_step so the Loads list can resume a half-finished load." } ] },
+    { group: "API", items: [
+      { id: "n7", p: "v1", title: "Customer endpoints", body: "POST /loads (draft), PATCH /loads/:id (step save), POST /loads/:id/publish, GET /loads, GET /loads/:id, GET /loads/:id/bids, POST /loads/:id/award, POST /loads/:id/cancel, POST /loads/:id/extend." },
+      { id: "n8", p: "v1", title: "Transporter endpoints", body: "GET /bids/invited, GET /loads/:id (invited view, own rank only), POST /loads/:id/bids (attempt), GET /loads/:id/my-bid, POST /awards/:id/accept, POST /awards/:id/decline." },
+      { id: "n9", p: "v1", title: "Network query for step 4", body: "Accepted transporter connections of the customer company. The network feature exists; confirm the response shape and add the filter if missing." },
+      { id: "n10", p: "v1", title: "Clock job", body: "Closes windows on time, expires loads with no bids, expires unanswered awards after 24 hours. In-process timer plus polling now, WebSockets later." } ] },
+    { group: "Screens", items: [
+      { id: "n11", p: "v1", title: "Customer", body: "New Ad Hoc wizard (five steps), Loads list with status filters and drafts, Load detail with the bid board and the Award action." },
+      { id: "n12", p: "v1", title: "Transporter", body: "Invited loads list with closes-in, Load detail with the bid calculator, my attempts and my rank, Award acceptance screen." },
+      { id: "n13", p: "v1", title: "Notifications", body: "Entries for invited, new bid, closing in one hour, awarded, accepted, declined. The notification feature exists on the backend." } ] },
+    { group: "Rules", items: [
+      { id: "n14", p: "v1", title: "Validations", body: "Pickup at least two hours ahead, window close before pickup, weight above zero, vehicles at least one, at least one invite, invitees must be accepted connections and approved companies." },
+      { id: "n15", p: "v1", title: "Permissions", body: "Customer admin and bidManager create, publish, award and cancel. Transporter admin and bidManager bid and accept. Viewer reads only." },
+      { id: "n16", p: "v1", title: "Rank", body: "Recomputed on every attempt, ties broken by earlier time, transporter sees its own rank only." } ] },
+    { group: "Quality", items: [
+      { id: "n17", p: "v1", title: "Test runner and tests", body: "Rank, attempt limit, window close, award and accept, and the snapshot of invitations. Adding a runner is a new dev dependency and needs your yes." },
+      { id: "n18", p: "later", title: "Audit log", body: "Every status change with who and when, shown on the load detail." } ] }
+  ];
+
+  var DECISIONS = [
+    { id: "D1", q: "What does Daily mean on the design's step 1?", why: "The product document defines Contract and Ad Hoc only.", opts: [
+      { k: "a", l: "An indent placed against an existing contract rate, no bidding", rec: true },
+      { k: "b", l: "An Ad Hoc that repeats every day" },
+      { k: "c", l: "Not in version 1, remove the chip" } ] },
+    { id: "D2", q: "Load type in version 1", why: "PTL needs consolidation logic that nothing else in the product has yet.", opts: [
+      { k: "a", l: "FTL only, PTL later", rec: true },
+      { k: "b", l: "FTL and PTL both, PTL as a plain field" } ] },
+    { id: "D3", q: "Default bid window", why: "Quick picks need one default.", opts: [
+      { k: "a", l: "6 hours" },
+      { k: "b", l: "12 hours", rec: true },
+      { k: "c", l: "24 hours" },
+      { k: "d", l: "No default, the customer must pick" } ] },
+    { id: "D4", q: "Target price", why: "Decides what bidders see.", opts: [
+      { k: "a", l: "Collected, hidden from bidders, used for rank alerts", rec: true },
+      { k: "b", l: "Shown to bidders as a ceiling" },
+      { k: "c", l: "Not collected" } ] },
+    { id: "D5", q: "Who can be invited", why: "Open in the build map as public versus invitation-only.", opts: [
+      { k: "a", l: "Transporters the customer picks from accepted connections", rec: true },
+      { k: "b", l: "All accepted connections by default" },
+      { k: "c", l: "Public to every approved transporter (needs a product decision)" } ] },
+    { id: "D6", q: "Award and cancel rules", why: "The product document says the customer chooses; cancel after award is undefined.", opts: [
+      { k: "a", l: "Manual award only; cancel free before award, blocked after award in version 1", rec: true },
+      { k: "b", l: "Manual award, plus an optional auto-award of the lowest at close" },
+      { k: "c", l: "Manual award; cancel after award allowed with a reason and a notification" } ] },
+    { id: "D7", q: "Build target first", why: "The dashboard is a Next.js web app; the design is phone-only.", opts: [
+      { k: "a", l: "Desktop web in the dashboard, responsive to phone", rec: true },
+      { k: "b", l: "Phone-first exactly as drawn" } ] },
+    { id: "D8", q: "Theme for the wizard", why: "The screens are blue on white; the product is amber on dark.", opts: [
+      { k: "a", l: "Product dark amber theme", rec: true },
+      { k: "b", l: "A light theme for forms only" },
+      { k: "c", l: "Add a light and dark toggle to the whole app first" } ] },
+    { id: "D9", q: "Price basis default", why: "Step 3 needs a preselected option.", opts: [
+      { k: "a", l: "Per vehicle", rec: true },
+      { k: "b", l: "Per ton" },
+      { k: "c", l: "No default, ask every time" } ] },
+    { id: "D10", q: "Transporter acceptance window", why: "Proposed as 24 hours in the build map.", opts: [
+      { k: "a", l: "24 hours", rec: true },
+      { k: "b", l: "12 hours" },
+      { k: "c", l: "Until 24 hours before pickup, whichever is sooner" } ] }
+  ];
+
+  var state = fresh();
+  function fresh() { return { marks: {}, fields: {}, notes: {}, decisions: {}, checks: {} }; }
+  function load() { try { var raw = localStorage.getItem(KEY); if (raw) { var s = JSON.parse(raw); state = fresh(); for (var k in state) if (s[k]) state[k] = s[k]; } } catch (e) {} }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} refreshOut(); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;" }[c]; }); }
+
+  function seg(id, opts, cur, store) {
+    return "<div class=\"seg\" data-seg=\"" + id + "\" data-store=\"" + store + "\">" + opts.map(function (o) {
+      return "<button type=\"button\" class=\"v-" + o.v + (o.v === cur ? " on" : "") + "\" data-v=\"" + o.v + "\">" + o.l + "</button>";
+    }).join("") + "</div>";
+  }
+  function tri(id, cur) { return "<button type=\"button\" class=\"tri v-" + cur + "\" data-tri=\"" + id + "\" data-v=\"" + cur + "\">" + TRI[cur] + "</button>"; }
+  function note(id, ph) { return "<textarea class=\"note\" data-note=\"" + id + "\" placeholder=\"" + esc(ph || "Your note") + "\">" + esc(state.notes[id] || "") + "</textarea>"; }
+  function opts(id, list, cur) {
+    return "<div class=\"opts\" data-opts=\"" + id + "\">" + list.map(function (o) {
+      return "<button type=\"button\" class=\"opt" + (cur === o.k ? " on" : "") + "\" data-k=\"" + o.k + "\"><span>" + esc(o.l) + "</span>" + (o.rec ? "<span class=\"rec\">Recommended</span>" : "") + "</button>";
+    }).join("") + "</div>";
+  }
+  function chain(nodes) {
+    var out = [];
+    nodes.forEach(function (n, i) {
+      if (n === "|") { out.push("<span class=\"gap\"></span>"); return; }
+      if (i > 0 && nodes[i - 1] !== "|") out.push("<span class=\"arrow\" aria-hidden=\"true\">→</span>");
+      out.push("<span class=\"node" + (n.hot ? " hot" : "") + "\"><b>" + esc(n.t) + "</b>" + (n.s ? "<small>" + esc(n.s) + "</small>" : "") + "</span>");
+    });
+    return out.join("");
+  }
+
+  function renderDesign() {
+    document.getElementById("chain-drawn").innerHTML = chain(DESIGN.map(function (d) { return { t: d.n + " " + d.title, s: d.goes }; }));
+    document.getElementById("design-grid").innerHTML = DESIGN.map(function (d) {
+      var cur = state.marks[d.id] || d.def;
+      return "<div class=\"card\"><div class=\"head\"><span class=\"num\">" + d.n + "</span><h3>" + esc(d.title) + "</h3></div>" +
+        "<div class=\"body\"><span class=\"k\">Shows</span><p>" + esc(d.shows) + "</p><span class=\"k\">Problem</span><p class=\"issue\">" + esc(d.issue) + "</p>" +
+        "<p class=\"goes\">Goes to <b>" + esc(d.goes) + "</b></p></div>" + seg(d.id, MARKS, cur, "marks") + note(d.id, "Note on this screen") + "</div>";
+    }).join("");
+    document.getElementById("alt-seg").innerHTML = seg("alt", MARKS, state.marks.alt || "merge", "marks");
+    document.getElementById("rules-seg").innerHTML = seg("rules", AGREE, state.marks.rules || "agree", "marks");
+  }
+  function renderSteps() {
+    document.getElementById("chain-flow").innerHTML = chain([
+      { t: "New Ad Hoc", s: "Loads page" }, { t: "1 Route and schedule" }, { t: "2 Material and vehicle" }, { t: "3 Price and bid rules" },
+      { t: "4 Invite transporters" }, { t: "5 Review and publish", hot: true }, "|",
+      { t: "Live", s: "window clock", hot: true }, { t: "Bids", s: "5 attempts, own rank" }, { t: "Closed" }, { t: "Award", s: "customer picks", hot: true }, { t: "Accept", s: "24 h" }, { t: "Trip", s: "to POD" }
+    ]);
+    document.getElementById("steps-grid").innerHTML = STEPS.map(function (s) {
+      var cur = state.marks[s.id] || "agree";
+      return "<div class=\"card step\"><div class=\"intro\"><div class=\"head\"><span class=\"num\">Step " + s.n + "</span><h3>" + esc(s.title) + "</h3></div>" +
+        "<p class=\"small muted\">From: " + esc(s.from) + "</p><p>" + esc(s.why) + "</p>" + seg(s.id, AGREE, cur, "marks") +
+        "<h4>" + esc(s.options.q) + "</h4>" + opts(s.options.id, s.options.opts, state.decisions[s.options.id]) + note(s.id, "Note on step " + s.n) + "</div>" +
+        "<div class=\"fields\"><h4>Fields</h4>" + s.fields.map(function (f) {
+          var v = state.fields[f.id] || f.def;
+          return "<div class=\"field\"><span>" + esc(f.l) + "</span>" + tri(f.id, v) + (f.help ? "<small>" + esc(f.help) + "</small>" : "") + "</div>";
+        }).join("") + "</div></div>";
+    }).join("");
+  }
+  function renderLife() {
+    var box = document.getElementById("lanes");
+    box.innerHTML = box.innerHTML.split("</div>").slice(0, 3).join("</div>") + "</div>" + LIFE.map(function (c, i) {
+      return "<div class=\"lcard lane-" + c.lane + "\" style=\"grid-column:" + LANE_COL[c.lane] + ";grid-row:" + (i + 2) + "\"><span class=\"lchip\">" + LANE_NAME[c.lane] + "</span><b>" + c.n + ". " + esc(c.title) + "</b><p>" + esc(c.body) + "</p></div>";
+    }).join("");
+  }
+  function renderList(target, groups) {
+    document.getElementById(target).innerHTML = "<div class=\"group\">" + groups.map(function (g) {
+      return "<h3>" + esc(g.group) + "</h3>" + g.items.map(function (it) {
+        var cur = state.checks[it.id] || "";
+        return "<div class=\"item\"><div class=\"t\"><span class=\"row\"><span class=\"pill " + it.p.toLowerCase() + "\">" + esc(it.p) + "</span><b>" + esc(it.title) + "</b></span><p>" + esc(it.body) + "</p></div>" +
+          seg(it.id, YLN, cur, "checks") + note(it.id, "Note") + "</div>";
+      }).join("");
+    }).join("") + "</div>";
+  }
+  function renderDecisions() {
+    document.getElementById("decisions-list").innerHTML = DECISIONS.map(function (d) {
+      return "<div class=\"card\"><div class=\"head\"><span class=\"num\">" + d.id + "</span><h3>" + esc(d.q) + "</h3></div><p class=\"small muted\">" + esc(d.why) + "</p>" +
+        opts(d.id, d.opts, state.decisions[d.id]) + note(d.id, "Reason, or a different answer") + "</div>";
+    }).join("");
+  }
+
+  function noteOf(id) { var n = (state.notes[id] || "").trim(); return n ? " | note: " + n.replace(/\s+/g, " ") : ""; }
+  function pick(id, list) { var k = state.decisions[id]; var o; list.forEach(function (x) { if (x.k === k) o = x; }); return o ? o.k + ") " + o.l : "(not chosen)"; }
+  function exportText() {
+    var L = ["# Ad Hoc load plan, marks (" + new Date().toISOString().slice(0, 10) + ")", "", "## 1 Design screens as drawn"];
+    DESIGN.forEach(function (d) { L.push("- " + d.n + " " + d.title + ": " + (state.marks[d.id] || d.def).toUpperCase() + " -> " + d.goes + noteOf(d.id)); });
+    L.push("- Four-step variant: " + (state.marks.alt || "merge").toUpperCase() + noteOf("alt"));
+    L.push("", "## 3 Ad Hoc create flow");
+    STEPS.forEach(function (s) {
+      L.push("- Step " + s.n + " " + s.title + ": " + (state.marks[s.id] || "agree").toUpperCase() + noteOf(s.id));
+      s.fields.forEach(function (f) { L.push("  - " + f.l + ": " + TRI[state.fields[f.id] || f.def]); });
+      L.push("  - " + s.options.q + ": " + pick(s.options.id, s.options.opts));
+    });
+    L.push("", "## 4 Rules after publish: " + (state.marks.rules || "agree").toUpperCase() + noteOf("rules"));
+    L.push("", "## 5 Look fixes");
+    FIXES.forEach(function (g) { g.items.forEach(function (it) { L.push("- [" + (state.checks[it.id] || "  ") + "] " + it.p + " " + it.title + noteOf(it.id)); }); });
+    L.push("", "## 6 Build list");
+    NEEDS.forEach(function (g) { g.items.forEach(function (it) { L.push("- [" + (state.checks[it.id] || "  ") + "] " + it.p + " " + it.title + noteOf(it.id)); }); });
+    L.push("", "## 7 Decisions");
+    DECISIONS.forEach(function (d) { L.push("- " + d.id + " " + d.q + ": " + pick(d.id, d.opts) + noteOf(d.id)); });
+    return L.join("\n");
+  }
+  function refreshOut() { document.getElementById("out").value = exportText(); }
+  function flash(msg) { var f = document.getElementById("flash"); f.textContent = msg; setTimeout(function () { if (f.textContent === msg) f.textContent = ""; }, 2500); }
+  function copyMarks() {
+    var ta = document.getElementById("out"); ta.value = exportText();
+    var done = function () { flash("Copied. Paste it back in the chat."); };
+    var fail = function () { ta.focus(); ta.select(); flash("Select the text below and copy it."); document.getElementById("export").scrollIntoView(); };
+    try { navigator.clipboard.writeText(ta.value).then(done, fail); } catch (e) { fail(); }
+  }
+
+  var resetArmed = false;
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var sg = b.closest("[data-seg]");
+    if (sg) { state[sg.dataset.store][sg.dataset.seg] = b.dataset.v; sg.querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); }); save(); return; }
+    if (b.dataset.tri) { var order = ["req", "opt", "hide"]; var nx = order[(order.indexOf(b.dataset.v) + 1) % 3]; state.fields[b.dataset.tri] = nx; b.dataset.v = nx; b.className = "tri v-" + nx; b.textContent = TRI[nx]; save(); return; }
+    var op = b.closest("[data-opts]");
+    if (op) { state.decisions[op.dataset.opts] = b.dataset.k; op.querySelectorAll(".opt").forEach(function (x) { x.classList.toggle("on", x === b); }); save(); return; }
+    if (b.id === "copy" || b.id === "copy-top") { copyMarks(); return; }
+    if (b.id === "reset") {
+      if (!resetArmed) { resetArmed = true; b.textContent = "Click again to confirm reset"; setTimeout(function () { resetArmed = false; b.textContent = "Reset all marks"; }, 4000); return; }
+      state = fresh(); resetArmed = false; b.textContent = "Reset all marks"; save(); renderAll(); flash("All marks cleared.");
+    }
+  });
+  document.addEventListener("input", function (e) { var t = e.target; if (t.dataset && t.dataset.note !== undefined) { state.notes[t.dataset.note] = t.value; save(); } });
+
+  function renderAll() {
+    renderDesign(); renderSteps(); renderLife(); renderList("fixes", FIXES); renderList("needs-list", NEEDS); renderDecisions();
+    document.querySelectorAll("textarea.note").forEach(function (t) { t.value = state.notes[t.dataset.note] || ""; });
+    refreshOut();
+  }
+  load(); renderAll();
+})();
+</script>
+</body>
+</html>

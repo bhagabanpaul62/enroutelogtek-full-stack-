@@ -1,6 +1,10 @@
 import axios from 'axios';
 
 
+// A 401 from these is the real answer (wrong password, no session left to refresh), not an
+// expired access token. Refreshing and retrying would replace it with the refresh's error.
+const NO_REFRESH = ['/auth/login', '/auth/logout', '/auth/refresh-token'];
+
 //API INSTANCE
 const api = axios.create({      
     baseURL: process.env.NEXT_PUBLIC_APP_URL,
@@ -18,7 +22,7 @@ api.interceptors.response.use(
         if (
             error.response?.status === 401 &&
             !originalRequest._retry &&
-            !originalRequest.url.includes('/auth/refresh-token')
+            !NO_REFRESH.some((path) => originalRequest.url?.includes(path))
         ) {
             originalRequest._retry = true;
 

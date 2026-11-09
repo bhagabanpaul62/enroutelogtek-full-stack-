@@ -11,11 +11,12 @@ import SubmitButton from '../parts/SubmitButton';
 const COUNTRY_CODES = ['+91', '+1', '+44', '+81'];
 
 export default function CreateAccount({ registerHook }) {
-    const [countryCode, setCountryCode] = useState('+91');
+    const [countryCode, setCountryCode] = useState(registerHook.formData.countryCode || '+91');
     const {
         register,
         handleSubmit,
         watch,
+        getValues,
         formState: { errors },
     } = useForm({ defaultValues: registerHook.formData });
 
@@ -106,7 +107,15 @@ export default function CreateAccount({ registerHook }) {
             </div>
 
             <div className="au-actions">
-                <SubmitButton type="button" quiet onClick={registerHook.prevStep} disabled={registerHook.isSubmitting}>
+                <SubmitButton
+                    type="button"
+                    quiet
+                    disabled={registerHook.isSubmitting}
+                    // Keep what was typed, but never the passwords (formData is stored in sessionStorage).
+                    onClick={() =>
+                        registerHook.prevStep({ name: getValues('name'), phone: getValues('phone'), countryCode })
+                    }
+                >
                     Back
                 </SubmitButton>
                 <SubmitButton busy={registerHook.isSubmitting}>Create the account</SubmitButton>

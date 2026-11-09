@@ -2,6 +2,7 @@ import { registerApi, submitRegistration, uploadDocumentApi } from '@/features/a
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useSessionStorageItem } from '@/shared/hooks/useSessionStorageItem';
 
 export function useRegister() {
     const [step, setStep] = useState(1);
@@ -9,7 +10,9 @@ export function useRegister() {
     const [apiError, setApiError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [finalSubmission, setFinalSubmissions] = useState(false);
-    const [email, setEmail] = useState(null);
+    // Read on every render, not once at mount: the registration guard (useRegistrationFlow)
+    // stores the email after this page has mounted, e.g. when the form is opened in a new tab.
+    const email = useSessionStorageItem('email');
     
     const [registrationResult, setRegistrationResult] = useState(null);
     // Restore saved progress after a reload. This has to run after hydration (sessionStorage
@@ -18,7 +21,6 @@ export function useRegister() {
     useEffect(() => {
         const savedFromData = sessionStorage.getItem('fromData');
         if (savedFromData) setFormData(JSON.parse(savedFromData));
-        setEmail(sessionStorage.getItem('email'));
         if (sessionStorage.getItem('userExists')) {
             (setFinalSubmissions(true), setStep(0));
         
@@ -39,8 +41,14 @@ export function useRegister() {
         setStep((prev) => prev + 1);
     };
 
-    //go to previous step
-    const prevStep = () => {
+    // Go back one step. stepData is what was typed on the step being left, so going back and
+    // forward again keeps it. Callers never pass passwords: formData lives in sessionStorage.
+    const prevStep = (stepData) => {
+        if (stepData) {
+            const update = { ...formData, ...stepData };
+            setFormData(update);
+            sessionStorage.setItem('fromData', JSON.stringify(update));
+        }
         setStep((prev) => prev - 1);
     };
 
@@ -51,7 +59,6 @@ export function useRegister() {
         const allData = { ...formData, ...accountData, email };
 
         try {
-            console.log('allDAta ::', allData);
 
             const res = await registerApi(allData);
             //save the data
@@ -65,7 +72,6 @@ export function useRegister() {
             setApiError(message);
             toast.error(message);
 
-            console.log(error.response?.data);
         } finally {
             setIsSubmitting(false);
         }

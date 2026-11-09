@@ -30,9 +30,12 @@
 .au-steps li[aria-current="step"] .measure { color: var(--color-signal); }
 .au-steps li[data-done="true"] .measure { color: var(--color-ink-3); }
 @media (max-width: 60rem) {
-  .au-steps { display: flex; max-width: none; border-top: 0; }
-  .au-steps li { flex: 1; padding: var(--space-sm) 0; border-bottom-width: 2px; border-bottom-color: var(--color-rule); font-size: var(--text-sm); }
-  .au-steps li[aria-current="step"] { border-bottom-color: var(--color-signal); }
+  .au-steps { display: flex; gap: var(--space-xs); max-width: none; border-top: 0; }
+  .au-steps li { flex: 0 0 auto; padding: var(--space-sm) 0; border-bottom-width: 2px; border-bottom-color: var(--color-rule); white-space: nowrap; }
+  .au-steps li[aria-current="step"] { flex: 1 1 auto; border-bottom-color: var(--color-signal); }
+  .au-steps li:not([aria-current="step"]) { min-width: 2.5rem; }
+  /* on a phone only the current step shows its name; the others are their numbers */
+  .au-steps li:not([aria-current="step"]) .au-steps__name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 }
 
 /* ---------- form, fields, inputs ---------- */

@@ -29,14 +29,22 @@ export const login = asyncHandler(async (req, res) => {
         throw new AppError('Invalid credentials', 401);
     }
 
-    const [company] = await db
-        .select()
-        .from(companies)
-        .where(eq(companies.id, user.companyId))
-        .limit(1);
-
-    if (company.companyStatus !== 'approved') {
-        throw new AppError(`Company status is ${company.companyStatus}. Need approval first.`, 403);
+    // Platform staff (root_admin) belong to no company; everyone else needs an approved one.
+    let company = null;
+    if (user.companyId) {
+        [company] = await db
+            .select()
+            .from(companies)
+            .where(eq(companies.id, user.companyId))
+            .limit(1);
+        if (!company) {
+            throw new AppError('Company not found. Contact support.', 404);
+        }
+        if (company.companyStatus !== 'approved') {
+            throw new AppError(`Company status is ${company.companyStatus}. Need approval first.`, 403);
+        }
+    } else if (user.userRole !== 'root_admin') {
+        throw new AppError('Account is not linked to a company. Contact support.', 403);
     }
 
     if (user.userStatus !== 'active') {
@@ -109,8 +117,8 @@ export const login = asyncHandler(async (req, res) => {
             email: user.email,
             role: user.userRole,
             companyId: user.companyId,
-            companyName: company.companyName,
-            companyType: company.companyType,
+            companyName: company?.companyName ?? null,
+            companyType: company?.companyType ?? null,
         },
         'Login successful',
         200,
@@ -202,7 +210,10 @@ export const aboutMe = asyncHandler(async (req, res) => {
     if (!user) {
         throw new AppError('user not found', 404);
     }
-    const [company] = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
+    // root_admin has no company; the frontend sends them to /rootAdmin from the role alone.
+    const [company] = companyId
+        ? await db.select().from(companies).where(eq(companies.id, companyId)).limit(1)
+        : [null];
 
     const data = {
         userId: user.id,
@@ -210,8 +221,8 @@ export const aboutMe = asyncHandler(async (req, res) => {
         email: user.email,
         role: user.userRole,
         companyId: user.companyId,
-        companyType: company.companyType,
-        companyName: company.companyName,
+        companyType: company?.companyType ?? null,
+        companyName: company?.companyName ?? null,
     };
 
     return successResponse(res, data, 'user Fetch', 200);

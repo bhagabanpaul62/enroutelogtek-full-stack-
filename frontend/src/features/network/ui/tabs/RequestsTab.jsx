@@ -11,12 +11,12 @@ import {
     getOutgoingRequestsApi,
     rejectRequestApi,
 } from '../../api/network.api';
-import { useCursorList } from '../../hooks/useCursorList';
+import { useCursorList } from '@/shared/hooks/useCursorList';
 import { useNetworkAction } from '../../hooks/useNetworkAction';
 import { timeAgo } from '../../lib/timeAgo';
 import CompanyRow from '../components/CompanyRow';
-import CursorList from '../components/CursorList';
-import { useConfirm } from '../components/ConfirmDialog';
+import CursorList from '@/shared/ui/components/CursorList';
+import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
 
 // Requests this company received: accept, reject, or block a company that keeps asking.
 function ReceivedRequests({ list, canManage }) {

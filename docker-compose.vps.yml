@@ -1,0 +1,50 @@
+# PLAIN VPS: Caddy in front of the app, HTTPS automatic, only ports 80 and 443 public.
+# Use it together with docker-compose.yml, which holds every service's settings:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.vps.yml up -d
+#
+# - Site and API share one domain: https://<SITE_DOMAIN>/ is the frontend,
+#   https://<SITE_DOMAIN>/api/* is the backend (see deploy/Caddyfile).
+# - Images: CI/CD (.github/workflows/deploy.yml) builds them on GitHub, pushes them to GHCR and
+#   runs deploy/remote-deploy.sh, which pulls IMAGE_TAG and restarts. The server never builds.
+#   To build on the server by hand instead: add --build to the command above.
+# - docker-compose.yml (the Openship setup) is not changed by this file.
+
+services:
+    backend:
+        image: ${IMAGE_REGISTRY:-ghcr.io/bhagabanpaul62}/enroute-backend:${IMAGE_TAG:-latest}
+        # The base file publishes 8000 on a random host port for Openship. Here nothing is
+        # published: Docker would bypass the firewall, and only Caddy needs to reach it.
+        ports: !reset []
+        expose:
+            - '8000'
+
+    frontend:
+        image: ${IMAGE_REGISTRY:-ghcr.io/bhagabanpaul62}/enroute-frontend:${IMAGE_TAG:-latest}
+        ports: !reset []
+        expose:
+            - '3000'
+
+    caddy:
+        image: caddy:2.10-alpine
+        restart: unless-stopped
+        depends_on:
+            - frontend
+            - backend
+        ports:
+            - '80:80'
+            - '443:443'
+            # HTTP/3
+            - '443:443/udp'
+        environment:
+            SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN, e.g. enroutelogtek.in}
+        volumes:
+            - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+            # The HTTPS certificates. Keep this volume: re-issuing on every deploy would hit
+            # Let's Encrypt's rate limits.
+            - caddy_data:/data
+            - caddy_config:/config
+
+volumes:
+    caddy_data:
+    caddy_config:

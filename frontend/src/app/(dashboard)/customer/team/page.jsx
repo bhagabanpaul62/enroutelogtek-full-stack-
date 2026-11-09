@@ -1,9 +1,7 @@
-import React from 'react'
+import ComingSoon from '@/shared/ui/layout/ComingSoon';
 
-function TeamPage() {
-  return (
-    <div>TeamPage</div>
-  )
+export const metadata = { title: 'Team' };
+
+export default function Page() {
+    return <ComingSoon companyType="customer" slug="team" />;
 }
-
-export default TeamPage

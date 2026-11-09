@@ -1,0 +1,159 @@
+# Checks every change: frontend lint and production build, backend syntax, migrations against a
+# real Postgres and a boot-and-request smoke test, and that both Docker images still build.
+# On main these same jobs run inside deploy.yml before anything ships.
+name: CI
+
+on:
+    pull_request:
+    push:
+        branches-ignore: [main]
+    workflow_call:
+        inputs:
+            build_images:
+                description: Also build the Docker images (deploy.yml builds and pushes them itself)
+                type: boolean
+                default: true
+
+permissions:
+    contents: read
+
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    PNPM_VERSION: 11.5.0
+    NODE_VERSION: 22
+
+jobs:
+    frontend:
+        name: Frontend lint and build
+        runs-on: ubuntu-24.04
+        defaults:
+            run:
+                working-directory: frontend
+        steps:
+            - uses: actions/checkout@v5
+            - uses: actions/setup-node@v5
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+            - run: npm install --global pnpm@${{ env.PNPM_VERSION }}
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm lint
+            - name: Production build
+              run: pnpm build
+              env:
+                  # Any address works for a check build; the real one is baked in by deploy.yml.
+                  NEXT_PUBLIC_APP_URL: https://example.invalid/api/v1
+                  NEXT_TELEMETRY_DISABLED: 1
+
+    backend:
+        name: Backend migrations and smoke test
+        runs-on: ubuntu-24.04
+        defaults:
+            run:
+                working-directory: backend
+        services:
+            postgres:
+                image: postgres:18.4
+                env:
+                    POSTGRES_DB: enroute
+                    POSTGRES_USER: enroute
+                    POSTGRES_PASSWORD: ci-only-password
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready -U enroute -d enroute"
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+        env:
+            # Throwaway values for this job only; nothing here is a real secret.
+            DATABASE_URL: postgres://enroute:ci-only-password@localhost:5432/enroute
+            PORT: 8000
+            NODE_ENV: test
+            FRONTEND_URL: http://localhost:3000
+            JWT_SECRET: ci-only-jwt-secret
+            JWT_EXPIRES_IN: 15m
+            JWT_REFRESH_EXPIRES_IN: 30d
+            # A closed local port: nothing can be emailed from CI.
+            EMAIL_HOST: 127.0.0.1
+            EMAIL_PORT: 1
+            EMAIL_SECURE: 'false'
+            EMAIL_USER: ci
+            EMAIL_PASSWORD: ci
+            EMAIL_FROM: ci@example.invalid
+            R2_ACCOUNT_ID: ci
+            R2_ACCESS_KEY_ID: ci
+            R2_SECRET_ACCESS_KEY: ci
+            R2_BUCKET_NAME: ci
+            R2_PUBLIC_URL: https://example.invalid
+        steps:
+            - uses: actions/checkout@v5
+            - uses: actions/setup-node@v5
+              with:
+                  node-version: ${{ env.NODE_VERSION }}
+            - run: npm install --global pnpm@${{ env.PNPM_VERSION }}
+            - run: pnpm install --frozen-lockfile
+
+            - name: Syntax check
+              run: find src -name '*.js' -print0 | xargs -0 -n1 node --check
+
+            - name: Unit tests
+              run: pnpm test
+
+            - name: Migrations match the schema
+              run: ./node_modules/.bin/drizzle-kit check
+
+            - name: Apply every migration to an empty database
+              run: ./node_modules/.bin/drizzle-kit migrate
+
+            - name: Boot the API and request it
+              run: |
+                  node src/index.js > server.log 2>&1 &
+                  for _ in $(seq 1 30); do
+                      curl -fs http://localhost:8000/ > /dev/null && break
+                      sleep 1
+                  done
+                  expect() {
+                      code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8000$2")
+                      if [ "$code" != "$1" ]; then
+                          echo "::error::GET $2 returned $code, expected $1"
+                          exit 1
+                      fi
+                      echo "GET $2 -> $code"
+                  }
+                  expect 200 /
+                  expect 401 /api/v1/network
+                  expect 401 /api/v1/platform/companies
+                  expect 401 /api/v1/companies/me
+                  expect 404 /api/v1/no-such-route
+
+            - name: Server log
+              if: failure()
+              run: cat server.log
+
+    images:
+        name: Docker images build
+        # format(): an unset input equals false in Actions expressions; as text it is '' instead.
+        if: ${{ format('{0}', inputs.build_images) != 'false' }}
+        runs-on: ubuntu-24.04
+        steps:
+            - uses: actions/checkout@v5
+            - uses: docker/setup-buildx-action@v3
+            - name: Backend image
+              uses: docker/build-push-action@v6
+              with:
+                  context: ./backend
+                  push: false
+                  cache-from: type=gha,scope=backend
+                  cache-to: type=gha,scope=backend,mode=max
+            - name: Frontend image
+              uses: docker/build-push-action@v6
+              with:
+                  context: ./frontend
+                  push: false
+                  build-args: |
+                      NEXT_PUBLIC_APP_URL=https://example.invalid/api/v1
+                  cache-from: type=gha,scope=frontend
+                  cache-to: type=gha,scope=frontend,mode=max
