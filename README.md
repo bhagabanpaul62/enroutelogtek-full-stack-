@@ -1,6 +1,8 @@
 # EnrouteLogtek
 
-> **AI Agent Context File** — Read this first before doing anything. This file contains the full project context, completed work, current state, and next steps.
+> **Project overview.** Start with [the master ticket tracker](tickets/README.md) for completed work, open fixes, product decisions and the ordered build queue. Reviewed on 10 November 2026.
+>
+> The progress/roadmap notes below include historical information. The tracker records current implementation boundaries and verification limits; older “complete” or “frozen” labels do not close its open tickets.
 
 ---
 
@@ -329,11 +331,11 @@ pnpm start
 
 ## For AI Agent — Start Here
 
-1. Read this README for full project context
-2. Check `DbDesing/PROJECT_CONTEXT.md` for what was done last session
-3. Current task: **Roles decision, then team management (invite users, assign roles)**
-4. Backend API base URL: `http://localhost:8000/api/v1`
-5. All auth APIs are complete and tested
+1. Read this README for the product overview.
+2. Read [tickets/README.md](tickets/README.md) for current status, evidence and dependencies.
+3. Choose the next unblocked ticket from that ordered queue and discuss its implementation before changing code.
+4. Backend API base URL: `http://localhost:8000/api/v1`.
+5. Use the tracker's verification record; do not assume that older completion notes prove current runtime behavior.
 
 **Development philosophy:** Business First → Database → Backend → Frontend → Deploy
 
