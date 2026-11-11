@@ -17,14 +17,21 @@ export default function CreateAccount({ registerHook }) {
         handleSubmit,
         watch,
         getValues,
+        reset,
         formState: { errors },
     } = useForm({ defaultValues: registerHook.formData });
 
     const password = watch('password');
 
-    const onSubmit = (data) => {
+    const onSubmit = async (data) => {
         const { confirmPassword, ...accountData } = data;
-        registerHook.submitAccountStep({ ...accountData, phone: `${countryCode}${data.phone}` });
+        const ok = await registerHook.submitAccountStep({ ...accountData, phone: `${countryCode}${data.phone}` });
+        // If the API call failed, react-hook-form marks the form as "successfully submitted"
+        // which blocks a second submit. Reset with the current values so the user can fix the
+        // phone number (or any other field) and try again without reloading the page.
+        if (!ok) {
+            reset(data, { keepErrors: false, keepDirty: false });
+        }
     };
 
     return (
