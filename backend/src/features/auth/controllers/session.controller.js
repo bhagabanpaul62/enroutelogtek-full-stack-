@@ -1,229 +1,205 @@
 import { successResponse, validationErrorResponse } from '#shared/utils/response.js';
 import { asyncHandler } from '#shared/utils/asyncHandler.js';
-import { db } from '#shared/db/index.js';
-import bcrypt from 'bcrypt';
-import { users, userSessions } from '#features/auth/schemas/index.js';
-import { and, eq, gt } from 'drizzle-orm';
 import { AppError } from '#shared/utils/AppError.js';
-import { companies, companyType } from '#features/company/schemas/index.js';
-import { generateAccessToken, generateRefreshToken, verifyToken } from '#shared/utils/jwt.js';
+import { generateAccessToken } from '#shared/utils/jwt.js';
+import { changeOwnPassword } from '#features/auth/services/password.service.js';
+import {
+    AUTH_ERROR_CODE,
+    LOGIN_CODE_TTL_MS,
+    REVOKE_REASON,
+    SESSION_TTL_MS,
+    loginBlockReason,
+    sessionProblem,
+} from '#features/auth/login.rules.js';
+import {
+    finishLogin,
+    resendLoginCode,
+    startLogin,
+} from '#features/auth/services/loginChallenge.service.js';
+import {
+    accessClaims,
+    decodeToken,
+    endSession,
+    findSessionContext,
+    sessionUserView,
+} from '#features/auth/services/session.service.js';
 
-// Login
+const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000;
+// Holds the pending login between the password step and the code step. HttpOnly, so a script
+// on the page cannot read or swap it.
+const CHALLENGE_COOKIE = 'login_challenge';
+
+const authCookie = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+};
+
+const clearAuthCookies = (res) => {
+    res.clearCookie('accessToken', authCookie);
+    res.clearCookie('refreshToken', authCookie);
+};
+
+const isText = (value) => typeof value === 'string' && value.length > 0;
+
+// The browser keeps the challenge cookie while a retry can still succeed (wrong code, cooldown)
+// and drops it once the person has to start again.
+const dropChallengeOnRestart = (res, error) => {
+    if (error?.code === AUTH_ERROR_CODE.LOGIN_RESTART) res.clearCookie(CHALLENGE_COOKIE, authCookie);
+};
+
+const challengeView = ({ email, expiresInSeconds, resendInSeconds, resendsLeft }) => ({
+    email,
+    expiresInSeconds,
+    resendInSeconds,
+    resendsLeft,
+});
+
+/**
+ * Login step 1: email and password. On success emails a code and answers
+ * `{ step: 'OTP_REQUIRED', email, expiresInSeconds, resendInSeconds, resendsLeft }`.
+ * No session exists until the code is accepted by verifyLoginOtp.
+ */
 export const login = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password } = req.body ?? {};
 
-    if (!email || !password) {
+    if (!isText(email) || !isText(password)) {
         return validationErrorResponse(res, 'Enter email and password', {
-            email: email ? null : 'Email is required',
-            password: password ? null : 'Password is required',
+            email: isText(email) ? null : 'Email is required',
+            password: isText(password) ? null : 'Password is required',
         });
     }
 
-    const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (!user) {
-        throw new AppError('User not found', 404);
-    }
-
-    const checkPassword = await bcrypt.compare(password, user.passwordHash);
-    if (checkPassword === false) {
-        throw new AppError('Invalid credentials', 401);
-    }
-
-    // Platform staff (root_admin) belong to no company; everyone else needs an approved one.
-    let company = null;
-    if (user.companyId) {
-        [company] = await db
-            .select()
-            .from(companies)
-            .where(eq(companies.id, user.companyId))
-            .limit(1);
-        if (!company) {
-            throw new AppError('Company not found. Contact support.', 404);
-        }
-        if (company.companyStatus !== 'approved') {
-            throw new AppError(`Company status is ${company.companyStatus}. Need approval first.`, 403);
-        }
-    } else if (user.userRole !== 'root_admin') {
-        throw new AppError('Account is not linked to a company. Contact support.', 403);
-    }
-
-    if (user.userStatus !== 'active') {
-        throw new AppError(`User status is ${user.userStatus}. Contact company admin.`, 403);
-    }
-
-    // One user one session check
-    const checkSession = await db
-        .select()
-        .from(userSessions)
-        .where(
-            and(
-                eq(userSessions.userId, user.id),
-                eq(userSessions.isActive, true),
-                gt(userSessions.expiresAt, new Date()),
-            ),
-        )
-        .limit(1);
-
-    if (checkSession.length > 0) {
-        throw new AppError('Account is active on another device. Logout first.', 409);
-    }
-
-    // Create session
-    const [session] = await db
-        .insert(userSessions)
-        .values({
-            userId: user.id,
-            deviceId: req.headers['user-agent'] || 'unknown',
-            ipAddress: req.ip,
-            isActive: true,
-            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        })
-        .returning();
-
-    // Generate tokens
-    const accessToken = generateAccessToken({
-        userId: user.id,
-        companyId: user.companyId,
-        role: user.userRole,
-        sessionId: session.id,
-    });
-
-    const refreshToken = generateRefreshToken({
-        userId: user.id,
-        sessionId: session.id,
-    });
-
-    // Save refresh token to session
-    await db.update(userSessions).set({ refreshToken }).where(eq(userSessions.id, session.id));
-
-    // Set cookies
-    const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-    };
-
-    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
-    res.cookie('refreshToken', refreshToken, {
-        ...cookieOptions,
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-    });
+    const challenge = await startLogin({ email, password });
+    res.cookie(CHALLENGE_COOKIE, challenge.challengeId, { ...authCookie, maxAge: LOGIN_CODE_TTL_MS });
 
     return successResponse(
         res,
-        {
-            userId: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.userRole,
-            companyId: user.companyId,
-            companyName: company?.companyName ?? null,
-            companyType: company?.companyType ?? null,
-        },
-        'Login successful',
+        { step: 'OTP_REQUIRED', ...challengeView(challenge) },
+        'Enter the code sent to your email',
         200,
     );
+});
+
+/**
+ * Login step 2: the emailed code. On success every other session of the user ends (that device
+ * is signed out on its next request), the session cookies are set and the session user returned.
+ */
+export const verifyLoginOtp = asyncHandler(async (req, res) => {
+    const { otp } = req.body ?? {};
+    if (typeof otp !== 'string' || !/^\d{6}$/.test(otp)) {
+        return validationErrorResponse(res, 'Enter the 6-digit code', {
+            otp: 'Enter all 6 digits',
+        });
+    }
+
+    try {
+        const { user, tokens } = await finishLogin({
+            challengeId: req.cookies[CHALLENGE_COOKIE],
+            code: otp,
+            userAgent: req.headers['user-agent'],
+            ipAddress: req.ip,
+        });
+
+        res.clearCookie(CHALLENGE_COOKIE, authCookie);
+        res.cookie('accessToken', tokens.accessToken, {
+            ...authCookie,
+            maxAge: ACCESS_TOKEN_MAX_AGE,
+        });
+        res.cookie('refreshToken', tokens.refreshToken, { ...authCookie, maxAge: SESSION_TTL_MS });
+
+        // Same shape as about-me, including role name, permissions and mustChangePassword.
+        return successResponse(res, await sessionUserView(user.id), 'Login successful', 200);
+    } catch (error) {
+        dropChallengeOnRestart(res, error);
+        throw error;
+    }
+});
+
+/** Emails a new login code for the pending login in the challenge cookie. */
+export const resendLoginOtp = asyncHandler(async (req, res) => {
+    try {
+        const challenge = await resendLoginCode(req.cookies[CHALLENGE_COOKIE]);
+        res.cookie(CHALLENGE_COOKIE, challenge.challengeId, {
+            ...authCookie,
+            maxAge: LOGIN_CODE_TTL_MS,
+        });
+        return successResponse(res, challengeView(challenge), 'A new code is on its way', 200);
+    } catch (error) {
+        dropChallengeOnRestart(res, error);
+        throw error;
+    }
 });
 
 // Logout
 export const logout = asyncHandler(async (req, res) => {
     const { refreshToken } = req.cookies;
 
-    const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-    };
-
     if (refreshToken) {
+        let payload = null;
         try {
-            const payload = verifyToken(refreshToken);
-
-            await db
-                .update(userSessions)
-                .set({
-                    isActive: false,
-                    refreshToken: null,
-                })
-                .where(eq(userSessions.id, payload.sessionId));
+            payload = decodeToken(refreshToken, 'invalid refresh token');
         } catch {
-            // Ignore invalid/expired refresh token
+            // An invalid or expired refresh token has no live session to end; just clear cookies.
         }
+        if (payload) await endSession(payload.sessionId, REVOKE_REASON.LOGOUT);
     }
 
-    res.clearCookie('accessToken', cookieOptions);
-    res.clearCookie('refreshToken', cookieOptions);
+    clearAuthCookies(res);
 
     return successResponse(res, null, 'Logout successful', 200);
 });
 
-// Refresh Token
+/**
+ * Issues a new access token while the refresh token's own session is live and the account may
+ * still sign in. Otherwise clears the session cookies, so a signed-out browser stops retrying,
+ * and answers 401 with error.code SESSION_REPLACED or SESSION_ENDED (403 for a blocked account).
+ */
 export const refreshTokenHandler = asyncHandler(async (req, res) => {
     const { refreshToken } = req.cookies;
     if (!refreshToken) {
         throw new AppError('not found refreshToken plz login again', 401);
     }
-    const token = verifyToken(refreshToken);
 
-    const [session] = await db
-        .select()
-        .from(userSessions)
-        .where(
-            and(
-                eq(userSessions.id, token.sessionId),
-                eq(userSessions.isActive, true),
-                gt(userSessions.expiresAt, new Date()),
-            ),
-        )
-        .limit(1);
-    if (!session) {
-        throw new AppError('session is expire login again', 401);
+    let context;
+    try {
+        const token = decodeToken(
+            refreshToken,
+            'Your session has expired. Log in again.',
+            AUTH_ERROR_CODE.SESSION_ENDED,
+        );
+        context = await findSessionContext(token.sessionId);
+        const problem =
+            sessionProblem(context?.session, new Date()) ??
+            loginBlockReason(context.user, context.company);
+        if (problem) throw AppError.from(problem);
+    } catch (error) {
+        if (error instanceof AppError) clearAuthCookies(res);
+        throw error;
     }
 
-    const [user] = await db.select().from(users).where(eq(users.id, session.userId)).limit(1);
-    const payload = {
-        userId: user.id,
-        companyId: user.companyId,
-        role: user.userRole,
-        sessionId: session.id,
-    };
-    const accessToken = generateAccessToken(payload);
-
-    const cookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-    };
-
-    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+    const accessToken = generateAccessToken(accessClaims(context.user, context.session.id));
+    res.cookie('accessToken', accessToken, { ...authCookie, maxAge: ACCESS_TOKEN_MAX_AGE });
     return successResponse(res, null, 'Token refreshed', 200);
 });
 
 // Keep the old name as alias for backward compatibility in routes
 export const refreshToken = refreshTokenHandler;
 
-//About Me
+/**
+ * The signed-in user: identity, company, role name, permissions and whether a temporary password
+ * must be changed. root_admin has no company; the frontend sends them to /rootAdmin by role.
+ */
 export const aboutMe = asyncHandler(async (req, res) => {
-    const { userId, companyId, role, sessionId } = req.user;
+    return successResponse(res, await sessionUserView(req.user.userId), 'user Fetch', 200);
+});
 
-    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-    if (!user) {
-        throw new AppError('user not found', 404);
-    }
-    // root_admin has no company; the frontend sends them to /rootAdmin from the role alone.
-    const [company] = companyId
-        ? await db.select().from(companies).where(eq(companies.id, companyId)).limit(1)
-        : [null];
-
-    const data = {
-        userId: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.userRole,
-        companyId: user.companyId,
-        companyType: company?.companyType ?? null,
-        companyName: company?.companyName ?? null,
-    };
-
-    return successResponse(res, data, 'user Fetch', 200);
+/**
+ * Changes the signed-in user's password. Body: { currentPassword, newPassword }. Also how a
+ * person with a temporary password from a team admin unlocks the app. Answers with the session
+ * user (mustChangePassword now false).
+ */
+export const changePassword = asyncHandler(async (req, res) => {
+    await changeOwnPassword(req.user.userId, req.body ?? {});
+    return successResponse(res, await sessionUserView(req.user.userId), 'Password changed', 200);
 });

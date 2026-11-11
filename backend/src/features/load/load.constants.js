@@ -36,10 +36,6 @@ export const SPECIAL_REQUIREMENT_TAGS = [
     'escort',
 ];
 
-// Customer side: create, publish, award, extend, cancel. Transporter side: bid, accept, assign.
-// Viewers and accounts can only look. The frontend mirrors this list to hide buttons.
-export const LOAD_MANAGER_ROLES = ['admin', 'co-admin', 'bid_manager'];
-
 export const DEFAULTS = {
     maxAttempts: 5, // bids per transporter per load (product rule)
     bidWindowHours: 12, // client question Q3

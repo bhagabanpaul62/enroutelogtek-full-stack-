@@ -8,6 +8,7 @@ import loadRoutes from '#features/load/routes/load.routes.js';
 import awardRoutes from '#features/load/routes/award.routes.js';
 import masterRoutes from '#features/load/routes/master.routes.js';
 import notificationRoutes from '#features/notification/routes/notification.routes.js';
+import teamRoutes from '#features/team/routes/team.routes.js';
 import { authMiddleware } from '#shared/middleware/auth.middleware.js';
 import { roleMiddleware } from '#shared/middleware/role.middleware.js';
 
@@ -24,5 +25,7 @@ router.use('/loads', authMiddleware, loadRoutes);
 router.use('/awards', authMiddleware, awardRoutes);
 router.use('/masters', authMiddleware, masterRoutes);
 router.use('/notifications', authMiddleware, notificationRoutes);
+// Company roles and team members (checks per route, by permission).
+router.use('/team', authMiddleware, teamRoutes);
 
 export default router;

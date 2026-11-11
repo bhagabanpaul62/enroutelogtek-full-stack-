@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/primitives/button';
-import { useLoadManager } from '../../hooks/useLoadManager';
+import { useCan } from '@/shared/hooks/useCan';
+import { PERMISSIONS } from '@/shared/lib/permissions';
 import { formatCountdown, formatDate, formatRoute } from '../../lib/format';
 import StatusBadge from '../components/StatusBadge';
 import LoadSummary from '../components/LoadSummary';
@@ -54,7 +55,9 @@ function Outcome({ load }) {
  */
 export default function BidDetailPage({ loadId }) {
     const { load, error, isLoading, reload } = useTransporterLoad(loadId);
-    const canManage = useLoadManager();
+    const canBid = useCan(PERMISSIONS.BIDS_SUBMIT);
+    const canRespond = useCan(PERMISSIONS.AWARDS_RESPOND);
+    const canAssign = useCan(PERMISSIONS.TRIPS_ASSIGN);
     const now = useNow();
 
     if (isLoading) {
@@ -127,19 +130,19 @@ export default function BidDetailPage({ loadId }) {
             <MyStanding load={load} />
 
             {load.status === 'live' && (
-                <BidCalculator load={load} canManage={canManage} now={now} onChanged={reload} />
+                <BidCalculator load={load} canManage={canBid} now={now} onChanged={reload} />
             )}
 
             <MyAttempts attempts={load.myBid?.attempts} maxAttempts={load.maxAttempts} />
 
-            {award && <AwardResponse award={award} canManage={canManage} now={now} onChanged={reload} />}
+            {award && <AwardResponse award={award} canManage={canRespond} now={now} onChanged={reload} />}
 
             {showAssignment && (
                 // Keyed on assignedAt so the form refills from the server after a save.
                 <AssignmentForm
                     key={award.assignedAt ?? 'new'}
                     award={award}
-                    canManage={canManage}
+                    canManage={canAssign}
                     onChanged={reload}
                 />
             )}

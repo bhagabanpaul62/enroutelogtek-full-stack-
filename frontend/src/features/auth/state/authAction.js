@@ -1,12 +1,13 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { aboutMeApi, logOutApi, loginApi } from '../api/auth.api';
+import { aboutMeApi, apiReason, logOutApi, loginApi, verifyLoginOtpApi } from '../api/auth.api';
 
 // The API puts its human-readable reason in data.message; fall back to a fixed line when it has none.
 const messageOf = (error, fallback) => error.response?.data?.message || fallback;
 
 /**
- * Logs in with email and password. Resolves with the session user the API returns
- * (userId, name, email, role, companyId, companyType, companyName); rejects with the API message.
+ * Login step 1: email and password. Does not sign anyone in: resolves with the pending login
+ * `{ step: 'OTP_REQUIRED', email, expiresInSeconds, resendInSeconds, resendsLeft }` once the code
+ * is emailed. Rejects with the API message.
  */
 export const loginUserAction = createAsyncThunk('auth/login', async (data, thunkAPI) => {
     try {
@@ -14,6 +15,20 @@ export const loginUserAction = createAsyncThunk('auth/login', async (data, thunk
         return res.data.data;
     } catch (error) {
         return thunkAPI.rejectWithValue(messageOf(error, 'Login failed'));
+    }
+});
+
+/**
+ * Login step 2: the emailed code. Resolves with the session user (userId, name, email, role,
+ * companyId, companyType, companyName). Rejects with `{ message, code }`; code LOGIN_RESTART
+ * means the pending login is over and the person must enter their password again.
+ */
+export const verifyLoginOtpAction = createAsyncThunk('auth/verifyLoginOtp', async (otp, thunkAPI) => {
+    try {
+        const res = await verifyLoginOtpApi(otp);
+        return res.data.data;
+    } catch (error) {
+        return thunkAPI.rejectWithValue(apiReason(error, 'Could not check the code'));
     }
 });
 

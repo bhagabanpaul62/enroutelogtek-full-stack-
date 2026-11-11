@@ -1,4 +1,5 @@
 import { errorResponse } from '#shared/utils/response.js';
+import { AppError } from '#shared/utils/AppError.js';
 
 export const errorHandler = (err, req, res, next) => {
     console.error('\n========== ERROR ==========');
@@ -19,5 +20,8 @@ export const errorHandler = (err, req, res, next) => {
     console.error(err.stack);
     console.error('===========================\n');
 
-    return errorResponse(res, err.message || 'Internal Server Error', err.statusCode || 500);
+    // Only our own errors carry a client-facing code; database errors have a `code` too (e.g. 23505)
+    // and must not leak.
+    const detail = err instanceof AppError && err.code ? { code: err.code } : null;
+    return errorResponse(res, err.message || 'Internal Server Error', err.statusCode || 500, detail);
 };

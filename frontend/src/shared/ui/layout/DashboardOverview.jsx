@@ -26,7 +26,7 @@ export default function DashboardOverview({ companyType }) {
                 {firstName ? `Hello, ${firstName}.` : 'Hello.'}
             </h1>
             <p className="mt-3 max-w-[60ch] text-[15px] text-foreground/80">
-                {user?.role ? `You are signed in as ${ROLE_LABELS[user.role] ?? user.role}. ` : ''}
+                {user?.role ? `You are signed in as ${user.roleName ?? ROLE_LABELS[user.role] ?? user.role}. ` : ''}
                 Start with your network. Every RFQ, load and trip begins with a connection.
             </p>
 

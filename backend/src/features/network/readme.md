@@ -695,7 +695,7 @@ These were open questions in this document; they are now implemented.
 | Rule | Decision | Where in code |
 |---|---|---|
 | Which company types can connect | Only **different** types (customer ↔ transporter, broker ↔ fleet owner, ...). Same type → 400 | `network.constants.js` → `canCompanyTypesConnect` |
-| Who can change the network | `admin` and `co-admin`. Every role can read (`GET`) | `network.constants.js` → `NETWORK_MANAGER_ROLES` |
+| Who can change the network | Roles with the `network.manage` permission (Owner and Co-admin by default). Everyone in the company can read (`GET`) | `team/team.permissions.js` → `PERMISSIONS.NETWORK_MANAGE` |
 | Unblock | Removes the connection (see above) | `network.service.js` → `unblockConnection` |
 | Request again after rejection | Allowed any time. The old rejected row is replaced by a new pending one. Use Block to stop repeat requests | `network.service.js` → `sendRequest` |
 | Block from which states | Any state that isn't already blocked (pending, accepted, rejected) - also lets a company block someone who keeps sending requests | `network.service.js` → `blockConnection` |

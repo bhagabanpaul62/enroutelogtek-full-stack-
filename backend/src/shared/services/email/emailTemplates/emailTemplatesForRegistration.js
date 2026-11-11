@@ -4,7 +4,8 @@ const BRAND_DOMAIN = 'enroutelogtek.in';
 const SUPPORT_EMAIL = 'support@enroutelogtek.in';
 
 // ─── Layout Wrapper ───────────────────────────────────────────────────────────
-function emailLayoutWrapper(content) {
+// Exported so other template files (login) share the same frame.
+export function emailLayoutWrapper(content) {
     return `
 <!DOCTYPE html>
 <html lang="en">

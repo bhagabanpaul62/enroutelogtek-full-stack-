@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 import { Button } from '@/shared/ui/primitives/button';
 import { WIZARD_STEPS } from '../../constants';
 import { useLoadDraft } from '../../hooks/useLoadDraft';
-import { useLoadManager } from '../../hooks/useLoadManager';
+import { useCan } from '@/shared/hooks/useCan';
+import { PERMISSIONS } from '@/shared/lib/permissions';
 import { formatCountdown } from '../../lib/format';
 import { todayIso } from './loadTime';
 import { useNow } from './useNow';
@@ -180,7 +181,7 @@ function WizardView() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const idParam = searchParams.get('id');
-    const canManage = useLoadManager();
+    const canManage = useCan(PERMISSIONS.LOADS_MANAGE);
     const draft = useLoadDraft(idParam);
     const masters = useMasters();
     const [published, setPublished] = useState(null);

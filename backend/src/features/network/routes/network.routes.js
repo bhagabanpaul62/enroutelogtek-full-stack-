@@ -1,7 +1,7 @@
 import express from 'express';
-import { roleMiddleware } from '#shared/middleware/role.middleware.js';
+import { requirePermission } from '#shared/middleware/permission.middleware.js';
 import { validate } from '#shared/middleware/validate.middleware.js';
-import { NETWORK_MANAGER_ROLES } from '#features/network/network.constants.js';
+import { PERMISSIONS } from '#features/team/team.permissions.js';
 import {
     connectionIdRules,
     discoverRules,
@@ -29,8 +29,8 @@ import { discoverCompanies } from '#features/network/controllers/discovery.contr
 // authMiddleware is applied to all of /network in routes/index.js.
 const router = express.Router();
 
-// Reading: every role. Changing the network: admin + co-admin only.
-const canManageNetwork = roleMiddleware(NETWORK_MANAGER_ROLES);
+// Reading: everyone in the company. Changing the network: roles with network.manage.
+const canManageNetwork = requirePermission(PERMISSIONS.NETWORK_MANAGE);
 
 router.get('/', listNetworkRules, validate, getNetwork);
 router.get('/discover', discoverRules, validate, discoverCompanies);

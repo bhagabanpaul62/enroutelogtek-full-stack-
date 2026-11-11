@@ -5,6 +5,7 @@ import {
     approvalEmailTemplate,
     rejectionEmailTemplate,
 } from './emailTemplates/emailTemplatesForRegistration.js';
+import { loginOtpEmailTemplate } from './emailTemplates/emailTemplatesForLogin.js';
 
 //create transporter
 const transporter = nodemailer.createTransport({
@@ -38,6 +39,21 @@ export async function sendOtpEmail(email, otp) {
         subject: 'EnrouteLogTech - Email Verification OTP',
         html: otpEmailTemplate(otp),
         text: `Your OTP is: ${otp}. Valid for 10 minutes. Do not share.`,
+    });
+}
+
+/**
+ * Emails the second-step login code. Throws when the mail server refuses, so the caller can
+ * tell the person instead of claiming the code was sent.
+ * @param {string} email the account's address
+ * @param {string} code six digits
+ */
+export async function sendLoginOtpEmail(email, code) {
+    await sendEmail({
+        to: email,
+        subject: 'EnrouteLogTech - Your login code',
+        html: loginOtpEmailTemplate(code),
+        text: `Your login code is: ${code}. Valid for 10 minutes. Do not share it. If you did not try to log in, reset your password.`,
     });
 }
 

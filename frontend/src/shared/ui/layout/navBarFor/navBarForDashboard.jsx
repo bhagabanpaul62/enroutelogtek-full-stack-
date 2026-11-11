@@ -33,7 +33,8 @@ export default function NavBarForDashboard() {
     const { user } = useSelector((state) => state.auth);
 
     const basePath = dashboardPath(user?.companyType);
-    const roleLabel = ROLE_LABELS[user?.role] ?? user?.role ?? '';
+    // Company users have a company role name; platform staff only have the legacy role.
+    const roleLabel = user?.roleName ?? ROLE_LABELS[user?.role] ?? user?.role ?? '';
     const typeLabel = COMPANY_TYPE_LABELS[user?.companyType] ?? '';
 
     // Close whichever menu is open on an outside click or Escape.

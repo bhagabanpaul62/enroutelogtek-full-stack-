@@ -50,6 +50,20 @@
       "when": 1794195643989,
       "tag": "0006_load_events",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794417945225,
+      "tag": "0007_login_otp",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794420874465,
+      "tag": "0008_team_roles",
+      "breakpoints": true
     }
   ]
 }

@@ -31,6 +31,7 @@ import {
 import { extensionProblems, loadNumber, publishProblems } from '../load.rules.js';
 import { afterCursor, cursorCreatedAt, toPage } from './load.pagination.js';
 import { listLoadEvents, recordLoadEvent } from './loadEvent.service.js';
+import { PERMISSIONS } from '#features/team/team.permissions.js';
 import {
     findInvitedLoad,
     findOwnLoad,
@@ -206,7 +207,7 @@ const prepareInput = async (customerCompanyId, input) => {
 
 /** POST /loads: a new Ad Hoc draft, optionally with the first step's fields. */
 export const createDraft = async (user, input = {}) => {
-    await requireCustomerManager(user);
+    await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
     const values = await prepareInput(user.companyId, input);
     const row = await db.transaction(async (tx) => {
         const [created] = await tx
@@ -231,7 +232,7 @@ export const createDraft = async (user, input = {}) => {
 
 /** PATCH /loads/:id: save one or more fields of a draft (the wizard autosaves each step). */
 export const updateDraft = async (user, loadId, input) => {
-    await requireCustomerManager(user);
+    await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
     const load = await findOwnLoad(user.companyId, loadId);
     if (!EDITABLE_FROM.includes(load.status)) {
         throw new AppError('Only drafts can be edited', 409);
@@ -245,7 +246,7 @@ export const updateDraft = async (user, loadId, input) => {
 
 /** POST /loads/:id/publish: validates the draft, snapshots the invitations, opens bidding. */
 export const publishLoad = async (user, loadId) => {
-    const company = await requireCustomerManager(user);
+    const company = await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
     const load = await findOwnLoad(user.companyId, loadId);
     if (load.status !== 'draft') throw new AppError('Only drafts can be published', 409);
 
@@ -548,7 +549,7 @@ export const listBids = async (user, loadId) => {
 
 /** POST /loads/:id/extend: a later close time for a live load, or reopens an expired one. */
 export const extendLoad = async (user, loadId, closesAt) => {
-    await requireCustomerManager(user);
+    await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
     const load = await findOwnLoad(user.companyId, loadId);
     if (!EXTENDABLE_FROM.includes(load.status)) {
         throw new AppError('Only live or expired loads can be extended', 409);
@@ -598,7 +599,7 @@ export const extendLoad = async (user, loadId, closesAt) => {
 
 /** POST /loads/:id/cancel: allowed until a winner is picked. */
 export const cancelLoad = async (user, loadId, reason) => {
-    await requireCustomerManager(user);
+    await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
     const load = await findOwnLoad(user.companyId, loadId);
     if (!CANCELLABLE_FROM.includes(load.status)) {
         throw new AppError('A load cannot be cancelled after a winner is picked', 409);
@@ -637,7 +638,7 @@ export const cancelLoad = async (user, loadId, reason) => {
 
 /** POST /loads/:id/complete: the customer confirms delivery. */
 export const completeLoad = async (user, loadId) => {
-    await requireCustomerManager(user);
+    await requireCustomerManager(user, PERMISSIONS.LOADS_AWARD);
     const load = await findOwnLoad(user.companyId, loadId);
     if (!['accepted', 'in_execution'].includes(load.status)) {
         throw new AppError('Only an accepted load in progress can be completed', 409);

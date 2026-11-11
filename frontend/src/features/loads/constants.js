@@ -25,9 +25,6 @@ export const LOAD_STATUS_TONE = {
     cancelled: 'danger',
 };
 
-// Must match LOAD_MANAGER_ROLES in the backend. Other roles see everything read-only.
-export const LOAD_MANAGER_ROLES = ['admin', 'co-admin', 'bid_manager'];
-
 export const PRICE_BASIS_LABELS = {
     per_vehicle: 'Per truck',
     per_ton: 'Per ton',

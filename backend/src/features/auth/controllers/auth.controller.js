@@ -2,12 +2,9 @@ import { successResponse, validationErrorResponse } from '#shared/utils/response
 import { asyncHandler } from '#shared/utils/asyncHandler.js';
 import { db } from '#shared/db/index.js';
 import bcrypt from 'bcrypt';
-import {
-    users,
-    otpVerification,
-    userSessions,
-    registrationSession,
-} from '#features/auth/schemas/index.js';
+import { users, otpVerification, registrationSession } from '#features/auth/schemas/index.js';
+import { REVOKE_REASON } from '#features/auth/login.rules.js';
+import { endUserSessions } from '#features/auth/services/session.service.js';
 import { sendOtpEmail, sendWelcomeEmail } from '#shared/services/email/email.service.js';
 import crypto from 'crypto';
 import { and, eq, gt } from 'drizzle-orm';
@@ -15,6 +12,7 @@ import { AppError } from '#shared/utils/AppError.js';
 import { companies, branch, companyType as companyTypeEnum } from '#features/company/schemas/index.js';
 import { documents } from '#features/document/schemas/index.js';
 import { generateEnrouteId } from '#shared/utils/genarateEnrouteId.js';
+import { createPresetRoles } from '#features/team/services/role.service.js';
 import { log } from 'console';
 
 //send OTP
@@ -291,6 +289,9 @@ export const register = asyncHandler(async (req, res) => {
             })
             .returning();
 
+        // The company's starting roles; the person registering becomes its Owner.
+        const { ownerRoleId } = await createPresetRoles(tx, newCompany.id, companyType);
+
         // Insert user
         const [newUser] = await tx
             .insert(users)
@@ -302,7 +303,9 @@ export const register = asyncHandler(async (req, res) => {
                 passwordHash,
                 phone,
                 userStatus: 'active',
+                // Legacy column kept in step with the Owner role (see users.Schema.js).
                 userRole: 'admin',
+                roleId: ownerRoleId,
             })
             .returning();
 
@@ -443,16 +446,12 @@ export const forgetPassword = asyncHandler(async (req, res) => {
         .update(users)
         .set({
             passwordHash: passwordHash,
+            // They chose this password themselves, so a temporary one from an admin is replaced.
+            mustChangePassword: false,
         })
         .where(eq(users.id, ExistingUser.id));
-    //update session or kill the session
-    await db
-        .update(userSessions)
-        .set({
-            refreshToken: null,
-            isActive: false,
-        })
-        .where(eq(userSessions.userId, ExistingUser.id));
+    //kill every session, recording why so a signed-out device can say so
+    await endUserSessions(ExistingUser.id, REVOKE_REASON.PASSWORD_RESET);
     //success response
     return successResponse(res, null, 'forget password successful', 200);
 });

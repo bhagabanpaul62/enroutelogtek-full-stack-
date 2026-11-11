@@ -19,7 +19,7 @@ The product is a B2B logistics platform for customers, transporters, brokers and
 
 | Area | Current boundary |
 | --- | --- |
-| Authentication and onboarding | APIs and screens exist; ownership/session fixes ENR-001–004 remain open. |
+| Authentication and onboarding | APIs and screens exist. Login needs an emailed code and a new login signs other devices out (DONE-18). Ownership fixes ENR-001/002/004 remain open; ENR-003 awaits a live root-admin check. |
 | Company administration and network | Approval/rejection/blocking and connections exist. Company settings, branches after registration and team management remain open. |
 | Ad Hoc loads | Draft, publish, invitation, bidding, close/extend/cancel, award, acceptance and simple assignment/completion exist. |
 | Contract RFQs and contracts | Not implemented. `kind: contract` in an enum does not create a contract workflow; the creation service always creates `ad_hoc`. |
@@ -39,7 +39,7 @@ The references identify the implementation, not a claim that it was exercised li
 | DONE-02 | Public landing, about, solution, pricing and support pages | [Marketing pages](../frontend/src/features/marketing/ui/); current frontend build passes. Pricing content is not a purchase flow. |
 | DONE-03 | Email OTP, registration, initial company/branch and pending-approval screens | [Auth backend](../backend/src/features/auth/controllers/auth.controller.js), [auth frontend](../frontend/src/features/auth/). Boundary/abuse fixes: ENR-002/004. |
 | DONE-04 | R2 document upload/delete primitives and registration upload UI | [Document controller](../backend/src/features/document/controllers/document.controller.js). Ownership protection remains ENR-001; storage delivery not tested today. |
-| DONE-05 | Login, logout, refresh, current-user and password reset flows | [Session controller](../backend/src/features/auth/controllers/session.controller.js), [auth frontend](../frontend/src/features/auth/). Exact-session enforcement remains ENR-003. |
+| DONE-05 | Login, logout, refresh, current-user and password reset flows | [Session controller](../backend/src/features/auth/controllers/session.controller.js), [auth frontend](../frontend/src/features/auth/). Exact-session enforcement implemented under ENR-003. |
 | DONE-06 | Platform company review: list/detail, approve, reject, block/unblock and root-admin seed | [Platform backend](../backend/src/features/platform/), [admin UI](../frontend/src/features/platform/), [seed](../backend/src/scripts/seedRootAdmin.js). Historical API checks recorded in the [build map](../docs/arc/enroute-build-map.html). |
 | DONE-07 | Company discovery and connection request/accept/reject/cancel/remove/block flows | [Network backend](../backend/src/features/network/), [network UI](../frontend/src/features/network/). Source reviewed; runtime not rerun today. |
 | DONE-08 | Four company dashboard shells, role/company guards, session profile, logout and 404 | [Navigation map](../frontend/src/shared/lib/dashboardNav.js), [guards](../frontend/src/shared/guards/), [layouts](../frontend/src/shared/ui/layout/). Current build passes; placeholder destinations are still open work. |
@@ -52,6 +52,7 @@ The references identify the implementation, not a claim that it was exercised li
 | DONE-15 | Notification bell/list/count, mark-read actions and email attempts | [Notification service](../backend/src/features/notification/services/notification.service.js), [notification UI](../frontend/src/features/notifications/); historical AH-42–43. Delivery reliability remains ENR-017. |
 | DONE-16 | Customer load activity history with transactional event records | [Event service](../backend/src/features/load/services/loadEvent.service.js), [activity UI](../frontend/src/features/loads/ui/customer/ActivityLog.jsx); historical AH-46. |
 | DONE-17 | Load rules test suite, frontend lint/build and CI/deployment definitions | [21 rules tests](../backend/src/features/load/load.rules.test.js), [CI](../.github/workflows/ci.yml), [deploy workflow](../.github/workflows/deploy.yml). Local checks pass; no GitHub Actions run inspected today. |
+| DONE-18 | Login confirmation code and one active session, newest login wins (11 Nov 2026) | [Login rules](../backend/src/features/auth/login.rules.js) with [25 tests](../backend/src/features/auth/login.rules.test.js), [login service](../backend/src/features/auth/services/loginChallenge.service.js), [code screen](../frontend/src/features/auth/ui/LoginOtpPage.jsx), migration `0007_login_otp`. Verified locally with a mail sink: 52 API checks and a two-browser UI check. No root-admin account existed locally. |
 
 ## Open — ordered build queue
 
@@ -70,12 +71,12 @@ Every build ticket includes backend behavior, the necessary screen/API integrati
 - **Done / verify:** another applicant cannot use that proof or submit a different company; approved/blocked companies cannot be reset to pending; valid draft → pending and repeat-submission behavior are tested through the API.
 
 ### ENR-003 — Enforce the exact active login session
-- **Open · P0 · Depends:** none.
+- **Implemented 11 Nov 2026, open for one check · P0 · Depends:** none. Middleware and refresh now load the token's own session and re-check the account (DONE-18). Live-verified: replaced, logged-out, expired and inactive cases are refused. Still to verify: a platform admin logging in and using admin pages.
 - **Build:** [Auth middleware](../backend/src/shared/middleware/auth.middleware.js) looks up any active session for a user rather than the token's session ID and expiry. Align protected requests and [refresh](../backend/src/features/auth/controllers/session.controller.js) with current user/company eligibility and the intended one-session rule.
 - **Done / verify:** after logout then a new login, the old access token stays rejected; expired/revoked sessions and inactive accounts cannot access or refresh; platform admins still work. Add failing regressions and simultaneous-login coverage.
 
 ### ENR-004 — Bound OTP/login attempts and report delivery failure accurately
-- **Open · P1 · Depends:** ENR-002, ENR-003.
+- **Open · P1 · Depends:** ENR-002, ENR-003. Login codes already have limits and report a failed email (DONE-18). Registration OTP, password reset and password-guess limits remain.
 - **Build:** [Auth handlers](../backend/src/features/auth/controllers/auth.controller.js) have no visible resend/guess limit and return “OTP sent” even after a mail failure. Define limits and consistent external-input validation for OTP, reset and login; agree any new dependency before adding it.
 - **Done / verify:** fake-clock tests cover resend/attempt limits, expiry and recovery; malformed inputs fail predictably; mail failure gives an actionable response without exposing account/secret data.
 
@@ -90,6 +91,7 @@ Every build ticket includes backend behavior, the necessary screen/API integrati
 - **Open · P1 · Decision · Depends:** none.
 - **Decide:** reconcile the old role descriptions with [current roles](../backend/src/features/auth/schemas/users.Schema.js): `root_admin`, `admin`, `co-admin`, `viewer`, `bid_manager`, `trip_manager`, `accounts`. Define company/branch scope, who invites/manages users and who may assign trucks.
 - **Done / verify:** product owner approves one permission matrix and display names; existing stored roles retain compatible behavior or have an approved migration plan. ENR-012/013 must not guess these rules.
+- **Progress (12 Nov 2026):** decided in chat on 11 Nov: per-company custom roles with a locked Owner, permissions defined in code, presets that reproduce the old roles, migration 0008 maps stored roles. Matrix and rules: [team roles spec](../docs/superpowers/specs/2026-11-11-team-roles-design.md). Branch scope stays out (ENR-008). Close once the owner confirms the spec.
 
 ### ENR-007 — Implement company profile settings
 - **Open · P1 · Depends:** ENR-003, ENR-006.
@@ -120,11 +122,13 @@ Every build ticket includes backend behavior, the necessary screen/API integrati
 - **Open · P1 · Depends:** ENR-003, ENR-008, ENR-011.
 - **Build:** replace the Team placeholders in [dashboard navigation](../frontend/src/shared/lib/dashboardNav.js) with invitations, acceptance and a paginated member list. Apply approved role/branch rules and seat limits on the server.
 - **Done / verify:** invitations expire and cannot be reused or accepted by the wrong identity; simultaneous accepts cannot exceed seats; a newly accepted member can log in with the correct company, branch and permissions.
+- **Progress (12 Nov 2026):** built with the agreed change: an admin adds a person with a temporary password (no invite email) and they must set their own at first sign-in; no seat limit until ENR-010/011 (one `seatProblem()` hook in [member service](../backend/src/features/team/services/member.service.js)). Team page with paginated members in [team UI](../frontend/src/features/team/). Verified: rules tests, 64 API checks plus a concurrent-Owner test on a copy of the dev database. Not yet verified: the screens in a browser.
 
 ### ENR-013 — Manage team roles and access lifecycle
 - **Open · P1 · Depends:** ENR-012.
 - **Build:** allow approved administrators to change roles/branches and deactivate/reactivate members; enforce the agreed last-admin and seat rules using [users](../backend/src/features/auth/schemas/users.Schema.js).
 - **Done / verify:** unauthorized privilege escalation fails; deactivation/reduced permissions take effect for active sessions; every allowed change is recorded and reflected in Team UI.
+- **Progress (12 Nov 2026):** built: role create/edit/delete, role change, deactivate/reactivate and new temporary password, with no-escalation, last-Owner and no-self-change rules ([team rules](../backend/src/features/team/team.rules.js)); changes apply on the next request and deactivation ends the session; every change is written to `team_events`. Branch changes wait for ENR-008. Verified through the API on a copy of the dev database; the screens are not yet verified in a browser.
 
 ### Phase C — stabilize Ad Hoc and build contract procurement
 

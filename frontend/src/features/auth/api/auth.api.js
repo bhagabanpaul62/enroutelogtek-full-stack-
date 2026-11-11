@@ -38,6 +38,25 @@ export const loginApi = (email, password) => {
     return api.post('/auth/login', { email, password });
 };
 
+// Second login step: the 6-digit code emailed after the password step.
+export const verifyLoginOtpApi = (otp) => {
+    return api.post('/auth/login/verify-otp', { otp });
+};
+
+export const resendLoginOtpApi = () => {
+    return api.post('/auth/login/resend-otp');
+};
+
+/**
+ * The API's reason for a failed call: its human-readable message and, when it sent one, the
+ * machine-readable error.code (e.g. LOGIN_RESTART).
+ * @returns {{ message: string, code?: string }}
+ */
+export const apiReason = (error, fallback) => ({
+    message: error.response?.data?.message || fallback,
+    code: error.response?.data?.error?.code,
+});
+
 export const logOutApi = () => {
     return api.post('/auth/logout');
 };
@@ -45,6 +64,11 @@ export const logOutApi = () => {
 //get current user
 export const aboutMeApi = () => {
     return api.get('/auth/about-me');
+};
+
+/** Sets the signed-in person's own password. Answers with the session user. */
+export const changePasswordApi = (currentPassword, newPassword) => {
+    return api.post('/auth/change-password', { currentPassword, newPassword });
 };
 
 //get Registration Flow

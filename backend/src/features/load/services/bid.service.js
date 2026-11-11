@@ -9,6 +9,7 @@ import { AppError } from '#shared/utils/AppError.js';
 import { notifyCompanies } from '#features/notification/services/notification.service.js';
 import { bidAttempts, bids, loadInvitations, loads } from '../schemas/index.js';
 import { canBid, computeFinalAmount, loadNumber, rankBids } from '../load.rules.js';
+import { PERMISSIONS } from '#features/team/team.permissions.js';
 import { findInvitedLoad, requireTransporter, requireTransporterManager } from './load.access.js';
 import { CUSTOMER_LINK, logNotifyError } from './load.service.js';
 
@@ -16,7 +17,7 @@ const rupees = (amount) => `₹${Number(amount).toLocaleString('en-IN')}`;
 
 /** POST /loads/:id/bids: one attempt through the calculator. */
 export const submitAttempt = async (user, loadId, { baseRate, marginType, marginValue }) => {
-    const company = await requireTransporterManager(user);
+    const company = await requireTransporterManager(user, PERMISSIONS.BIDS_SUBMIT);
 
     let finalAmount;
     try {

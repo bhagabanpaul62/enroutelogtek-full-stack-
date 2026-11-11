@@ -7,7 +7,8 @@ import { toast } from 'sonner';
 import { Button } from '@/shared/ui/primitives/button';
 import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
 import { awardLoadApi, cancelLoadApi, completeLoadApi, extendLoadApi } from '../../api/loads.api';
-import { useLoadManager } from '../../hooks/useLoadManager';
+import { useCan } from '@/shared/hooks/useCan';
+import { PERMISSIONS } from '@/shared/lib/permissions';
 import { formatCountdown, formatDate, formatRoute, formatTimeWindow } from '../../lib/format';
 import LoadSummary from '../components/LoadSummary';
 import StatusBadge from '../components/StatusBadge';
@@ -41,7 +42,9 @@ function Section({ title, children, aside }) {
 /** /customer/loads/[loadId]: one load, its bids, the invited transporters and the manager actions. */
 export default function LoadDetailPage({ loadId }) {
     const { load, error, isLoading, refreshError, reload, replaceLoad } = useLoadDetail(loadId);
-    const canManage = useLoadManager();
+    // Running the load (edit, extend, cancel) and deciding it (award, delivered) are separate permissions.
+    const canManage = useCan(PERMISSIONS.LOADS_MANAGE);
+    const canAward = useCan(PERMISSIONS.LOADS_AWARD);
     const now = useNow();
     const [confirmDialog, confirm] = useConfirm();
     const [busy, setBusy] = useState(false);
@@ -121,24 +124,24 @@ export default function LoadDetailPage({ loadId }) {
     };
 
     const closesIn = load.status === 'live' ? formatCountdown(load.closesAt, now) : '';
-    const actions = canManage ? (
+    const actions = canManage || canAward ? (
         <div className="flex flex-wrap gap-2">
-            {load.status === 'draft' && (
+            {canManage && load.status === 'draft' && (
                 <Button size="lg" nativeButton={false} render={<Link href={`${LOADS_PATH}/new?id=${load.id}`} />}>
                     <Pencil /> Edit draft
                 </Button>
             )}
-            {EXTENDABLE.includes(load.status) && (
+            {canManage && EXTENDABLE.includes(load.status) && (
                 <Button size="lg" variant={load.status === 'expired' ? 'default' : 'outline'} disabled={busy} onClick={() => setDialog('extend')}>
                     <Clock /> {load.status === 'expired' ? 'Reopen bidding' : 'Extend bidding'}
                 </Button>
             )}
-            {COMPLETABLE.includes(load.status) && (
+            {canAward && COMPLETABLE.includes(load.status) && (
                 <Button size="lg" disabled={busy} onClick={complete}>
                     <CheckCheck /> Mark delivered
                 </Button>
             )}
-            {CANCELLABLE.includes(load.status) && (
+            {canManage && CANCELLABLE.includes(load.status) && (
                 <Button size="lg" variant="destructive" disabled={busy} onClick={() => setDialog('cancel')}>
                     <Ban /> Cancel load
                 </Button>
@@ -184,12 +187,12 @@ export default function LoadDetailPage({ loadId }) {
             <Section
                 title={`Bids (${load.bids?.length ?? 0})`}
                 aside={
-                    load.status === 'closed' && canManage && (load.bids?.length ?? 0) > 0 ? (
+                    load.status === 'closed' && canAward && (load.bids?.length ?? 0) > 0 ? (
                         <span className="text-[12px] text-[#c6c6c7]">Pick the winner from the board</span>
                     ) : null
                 }
             >
-                <BidBoard load={load} canManage={canManage} busy={busy} onPick={(bid) => setDialog({ bid })} />
+                <BidBoard load={load} canManage={canAward} busy={busy} onPick={(bid) => setDialog({ bid })} />
             </Section>
 
             <LoadSummary load={load} showTarget />

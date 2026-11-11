@@ -236,7 +236,7 @@ export default function CompanyDetailPage({ companyId }) {
                                 <span className="text-foreground">
                                     {u.name}{' '}
                                     <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                                        {ROLE_LABELS[u.userRole] ?? u.userRole} · {u.userStatus}
+                                        {u.roleName ?? ROLE_LABELS[u.userRole] ?? u.userRole} · {u.userStatus}
                                     </span>
                                 </span>
                                 <span className="break-all text-[#c6c6c7]">

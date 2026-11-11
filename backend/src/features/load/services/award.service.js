@@ -12,6 +12,7 @@ import { notifyCompanies } from '#features/notification/services/notification.se
 import { awards, bids, loads } from '../schemas/index.js';
 import { AWARDABLE_FROM } from '../load.constants.js';
 import { acceptByFrom, loadNumber } from '../load.rules.js';
+import { PERMISSIONS } from '#features/team/team.permissions.js';
 import { publicCompanyFields, requireCustomerManager, requireTransporterManager } from './load.access.js';
 import { CUSTOMER_LINK, TRANSPORTER_LINK, formatWhen, getLoad, logNotifyError } from './load.service.js';
 import { recordLoadEvent } from './loadEvent.service.js';
@@ -28,7 +29,7 @@ const otherBidderIds = async (loadId, winnerCompanyId) => {
 
 /** POST /loads/:id/award */
 export const awardLoad = async (user, loadId, { bidId, reason }) => {
-    const company = await requireCustomerManager(user);
+    const company = await requireCustomerManager(user, PERMISSIONS.LOADS_AWARD);
     const now = new Date();
 
     const { load, award, transporter } = await db.transaction(async (tx) => {
@@ -91,7 +92,7 @@ export const awardLoad = async (user, loadId, { bidId, reason }) => {
 
 /** POST /awards/:id/accept and /decline */
 export const respondToAward = async (user, awardId, decision) => {
-    const company = await requireTransporterManager(user);
+    const company = await requireTransporterManager(user, PERMISSIONS.AWARDS_RESPOND);
     const now = new Date();
     const accepting = decision === 'accept';
 
@@ -168,7 +169,7 @@ export const respondToAward = async (user, awardId, decision) => {
 
 /** PATCH /awards/:id/assignment: truck and driver for an accepted load. */
 export const assignVehicle = async (user, awardId, { vehicleNumber, driverName, driverPhone }) => {
-    const company = await requireTransporterManager(user);
+    const company = await requireTransporterManager(user, PERMISSIONS.TRIPS_ASSIGN);
     const [award] = await db
         .select()
         .from(awards)

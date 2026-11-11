@@ -12,6 +12,7 @@ import { companies } from '#features/company/schemas/company.Schema.js';
 import { branch } from '#features/company/schemas/branch.Schema.js';
 import { rejectedCompany } from '#features/company/schemas/rejectedCompany.Schema.js';
 import { users, userSessions } from '#features/auth/schemas/index.js';
+import { companyRoles } from '#features/team/schemas/index.js';
 import { documents } from '#features/document/schemas/documents.Schema.js';
 import { sendApprovalEmail, sendRejectionEmail } from '#shared/services/email/email.service.js';
 import {
@@ -48,6 +49,8 @@ const userFields = {
     email: users.email,
     phone: users.phone,
     userRole: users.userRole,
+    // The company role's name (team feature); userRole is the legacy fixed role.
+    roleName: companyRoles.name,
     userStatus: users.userStatus,
     lastLogin: users.lastLogin,
     createdAt: users.createdAt,
@@ -74,12 +77,23 @@ const findCompanyOrThrow = async (companyId) => {
     return company;
 };
 
-// The people we write to about a decision: the company's admin users, or the company email.
+// A company's users joined to their company role, for userFields.
+const usersWithRole = () =>
+    db
+        .select(userFields)
+        .from(users)
+        .leftJoin(
+            companyRoles,
+            and(eq(companyRoles.id, users.roleId), eq(companyRoles.companyId, users.companyId)),
+        );
+
+// The people we write to about a decision: the company's Owners, or the company email.
 const contactEmails = async (companyId, companyEmailId) => {
     const admins = await db
         .select({ email: users.email })
         .from(users)
-        .where(and(eq(users.companyId, companyId), eq(users.userRole, 'admin')));
+        .innerJoin(companyRoles, eq(companyRoles.id, users.roleId))
+        .where(and(eq(users.companyId, companyId), eq(companyRoles.isOwner, true)));
     const emails = admins.map((row) => row.email);
     return emails.length > 0 ? emails : [companyEmailId];
 };
@@ -164,7 +178,8 @@ export const listCompanies = async ({ status = 'pending', search, cursor, limit 
         ? await db
               .select(userFields)
               .from(users)
-              .where(and(inArray(users.companyId, ids), eq(users.userRole, 'admin')))
+              .innerJoin(companyRoles, eq(companyRoles.id, users.roleId))
+              .where(and(inArray(users.companyId, ids), eq(companyRoles.isOwner, true)))
         : [];
     const adminByCompany = new Map();
     for (const admin of admins) {
@@ -199,7 +214,7 @@ export const getCompanyDetail = async (companyId) => {
 
     const [branches, members, docs, rejections] = await Promise.all([
         db.select().from(branch).where(eq(branch.companyId, companyId)).orderBy(branch.createdAt),
-        db.select(userFields).from(users).where(eq(users.companyId, companyId)).orderBy(users.createdAt),
+        usersWithRole().where(eq(users.companyId, companyId)).orderBy(users.createdAt),
         db
             .select({
                 id: documents.id,

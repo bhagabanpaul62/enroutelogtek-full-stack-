@@ -9,7 +9,7 @@ import PasswordInput from './parts/PasswordInput';
 import SubmitButton from './parts/SubmitButton';
 
 export default function LoginPage() {
-    const { register, handleSubmit, errors, isSubmitting, apiError, onSubmit } = useLogin();
+    const { register, handleSubmit, errors, isSubmitting, apiError, notice, onSubmit } = useLogin();
     // The API refuses logins for companies that are not approved yet; point those people to the status page.
     const waiting = /pending|approv/i.test(apiError ?? '');
 
@@ -24,6 +24,9 @@ export default function LoginPage() {
             }
         >
             <form className="au-form" onSubmit={handleSubmit(onSubmit)} noValidate>
+                {/* Set by the API client when a login on another device ended this tab's session. */}
+                {notice && <Notice tone="info">{notice}</Notice>}
+
                 <Field id="email" label="Email" error={errors.email?.message}>
                     <input
                         id="email"

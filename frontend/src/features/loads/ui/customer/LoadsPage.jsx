@@ -18,7 +18,8 @@ import {
 } from '@/shared/ui/primitives/select';
 import { getLoadsApi } from '../../api/loads.api';
 import { LOAD_STATUS_LABELS } from '../../constants';
-import { useLoadManager } from '../../hooks/useLoadManager';
+import { useCan } from '@/shared/hooks/useCan';
+import { PERMISSIONS } from '@/shared/lib/permissions';
 import { formatCountdown, formatDate, formatRoute } from '../../lib/format';
 import StatusBadge from '../components/StatusBadge';
 import { useNow } from './useNow';
@@ -79,7 +80,7 @@ function LoadsView() {
 
     const [search, setSearch] = useState('');
     const debouncedSearch = useDebouncedValue(search.trim());
-    const canManage = useLoadManager();
+    const canManage = useCan(PERMISSIONS.LOADS_MANAGE);
     const now = useNow();
     const list = useCursorList(getLoadsApi, { status, search: debouncedSearch });
 

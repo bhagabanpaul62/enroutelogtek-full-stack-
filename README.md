@@ -132,7 +132,9 @@ POST /api/v1/auth/send-otp              ← Send OTP to email
 POST /api/v1/auth/otp-verification      ← Verify OTP + check if user exists
 POST /api/v1/auth/register              ← Create company + user + branch (status: draft)
 POST /api/v1/auth/submit-registration   ← Check docs uploaded → status: pending
-POST /api/v1/auth/login                 ← JWT + cookies + one-session rule
+POST /api/v1/auth/login                 ← Password step: emails a 6-digit login code
+POST /api/v1/auth/login/verify-otp      ← Code step: ends other sessions, sets JWT cookies
+POST /api/v1/auth/login/resend-otp      ← New login code (30 s cooldown, max 3 resends)
 POST /api/v1/auth/logout                ← Kill session + clear cookies
 POST /api/v1/auth/refresh-token         ← Get new access token
 POST /api/v1/auth/forget-password       ← OTP + reset password + kill sessions
@@ -147,9 +149,10 @@ POST /api/v1/documents/upload           ← Upload doc to Cloudflare R2
 - ✅ JWT access token (15 min) + refresh token (30 days)
 - ✅ HttpOnly cookies (XSS protection)
 - ✅ Session table (instant revocation)
-- ✅ One user one session rule (prevents credential sharing)
+- ✅ Emailed login code after the password (10 min, 5 wrong tries, stored hashed)
+- ✅ One user one session: a new login signs the older device out on its next request
 - ✅ Forgot password kills all sessions
-- ✅ authMiddleware (verifies JWT + session)
+- ✅ authMiddleware (verifies JWT + that token's own session + account still allowed)
 - ✅ roleMiddleware (checks permissions)
 
 ### Company Status Lifecycle:

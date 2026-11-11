@@ -1,5 +1,10 @@
 import { createSlice } from '@reduxjs/toolkit';
-import { checkAuthAction, loginUserAction, logoutUserAction } from './authAction';
+import {
+    checkAuthAction,
+    loginUserAction,
+    logoutUserAction,
+    verifyLoginOtpAction,
+} from './authAction';
 
 const signedOut = (state) => {
     state.user = null;
@@ -27,18 +32,24 @@ const authSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
+            // The password step only starts a pending login; the code step signs the user in.
             .addCase(loginUserAction.pending, (state) => {
-                state.isLoading = true;
                 state.error = undefined;
-            })
-            .addCase(loginUserAction.fulfilled, (state, action) => {
-                state.user = action.payload;
-                state.isLoggedIn = true;
-                state.isLoading = false;
             })
             .addCase(loginUserAction.rejected, (state, action) => {
                 signedOut(state);
                 state.error = action.payload;
+            })
+            .addCase(verifyLoginOtpAction.pending, (state) => {
+                state.error = undefined;
+            })
+            .addCase(verifyLoginOtpAction.fulfilled, (state, action) => {
+                state.user = action.payload;
+                state.isLoggedIn = true;
+                state.isLoading = false;
+            })
+            .addCase(verifyLoginOtpAction.rejected, (state, action) => {
+                state.error = action.payload?.message;
             })
             .addCase(checkAuthAction.pending, (state) => {
                 state.isLoading = true;

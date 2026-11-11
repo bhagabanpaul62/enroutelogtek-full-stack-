@@ -14,7 +14,11 @@ export const COMPANY_TYPE_LABELS = {
     fleet_owner: 'Fleet owner',
 };
 
-/** User role as the API sends it → how we name it on screen. */
+/**
+ * Legacy fixed role as the API sends it (users.user_role) → how we name it on screen. Company
+ * users show their company role's own name (user.roleName); this is the fallback, and the only
+ * label for platform staff (root_admin).
+ */
 export const ROLE_LABELS = {
     root_admin: 'Platform admin',
     admin: 'Admin',
@@ -63,7 +67,7 @@ const MAIN = {
 
 const ADMINISTRATION = [
     { slug: 'reports', icon: 'reports', name: 'Reports', description: 'Across RFQs, contracts and trips.' },
-    { slug: 'team', icon: 'team', name: 'Team', description: 'Seats and roles for your people.' },
+    { slug: 'team', icon: 'team', name: 'Team', description: 'Your people, their roles and what each role may do.', ready: true },
     { slug: 'settings', icon: 'settings', name: 'Settings', description: 'Company profile, branches and documents.' },
 ];
 
