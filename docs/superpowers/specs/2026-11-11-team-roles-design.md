@@ -92,7 +92,21 @@ Team page with Members and Roles tabs, add/edit dialogs, a permission checklist 
 change-password page, and a `useCan(permission)` hook that replaces the role lists in loads and
 network. The server stays the judge; hidden buttons only avoid failing clicks.
 
+## Platform admin access (added 12 Nov 2026)
+
+- **Side panel** in the platform area: Companies, Users, Platform admins, Change password.
+- **A company's team** on its platform page: the same Members/Roles screens, with the platform
+  admin acting as the company's Owner (`/platform/companies/:companyId/team/...`, same routes and
+  rules as `/team`). Changes are recorded in `team_events` with `details.via = 'platform'`.
+- **Users**: every company user, searchable by name/email/company, filtered by status and company
+  type (`GET /platform/users`). Deactivate/reactivate/new temporary password go through the
+  company's team routes, so the company's rules (e.g. one active Owner) still apply.
+- **Platform admins** (`/platform/admins`): list, add with a temporary password,
+  deactivate/reactivate, new temporary password. Nobody acts on their own account; at least one
+  platform admin stays active (all platform admin rows are locked during a change). Changes to
+  platform admins are not recorded yet (`team_events` needs a company).
+
 ## Out of scope
 
-Seat limits, branch-level permissions, invite emails, a screen for `team_events`, cross-company
-user admin for the platform, and dropping `users.user_role`.
+Seat limits, branch-level permissions, invite emails, a screen for `team_events`, a history of
+platform-admin account changes, and dropping `users.user_role`.

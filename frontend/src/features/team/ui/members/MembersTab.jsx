@@ -9,14 +9,6 @@ import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
 import { useCursorList } from '@/shared/hooks/useCursorList';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { cn } from '@/shared/lib/utils';
-import {
-    addMemberApi,
-    deactivateMemberApi,
-    getMembersApi,
-    reactivateMemberApi,
-    resetMemberPasswordApi,
-    updateMemberApi,
-} from '../../api/team.api';
 import { useTeamAction } from '../../hooks/useTeamAction';
 import CredentialsDialog from './CredentialsDialog';
 import MemberDialog from './MemberDialog';
@@ -31,13 +23,14 @@ const STATUS_FILTERS = [
 
 /**
  * The company's people: search, status filter, add, edit, new temporary password and
- * deactivate/reactivate. `roles` feeds the role pickers; `onChanged` refreshes role counts.
+ * deactivate/reactivate. `api` is the stable team API (company or platform); `roles` feeds the
+ * role pickers; `onChanged` refreshes role counts.
  */
-export default function MembersTab({ roles, onChanged }) {
+export default function MembersTab({ api, roles, onChanged }) {
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('');
     const debouncedSearch = useDebouncedValue(search.trim());
-    const list = useCursorList(getMembersApi, { search: debouncedSearch, status });
+    const list = useCursorList(api.getMembers, { search: debouncedSearch, status });
     const { run, busy } = useTeamAction();
     const [confirmDialog, confirm] = useConfirm();
     // null | { type: 'add' } | { type: 'edit', member } | { type: 'password', member } | { type: 'credentials', name, email, password }
@@ -55,7 +48,7 @@ export default function MembersTab({ roles, onChanged }) {
     };
 
     const add = async (values) => {
-        const created = await run(() => addMemberApi(values), `${values.name} added`);
+        const created = await run(() => api.addMember(values), `${values.name} added`);
         if (!created) return;
         refresh();
         open({ type: 'credentials', name: created.name, email: created.email, password: values.temporaryPassword });
@@ -63,14 +56,14 @@ export default function MembersTab({ roles, onChanged }) {
 
     const edit = async (member, changes) => {
         if (Object.keys(changes).length === 0) return close();
-        if (await run(() => updateMemberApi(member.id, changes), `${member.name} updated`)) {
+        if (await run(() => api.updateMember(member.id, changes), `${member.name} updated`)) {
             close();
             refresh();
         }
     };
 
     const setPassword = async (member, password) => {
-        if (await run(() => resetMemberPasswordApi(member.id, password), 'Temporary password set')) {
+        if (await run(() => api.resetMemberPassword(member.id, password), 'Temporary password set')) {
             refresh();
             open({ type: 'credentials', name: member.name, email: member.email, password });
         }
@@ -93,7 +86,7 @@ export default function MembersTab({ roles, onChanged }) {
                   },
         );
         if (!confirmed) return;
-        const action = deactivating ? () => deactivateMemberApi(member.id) : () => reactivateMemberApi(member.id);
+        const action = deactivating ? () => api.deactivateMember(member.id) : () => api.reactivateMember(member.id);
         if (await run(action, deactivating ? `${member.name} deactivated` : `${member.name} reactivated`)) refresh();
     };
 
@@ -143,7 +136,7 @@ export default function MembersTab({ roles, onChanged }) {
                 empty={
                     isFiltered
                         ? { icon: Users, title: 'Nobody matches', description: 'Try another name or status.' }
-                        : { icon: Users, title: 'Only you so far', description: 'Add the people who work with you.' }
+                        : { icon: Users, title: 'Only you so far', description: 'Add the people who work in this company.' }
                 }
                 renderItem={(member) => (
                     <MemberRow

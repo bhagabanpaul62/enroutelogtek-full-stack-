@@ -1,6 +1,8 @@
 /**
- * ROLES: a company's own roles and their permissions. Reads use the request user; every change
- * runs under lockTeam() with the actor re-read, and is recorded in team_events.
+ * ROLES: a company's own roles and their permissions. Every function takes a TeamScope (see
+ * team.access.js): a member managing their company, or a platform admin acting as its Owner.
+ * Reads use the scope's viewer; every change runs under lockTeam() with the actor re-read, and
+ * is recorded in team_events.
  */
 import { and, asc, count, desc, eq, ne, sql } from 'drizzle-orm';
 import { db } from '#shared/db/index.js';
@@ -23,7 +25,6 @@ import {
     freshActor,
     lockTeam,
     recordEvent,
-    requireCompany,
     uniqueViolation,
 } from './team.access.js';
 
@@ -62,28 +63,22 @@ export async function createPresetRoles(tx, companyId, companyType, now = new Da
 
 /**
  * The permissions a role in this company can hold, for the role editor.
- * @param {object} user req.user
+ * @param {import('./team.access.js').TeamScope} scope
  * @returns {{ key: string, area: string, label: string, description: string }[]}
  */
-export function listPermissions(user) {
-    return catalogueFor(requireCompany(user).companyType);
+export function listPermissions(scope) {
+    return catalogueFor(scope.companyType);
 }
-
-const actorOf = (user) => ({
-    userId: user.userId,
-    isOwner: user.isOwner,
-    permissions: user.permissions,
-});
 
 /**
  * Every role of the company with how many people hold it and what the viewer may do with it.
  * Not paginated: a company has at most MAX_ROLES_PER_COMPANY roles.
- * @param {object} user req.user
+ * @param {import('./team.access.js').TeamScope} scope
  * @returns {Promise<object[]>} id, name, description, isOwner, permissions, memberCount,
  *   canEdit (edit/delete), canAssign (give it to someone)
  */
-export async function listRoles(user) {
-    const company = requireCompany(user);
+export async function listRoles(scope) {
+    const company = scope;
     const rows = await db
         .select({
             id: companyRoles.id,
@@ -99,7 +94,7 @@ export async function listRoles(user) {
         .groupBy(companyRoles.id)
         .orderBy(desc(companyRoles.isOwner), asc(companyRoles.createdAt), asc(companyRoles.id));
 
-    const actor = actorOf(user);
+    const actor = scope.viewer;
     return rows.map((row) => {
         const role = { ...row, permissions: effectivePermissions(row, company.companyType) };
         return {
@@ -142,19 +137,19 @@ const checkedPermissions = (requested, companyType) => {
 
 /**
  * Creates a role. The actor can only include permissions they hold.
- * @param {object} user req.user
+ * @param {import('./team.access.js').TeamScope} scope
  * @param {{ name: string, description?: string|null, permissions: unknown }} input validated body
  * @returns {Promise<object>} the role
  * @throws {AppError} 403 escalation, 409 duplicate name or too many roles, 422 bad permissions
  */
-export async function createRole(user, input) {
-    const company = requireCompany(user);
+export async function createRole(scope, input) {
+    const company = scope;
     const permissions = checkedPermissions(input.permissions ?? [], company.companyType);
 
     try {
         return await db.transaction(async (tx) => {
             await lockTeam(tx, company.companyId);
-            const actor = await freshActor(tx, user);
+            const actor = await freshActor(tx, scope);
             fail(grantProblem(actor, permissions));
 
             const [{ value: roleCount }] = await tx
@@ -174,9 +169,7 @@ export async function createRole(user, input) {
                     isOwner: false,
                 })
                 .returning();
-            await recordEvent(tx, {
-                companyId: company.companyId,
-                actorUserId: user.userId,
+            await recordEvent(tx, scope, {
                 action: TEAM_ACTION.ROLE_CREATED,
                 targetRoleId: role.id,
                 details: { name: role.name, permissions },
@@ -192,14 +185,14 @@ export async function createRole(user, input) {
 /**
  * Changes a role's name, description and/or permissions. Only fields present in `input` change.
  * Takes effect for everyone with the role on their next request.
- * @param {object} user req.user
+ * @param {import('./team.access.js').TeamScope} scope
  * @param {string} roleId
  * @param {{ name?: string, description?: string|null, permissions?: unknown }} input validated body
  * @returns {Promise<object>} the updated role
  * @throws {AppError} 403 Owner role or escalation, 404 unknown role, 409 duplicate name, 422 bad permissions
  */
-export async function updateRole(user, roleId, input) {
-    const company = requireCompany(user);
+export async function updateRole(scope, roleId, input) {
+    const company = scope;
     const permissions =
         input.permissions === undefined
             ? undefined
@@ -208,7 +201,7 @@ export async function updateRole(user, roleId, input) {
     try {
         return await db.transaction(async (tx) => {
             await lockTeam(tx, company.companyId);
-            const actor = await freshActor(tx, user);
+            const actor = await freshActor(tx, scope);
             const role = await findRole(tx, company, roleId, { forUpdate: true });
             fail(roleEditProblem(actor, role));
             if (permissions !== undefined) fail(grantProblem(actor, permissions));
@@ -227,9 +220,7 @@ export async function updateRole(user, roleId, input) {
                 .set(changes)
                 .where(eq(companyRoles.id, roleId))
                 .returning();
-            await recordEvent(tx, {
-                companyId: company.companyId,
-                actorUserId: user.userId,
+            await recordEvent(tx, scope, {
                 action: TEAM_ACTION.ROLE_UPDATED,
                 targetRoleId: roleId,
                 details: {
@@ -247,16 +238,16 @@ export async function updateRole(user, roleId, input) {
 
 /**
  * Deletes a role nobody holds.
- * @param {object} user req.user
+ * @param {import('./team.access.js').TeamScope} scope
  * @param {string} roleId
  * @returns {Promise<void>}
  * @throws {AppError} 403 Owner role or escalation, 404 unknown role, 409 still held by someone
  */
-export async function deleteRole(user, roleId) {
-    const company = requireCompany(user);
+export async function deleteRole(scope, roleId) {
+    const company = scope;
     await db.transaction(async (tx) => {
         await lockTeam(tx, company.companyId);
-        const actor = await freshActor(tx, user);
+        const actor = await freshActor(tx, scope);
         const role = await findRole(tx, company, roleId, { forUpdate: true });
         fail(roleEditProblem(actor, role));
 
@@ -267,9 +258,7 @@ export async function deleteRole(user, roleId) {
         fail(roleDeleteProblem(Number(holders)));
 
         await tx.delete(companyRoles).where(eq(companyRoles.id, roleId));
-        await recordEvent(tx, {
-            companyId: company.companyId,
-            actorUserId: user.userId,
+        await recordEvent(tx, scope, {
             action: TEAM_ACTION.ROLE_DELETED,
             targetRoleId: roleId,
             details: { name: role.name, permissions: role.permissions },

@@ -1,11 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { useSelector } from 'react-redux';
 import { Lock, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
 import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
-import { createRoleApi, deleteRoleApi, updateRoleApi } from '../../api/team.api';
 import { useTeamAction } from '../../hooks/useTeamAction';
 import RoleDialog from './RoleDialog';
 
@@ -14,16 +12,15 @@ const peopleLabel = (count) => (count === 1 ? '1 person' : `${count} people`);
 /**
  * The company's roles, each with its permissions and how many people hold it. People with
  * roles.manage can create, edit and delete roles; the Owner role is always locked.
+ * `canGrant(key)` says which permissions the viewer may tick (their own, or all for an Owner).
  */
-export default function RolesTab({ roles, catalogue, canManageRoles, onChanged }) {
-    const me = useSelector((state) => state.auth.user);
+export default function RolesTab({ api, roles, catalogue, canManageRoles, canGrant, onChanged }) {
     const { run, busy } = useTeamAction();
     const [confirmDialog, confirm] = useConfirm();
     // null | { role: object|null }
     const [dialog, setDialog] = useState(null);
     const [dialogCount, setDialogCount] = useState(0);
     const labelOf = new Map(catalogue.map((entry) => [entry.key, entry.label]));
-    const canGrant = (key) => Boolean(me?.isOwner) || Boolean(me?.permissions?.includes(key));
 
     const open = (role) => {
         setDialogCount((count) => count + 1);
@@ -33,8 +30,8 @@ export default function RolesTab({ roles, catalogue, canManageRoles, onChanged }
     const save = async (values) => {
         const role = dialog.role;
         const saved = role
-            ? await run(() => updateRoleApi(role.id, values), `${values.name} saved`)
-            : await run(() => createRoleApi(values), `${values.name} created`);
+            ? await run(() => api.updateRole(role.id, values), `${values.name} saved`)
+            : await run(() => api.createRole(values), `${values.name} created`);
         if (saved) {
             setDialog(null);
             onChanged();
@@ -48,7 +45,7 @@ export default function RolesTab({ roles, catalogue, canManageRoles, onChanged }
             confirmLabel: 'Delete role',
             destructive: true,
         });
-        if (confirmed && (await run(() => deleteRoleApi(role.id), `${role.name} deleted`))) onChanged();
+        if (confirmed && (await run(() => api.deleteRole(role.id), `${role.name} deleted`))) onChanged();
     };
 
     return (

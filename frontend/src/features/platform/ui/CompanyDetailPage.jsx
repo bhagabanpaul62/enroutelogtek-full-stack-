@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, ExternalLink, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
 import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
-import { COMPANY_TYPE_LABELS, ROLE_LABELS } from '@/shared/lib/dashboardNav';
+import { COMPANY_TYPE_LABELS } from '@/shared/lib/dashboardNav';
 import { DOCUMENT_TYPE_LABELS } from '../constants';
 import {
     approveCompanyApi,
@@ -16,6 +16,7 @@ import {
 import { useCompanyDetail } from '../hooks/useCompanyDetail';
 import { useCompanyDecision } from '../hooks/useCompanyDecision';
 import { formatDate, formatDateTime } from '../lib/formatDate';
+import CompanyTeamSection from './components/CompanyTeamSection';
 import Facts from './components/Facts';
 import RejectDialog from './components/RejectDialog';
 import StatusBadge from './components/StatusBadge';
@@ -94,7 +95,7 @@ export default function CompanyDetailPage({ companyId }) {
         );
     }
 
-    const { company, branches, users, documents, rejections } = detail;
+    const { company, branches, documents, rejections } = detail;
     const status = company.companyStatus;
 
     const decide = async (action) => {
@@ -229,25 +230,6 @@ export default function CompanyDetailPage({ companyId }) {
                     )}
                 </Section>
 
-                <Section title={users.length === 1 ? 'User' : `Users (${users.length})`}>
-                    <ul className="divide-y divide-border">
-                        {users.map((u) => (
-                            <li key={u.id} className="flex flex-col gap-0.5 py-2 text-[13px]">
-                                <span className="text-foreground">
-                                    {u.name}{' '}
-                                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                                        {u.roleName ?? ROLE_LABELS[u.userRole] ?? u.userRole} · {u.userStatus}
-                                    </span>
-                                </span>
-                                <span className="break-all text-[#c6c6c7]">
-                                    {u.email}
-                                    {u.phone ? ` · ${u.phone}` : ''}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-                </Section>
-
                 {rejections.length > 0 && (
                     <Section title="Rejection history">
                         <ul className="flex flex-col gap-3">
@@ -263,6 +245,9 @@ export default function CompanyDetailPage({ companyId }) {
                     </Section>
                 )}
             </div>
+
+            {/* The people of the company, managed here as its Owner (replaces a read-only list). */}
+            <CompanyTeamSection companyId={company.id} />
 
             {confirmDialog}
             <RejectDialog

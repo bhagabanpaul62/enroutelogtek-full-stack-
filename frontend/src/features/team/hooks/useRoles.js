@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getPermissionsApi, getRolesApi } from '../api/team.api';
 
 const errorMessage = (error) =>
     error.response?.data?.message || 'Could not load the roles. Please try again.';
@@ -9,16 +8,17 @@ const errorMessage = (error) =>
 /**
  * The company's roles (with member counts and what the viewer may do with each) and the
  * permissions a role can hold. Only call it for people allowed to read roles.
+ * @param {ReturnType<import('../api/team.api').createTeamApi>} api stable team API
  * @returns {{ roles: object[], permissions: object[], error: string, isLoading: boolean, reload: () => void }}
  */
-export function useRoles() {
+export function useRoles(api) {
     const [reloadCount, setReloadCount] = useState(0);
     // `key` says which load the stored answer belongs to, so a reload shows as loading.
     const [state, setState] = useState({ key: null, roles: [], permissions: [], error: '' });
 
     useEffect(() => {
         let ignore = false;
-        Promise.all([getRolesApi(), getPermissionsApi()])
+        Promise.all([api.getRoles(), api.getPermissions()])
             .then(([roles, permissions]) => {
                 if (!ignore) {
                     setState({ key: reloadCount, roles: roles.data.data, permissions: permissions.data.data, error: '' });
@@ -30,7 +30,7 @@ export function useRoles() {
         return () => {
             ignore = true;
         };
-    }, [reloadCount]);
+    }, [api, reloadCount]);
 
     return {
         roles: state.roles,

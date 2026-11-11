@@ -4,24 +4,75 @@
  * happen one at a time. That is what stops two Owners demoting each other at the same moment
  * and leaving the company with none. Inside the lock the actor is re-read (freshActor), because
  * the permissions the auth middleware loaded may have changed while the request waited.
+ *
+ * Every service works on a "scope": which company's team, and who is acting. A company member
+ * acts with their own role (memberScope); a platform admin acts as that company's Owner
+ * (platformScope), so the same rules apply to both and the history records which it was.
  */
 import { and, count, eq, ne } from 'drizzle-orm';
+import { db } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { users } from '#features/auth/schemas/index.js';
+import { companies } from '#features/company/schemas/company.Schema.js';
 import { companyRoles, teamEvents } from '../schemas/index.js';
+import { permissionKeysFor } from '../team.permissions.js';
 import { effectivePermissions } from '../team.rules.js';
 
 /**
- * The company of a signed-in company user. Platform staff have none and cannot manage teams.
- * @param {{ companyId: string|null, companyType: string|null }} user req.user
- * @returns {{ companyId: string, companyType: string }}
- * @throws {AppError} 403 without a company
+ * @typedef {object} TeamScope
+ * @property {string} companyId the team being managed
+ * @property {string} companyType
+ * @property {string} actorUserId who is acting (recorded in team_events)
+ * @property {boolean} viaPlatform true when a platform admin acts as the company's Owner
+ * @property {{ userId: string, isOwner: boolean, permissions: string[] }} viewer the actor as
+ *   the rules see them, from the request (re-read inside the lock by freshActor)
  */
-export function requireCompany(user) {
+
+/**
+ * The scope of a signed-in company user managing their own company's team.
+ * @param {object} user req.user
+ * @returns {TeamScope}
+ * @throws {AppError} 403 without a company (platform staff use platformScope)
+ */
+export function memberScope(user) {
     if (!user.companyId || !user.companyType) {
         throw new AppError('Team management needs a company account', 403);
     }
-    return { companyId: user.companyId, companyType: user.companyType };
+    return {
+        companyId: user.companyId,
+        companyType: user.companyType,
+        actorUserId: user.userId,
+        viaPlatform: false,
+        viewer: { userId: user.userId, isOwner: user.isOwner, permissions: user.permissions },
+    };
+}
+
+/**
+ * The scope of a platform admin (root_admin) managing one company's team as its Owner.
+ * The route must already be limited to root admins.
+ * @param {object} user req.user (a root admin)
+ * @param {string} companyId
+ * @returns {Promise<TeamScope>}
+ * @throws {AppError} 404 unknown company
+ */
+export async function platformScope(user, companyId) {
+    const [company] = await db
+        .select({ id: companies.id, companyType: companies.companyType })
+        .from(companies)
+        .where(eq(companies.id, companyId))
+        .limit(1);
+    if (!company) throw new AppError('Company not found', 404);
+    return {
+        companyId: company.id,
+        companyType: company.companyType,
+        actorUserId: user.userId,
+        viaPlatform: true,
+        viewer: {
+            userId: user.userId,
+            isOwner: true,
+            permissions: permissionKeysFor(company.companyType),
+        },
+    };
 }
 
 /**
@@ -44,13 +95,26 @@ export async function lockTeam(tx, companyId) {
 }
 
 /**
- * The actor as the rules need them, read again inside the lock.
+ * The actor as the rules need them, read again inside the lock. A platform admin must still be
+ * an active root admin; a member must still be active with a role in the company.
  * @param {object} tx
- * @param {{ userId: string, companyId: string, companyType: string }} user req.user
+ * @param {TeamScope} scope
  * @returns {Promise<{ userId: string, isOwner: boolean, permissions: string[] }>}
- * @throws {AppError} 403 when the actor is no longer an active member with a role
+ * @throws {AppError} 403 when the actor lost their access meanwhile
  */
-export async function freshActor(tx, user) {
+export async function freshActor(tx, scope) {
+    if (scope.viaPlatform) {
+        const [admin] = await tx
+            .select({ status: users.userStatus, role: users.userRole })
+            .from(users)
+            .where(eq(users.id, scope.actorUserId))
+            .limit(1);
+        if (admin?.status !== 'active' || admin.role !== 'root_admin') {
+            throw new AppError('Your access changed. Reload the page and try again.', 403);
+        }
+        return scope.viewer;
+    }
+
     const [row] = await tx
         .select({
             status: users.userStatus,
@@ -61,15 +125,15 @@ export async function freshActor(tx, user) {
             companyRoles,
             and(eq(companyRoles.id, users.roleId), eq(companyRoles.companyId, users.companyId)),
         )
-        .where(and(eq(users.id, user.userId), eq(users.companyId, user.companyId)))
+        .where(and(eq(users.id, scope.actorUserId), eq(users.companyId, scope.companyId)))
         .limit(1);
     if (!row || row.status !== 'active') {
         throw new AppError('Your access changed. Reload the page and try again.', 403);
     }
     return {
-        userId: user.userId,
+        userId: scope.actorUserId,
         isOwner: row.role.isOwner,
-        permissions: effectivePermissions(row.role, user.companyType),
+        permissions: effectivePermissions(row.role, scope.companyType),
     };
 }
 
@@ -176,19 +240,22 @@ export const TEAM_ACTION = Object.freeze({
 });
 
 /**
- * Records a team change in the same transaction as the change.
+ * Records a team change in the same transaction as the change. Changes made by a platform admin
+ * carry `via: 'platform'` in details, so the company can tell them apart.
  * @param {object} tx
- * @param {{ companyId: string, actorUserId: string, action: string, targetUserId?: string, targetRoleId?: string, details?: object }} event
+ * @param {TeamScope} scope
+ * @param {{ action: string, targetUserId?: string, targetRoleId?: string, details?: object }} event
  * @returns {Promise<void>}
  */
-export async function recordEvent(tx, event) {
+export async function recordEvent(tx, scope, event) {
+    const details = scope.viaPlatform ? { ...event.details, via: 'platform' } : event.details;
     await tx.insert(teamEvents).values({
-        companyId: event.companyId,
-        actorUserId: event.actorUserId,
+        companyId: scope.companyId,
+        actorUserId: scope.actorUserId,
         action: event.action,
         targetUserId: event.targetUserId ?? null,
         targetRoleId: event.targetRoleId ?? null,
-        details: event.details ?? null,
+        details: details ?? null,
     });
 }
 
