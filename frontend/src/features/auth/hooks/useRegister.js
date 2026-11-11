@@ -59,19 +59,18 @@ export function useRegister() {
         const allData = { ...formData, ...accountData, email };
 
         try {
-
             const res = await registerApi(allData);
             //save the data
             sessionStorage.setItem('registrationResult', JSON.stringify(res.data.data));
             setRegistrationResult(res.data.data);
             toast.success('Data Save Successful');
             setStep(4);
+            return true;
         } catch (error) {
             const message = error.response?.data?.message || 'Submission account info error';
-
             setApiError(message);
             toast.error(message);
-
+            return false;
         } finally {
             setIsSubmitting(false);
         }
