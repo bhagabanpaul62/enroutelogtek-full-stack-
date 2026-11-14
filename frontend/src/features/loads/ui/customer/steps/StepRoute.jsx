@@ -6,13 +6,15 @@ import { lookupPinCodeApi } from '../../../api/loads.api';
 import { todayIso } from '../loadTime';
 import { FormField, TextInput } from './FormField';
 
-/** PIN code, city, state and address for one end of the route. A full PIN fills city and state. */
+/** PIN code, city, state, address and optional contact for one end of the route. */
 function PlaceFields({ prefix, title, form, errors, onChange }) {
     const keys = {
         pin: `${prefix}PinCode`,
         city: `${prefix}City`,
         state: `${prefix}State`,
         address: `${prefix}Address`,
+        contactName: `${prefix}ContactName`,
+        contactPhone: `${prefix}ContactPhone`,
     };
     const [lookingUp, setLookingUp] = useState(false);
     const [lookupNote, setLookupNote] = useState('');
@@ -105,6 +107,42 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                     placeholder="Plant, warehouse or street address"
                 />
             </FormField>
+
+            {/* AJ-05: contact shared with the transporter after award acceptance */}
+            <div className="grid gap-3 sm:grid-cols-2">
+                <FormField
+                    label="Contact name"
+                    htmlFor={keys.contactName}
+                    hint="Shared with the transporter after acceptance"
+                    error={errors[keys.contactName]}
+                >
+                    <TextInput
+                        id={keys.contactName}
+                        maxLength={100}
+                        autoComplete="off"
+                        value={form[keys.contactName]}
+                        onChange={(event) => onChange({ [keys.contactName]: event.target.value })}
+                        placeholder="Name of the person at the gate"
+                    />
+                </FormField>
+                <FormField
+                    label="Contact phone"
+                    htmlFor={keys.contactPhone}
+                    error={errors[keys.contactPhone]}
+                >
+                    <TextInput
+                        id={keys.contactPhone}
+                        type="tel"
+                        inputMode="tel"
+                        maxLength={15}
+                        value={form[keys.contactPhone]}
+                        invalid={Boolean(errors[keys.contactPhone])}
+                        onChange={(event) => onChange({ [keys.contactPhone]: event.target.value })}
+                        placeholder="98765 43210"
+                        className="font-mono"
+                    />
+                </FormField>
+            </div>
         </fieldset>
     );
 }
