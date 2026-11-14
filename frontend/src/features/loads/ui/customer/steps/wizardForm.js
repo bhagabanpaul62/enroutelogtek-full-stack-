@@ -13,7 +13,9 @@ const dateStr = (value) => str(value).slice(0, 10);
 export const STEP_FIELDS = {
     1: [
         'pickupPinCode', 'pickupCity', 'pickupState', 'pickupAddress',
+        'pickupContactName', 'pickupContactPhone',
         'dropPinCode', 'dropCity', 'dropState', 'dropAddress',
+        'dropContactName', 'dropContactPhone',
         'pickupDate', 'pickupTimeFrom', 'pickupTimeTo', 'flexibilityDays', 'expectedDeliveryDate',
     ],
     2: [
@@ -41,10 +43,14 @@ export const formFromLoad = (load, now = Date.now()) => ({
     pickupCity: str(load?.pickupCity),
     pickupState: str(load?.pickupState),
     pickupAddress: str(load?.pickupAddress),
+    pickupContactName: str(load?.pickupContactName),
+    pickupContactPhone: str(load?.pickupContactPhone),
     dropPinCode: str(load?.dropPinCode),
     dropCity: str(load?.dropCity),
     dropState: str(load?.dropState),
     dropAddress: str(load?.dropAddress),
+    dropContactName: str(load?.dropContactName),
+    dropContactPhone: str(load?.dropContactPhone),
     pickupDate: dateStr(load?.pickupDate),
     pickupTimeFrom: str(load?.pickupTimeFrom).slice(0, 5),
     pickupTimeTo: str(load?.pickupTimeTo).slice(0, 5),
