@@ -6,7 +6,7 @@ import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
 import { BigStat, Inset, Panel, StatusChip, TickBar } from '@/shared/ui/kit';
 import { acceptAwardApi, declineAwardApi } from '../../api/loads.api';
 import { useBidActions } from '../../hooks/useBidActions';
-import { formatCountdown, formatDateTime } from '../../lib/format';
+import { formatCountdown, formatDateTime, formatRupees, perKgTotal } from '../../lib/format';
 import { rs } from './money';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -16,19 +16,22 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * deadline (managers only). Otherwise a quiet panel saying how it ended.
  * @param {{ award: object, amount?: number, canManage: boolean, now: number, onChanged: () => void }} props
  */
-export default function AwardResponse({ award, amount, canManage, now, onChanged }) {
+export default function AwardResponse({ award, amount, load, canManage, now, onChanged, onAccepted }) {
+    const perKg = load?.priceBasis === 'per_kg';
     const { run, busy } = useBidActions(onChanged);
     const [confirmDialog, confirm] = useConfirm();
 
     const ended = {
         accepted: `Accepted on ${formatDateTime(award.respondedAt)}`,
-        declined: `You declined this award on ${formatDateTime(award.respondedAt)}.`,
+        declined: `This award was declined on ${formatDateTime(award.respondedAt)}, by you or after a missed truck placement.`,
+        revoked: 'The customer took this award back after a truck missed its placement. It counts as a missed placement on your record.',
         expired: `This award expired on ${formatDateTime(award.acceptBy)} without an answer.`,
     }[award.status];
     if (ended) {
         return (
             <Panel title="Award" action={<StatusChip value={award.status} />}>
                 <p className="text-sm text-[var(--ds-on-surface-variant)]">{ended}</p>
+                {['declined', 'revoked'].includes(award.status) && <p className="mt-2 text-xs text-[var(--ds-on-surface-muted)]">The customer can now pick another bid. Nothing more to do on this load.</p>}
             </Panel>
         );
     }
@@ -44,10 +47,13 @@ export default function AwardResponse({ award, amount, canManage, now, onChanged
         const ok = await confirm({
             title: 'Accept this load?',
             description:
-                'You commit to moving it at your bid amount. Next you assign a truck and a driver.',
+                'You commit to moving it at your bid amount and the terms shown on this page. Next you pick a truck and a driver for each truck of the load.',
             confirmLabel: 'Accept',
         });
-        if (ok) run(() => acceptAwardApi(award.id));
+        if (ok) {
+            const result = await run(() => acceptAwardApi(award.id));
+            if (result.ok) onAccepted?.();
+        }
     };
 
     const decline = async () => {
@@ -64,7 +70,13 @@ export default function AwardResponse({ award, amount, canManage, now, onChanged
     return (
         <Panel title="The customer picked your bid" action={<StatusChip value="pending" />}>
             <Inset className="grid gap-5 sm:grid-cols-2">
-                {amount !== undefined && <BigStat label="Your awarded amount" value={rs(amount)} />}
+                {amount !== undefined && (
+                    <BigStat
+                        label="Your awarded amount"
+                        value={`${rs(amount)}${perKg ? '/kg' : ''}`}
+                        hint={perKg && load.chargeableWeightKg ? `${formatRupees(perKgTotal(amount, load.chargeableWeightKg))} on ${load.chargeableWeightKg} kg` : undefined}
+                    />
+                )}
                 <BigStat
                     label={`Accept before ${formatDateTime(award.acceptBy)}`}
                     value={countdown ? `${countdown} left` : 'Time is up'}

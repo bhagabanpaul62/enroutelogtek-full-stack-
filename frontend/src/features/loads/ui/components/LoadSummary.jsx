@@ -7,6 +7,8 @@ import {
 } from '../../constants';
 import { formatWeight } from '@/shared/lib/format';
 import { formatDate, formatDateTime, formatRupees, formatTimeWindow } from '../../lib/format';
+import LoadTypeBadge from './LoadTypeBadge';
+import { CargoFacts, ContactFacts, PackageLines, PlaceFacts, TermsFacts } from './LoadExtraFacts';
 
 function Block({ title, action, children }) {
     return (
@@ -49,18 +51,26 @@ export default function LoadSummary({ load, showTarget = false, renderAction, cl
                     {load.flexibilityDays > 0 && <span className="ml-1 text-xs text-[var(--ds-on-surface-muted)]">± {load.flexibilityDays} day(s)</span>}
                 </Fact>
                 <Fact label="Expected delivery">{load.expectedDeliveryDate ? formatDate(load.expectedDeliveryDate) : null}</Fact>
+                <PlaceFacts load={load} />
+                <ContactFacts load={load} />
             </Block>
 
             <Block title="Material and truck" action={action(2)}>
                 <Fact label="Material">{material}</Fact>
                 <Fact label="Weight">{load.weightTons ? formatWeight(Number(load.weightTons) * 1000) : null}</Fact>
                 <Fact label="Packaging">{load.packaging ? PACKAGING_LABELS[load.packaging] ?? load.packaging : null}</Fact>
-                <Fact label="Load type">{LOAD_TYPE_LABELS[load.loadType] ?? load.loadType}</Fact>
+                <Fact label="Load type">
+                    <span className="inline-flex items-center gap-2">
+                        {LOAD_TYPE_LABELS[load.loadType] ?? load.loadType} <LoadTypeBadge type={load.loadType} />
+                    </span>
+                </Fact>
                 <Fact label="Truck">
                     {load.vehicleType ? `${load.vehicleCount} × ${load.vehicleType.name}` : null}
                     {load.capacityTonsPerVehicle && <span className="ml-1 text-xs text-[var(--ds-on-surface-muted)]">{load.capacityTonsPerVehicle} t each</span>}
                 </Fact>
                 <Fact label="Special requirements">{tags.length ? tags.join(', ') : 'None'}</Fact>
+                <CargoFacts load={load} />
+                <PackageLines load={load} />
                 {load.notes && <Fact label="Notes">{load.notes}</Fact>}
                 {load.attachmentUrl && (
                     <Fact label="Attachment">
@@ -70,12 +80,21 @@ export default function LoadSummary({ load, showTarget = false, renderAction, cl
             </Block>
 
             <Block title="Price and bid rules" action={action(3)}>
-                <Fact label="Price basis">{PRICE_BASIS_LABELS[load.priceBasis] ?? load.priceBasis}</Fact>
+                <Fact label="Price basis">
+                    {PRICE_BASIS_LABELS[load.priceBasis] ?? load.priceBasis}
+                    {load.priceBasis === 'per_kg' && load.chargeableWeightKg ? (
+                        <span className="ml-1 text-xs text-[var(--ds-on-surface-muted)]">on {formatWeight(Number(load.chargeableWeightKg))} chargeable</span>
+                    ) : null}
+                </Fact>
                 {showTarget && <Fact label="Target price (hidden from transporters)">{load.targetPrice ? formatRupees(load.targetPrice) : 'Not set'}</Fact>}
                 <Fact label="Bidding closes">{load.closesAt ? formatDateTime(load.closesAt) : null}</Fact>
                 <Fact label="Attempts per transporter">{load.maxAttempts}</Fact>
                 <Fact label="Payment terms">{load.paymentTerms}</Fact>
                 {showTarget && <Fact label="Auto-extend once if no bids">{load.autoExtendOnce ? 'Yes' : 'No'}</Fact>}
+            </Block>
+
+            <Block title="Commercial terms" action={action(3)}>
+                <TermsFacts terms={load} />
             </Block>
         </div>
     );

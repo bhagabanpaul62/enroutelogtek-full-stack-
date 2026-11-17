@@ -17,6 +17,6 @@ export const deleteDriverApi = (id) => api.delete(`/fleet/drivers/${id}`);
 export const addDriverDocumentApi = (id, body) => api.post(`/fleet/drivers/${id}/documents`, body);
 
 export const getVehicleTypesApi = () => api.get('/masters/vehicle-types');
-// The spec has no vehicleId/driverId filter on /trips yet; the Trips tab filters the executor's trips by registration / driver name.
+// GET /trips takes vehicleId and driverId filters (server side).
 export const listTripsApi = (params) => api.get('/trips', { params });
 export const uploadFileApi = (body) => api.post('/documents/upload', body);

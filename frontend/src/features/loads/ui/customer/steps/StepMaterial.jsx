@@ -1,13 +1,15 @@
 'use client';
 
-import { ErrorState, SkeletonRows } from '@/shared/ui/kit';
+import { ErrorState, SegmentedControl, SkeletonRows } from '@/shared/ui/kit';
 import { SelectGroup, SelectItem, SelectLabel } from '@/shared/ui/primitives/select';
 import {
+    HAZMAT_CLASS_LABELS,
     LOAD_TYPE_LABELS,
     PACKAGING_LABELS,
     SPECIAL_REQUIREMENT_LABELS,
 } from '../../../constants';
 import AttachmentUpload from './AttachmentUpload';
+import PtlCargo from './PtlCargo';
 import { CheckboxRow, FieldGroup, FormField, SelectField, TextArea, TextInput } from './FormField';
 
 const bodyTypeLabel = (bodyType) =>
@@ -15,7 +17,8 @@ const bodyTypeLabel = (bodyType) =>
 
 const toItems = (labels) => Object.entries(labels).map(([value, label]) => ({ value, label }));
 const PACKAGING_ITEMS = toItems(PACKAGING_LABELS);
-const LOAD_TYPE_ITEMS = toItems(LOAD_TYPE_LABELS);
+const LOAD_TYPE_OPTIONS = Object.entries(LOAD_TYPE_LABELS).map(([value, label]) => ({ value, label: `${label} (${value})` }));
+const HAZMAT_ITEMS = toItems(HAZMAT_CLASS_LABELS);
 
 /** Step 2: what is being moved and which trucks it needs. */
 export default function StepMaterial({ form, errors, onChange, masters }) {
@@ -50,6 +53,16 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
         });
     };
 
+    // FTL is priced per truck, PTL per kg on the chargeable weight, on one truck.
+    const chooseLoadType = (loadType) =>
+        onChange(
+            loadType === 'PTL'
+                ? { loadType, priceBasis: 'per_kg', vehicleCount: '1' }
+                : { loadType, priceBasis: form.priceBasis === 'per_kg' ? 'per_vehicle' : form.priceBasis },
+        );
+    const isPtl = form.loadType === 'PTL';
+    const isHazmat = form.specialRequirements.includes('hazmat');
+
     const toggleRequirement = (tag, on) =>
         onChange({
             specialRequirements: on
@@ -76,6 +89,12 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
     return (
         <div className="grid gap-4">
             <FieldGroup title="Material">
+                <FormField
+                    label="Load type"
+                    hint={isPtl ? 'Part load: shares a truck, priced per kg on the chargeable weight.' : 'Full truck load: the truck is yours, priced per truck, per ton or per km.'}
+                >
+                    <SegmentedControl label="Load type" options={LOAD_TYPE_OPTIONS} value={form.loadType} onChange={chooseLoadType} />
+                </FormField>
                 <div className="grid gap-3 sm:grid-cols-2">
                     <FormField label="Material" htmlFor="commodityId" required error={errors.commodityId}>
                         <SelectField
@@ -98,18 +117,20 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
                             />
                         </FormField>
                     )}
-                    <FormField label="Total weight (tons)" htmlFor="weightTons" required error={errors.weightTons}>
-                        <TextInput
-                            id="weightTons"
-                            type="number"
-                            min={0.01}
-                            step={0.01}
-                            inputMode="decimal"
-                            value={form.weightTons}
-                            invalid={Boolean(errors.weightTons)}
-                            onChange={(event) => onChange({ weightTons: event.target.value })}
-                        />
-                    </FormField>
+                    {!isPtl && (
+                        <FormField label="Total weight (tons)" htmlFor="weightTons" required error={errors.weightTons}>
+                            <TextInput
+                                id="weightTons"
+                                type="number"
+                                min={0.01}
+                                step={0.01}
+                                inputMode="decimal"
+                                value={form.weightTons}
+                                invalid={Boolean(errors.weightTons)}
+                                onChange={(event) => onChange({ weightTons: event.target.value })}
+                            />
+                        </FormField>
+                    )}
                     <FormField label="Packaging" htmlFor="packaging" error={errors.packaging}>
                         <SelectField
                             id="packaging"
@@ -119,19 +140,13 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
                             placeholder="How is it packed?"
                         />
                     </FormField>
-                    <FormField label="Load type" htmlFor="loadType" required error={errors.loadType}>
-                        <SelectField
-                            id="loadType"
-                            items={LOAD_TYPE_ITEMS}
-                            value={form.loadType}
-                            onValueChange={(value) => onChange({ loadType: value ?? 'FTL' })}
-                        />
-                    </FormField>
                 </div>
             </FieldGroup>
 
+            {isPtl && <PtlCargo form={form} errors={errors} onChange={onChange} />}
+
             <FieldGroup title="Truck">
-                <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
+                <div className={isPtl ? 'grid gap-3' : 'grid gap-3 sm:grid-cols-[2fr_1fr_1fr]'}>
                     <FormField label="Truck type" htmlFor="vehicleTypeId" required error={errors.vehicleTypeId}>
                         <SelectField
                             id="vehicleTypeId"
@@ -155,6 +170,8 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
                             ))}
                         </SelectField>
                     </FormField>
+                    {!isPtl && (
+                        <>
                     <FormField label="Number of trucks" htmlFor="vehicleCount" required error={errors.vehicleCount}>
                         <TextInput
                             id="vehicleCount"
@@ -185,6 +202,8 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
                             onChange={(event) => onChange({ capacityTonsPerVehicle: event.target.value })}
                         />
                     </FormField>
+                        </>
+                    )}
                 </div>
 
                 <div className="grid gap-1.5">
@@ -202,6 +221,32 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
                     </div>
                 </div>
 
+                {isHazmat && (
+                    <div className="grid gap-3 rounded-2xl bg-amber-400/10 p-4 sm:grid-cols-2">
+                        <FormField label="Hazard class" htmlFor="hazmatClass" required error={errors.hazmatClass}>
+                            <SelectField
+                                id="hazmatClass"
+                                items={HAZMAT_ITEMS}
+                                value={form.hazmatClass}
+                                onValueChange={(value) => onChange({ hazmatClass: value ?? '' })}
+                                placeholder="Choose the class"
+                                invalid={Boolean(errors.hazmatClass)}
+                            />
+                        </FormField>
+                        <FormField label="UN number" htmlFor="unNumber" required error={errors.unNumber} hint="Four digits, for example UN1203">
+                            <TextInput
+                                id="unNumber"
+                                maxLength={8}
+                                value={form.unNumber}
+                                invalid={Boolean(errors.unNumber)}
+                                onChange={(event) => onChange({ unNumber: event.target.value.toUpperCase() })}
+                                placeholder="UN1203"
+                                className="font-mono"
+                            />
+                        </FormField>
+                    </div>
+                )}
+
                 <FormField label="Notes for transporters" htmlFor="notes" hint="Optional" error={errors.notes}>
                     <TextArea
                         id="notes"
@@ -218,6 +263,29 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
                     onChange={(attachmentUrl) => onChange({ attachmentUrl })}
                     error={errors.attachmentUrl}
                 />
+            </FieldGroup>
+
+            <FieldGroup title="Goods value and invoice">
+                <div className="grid gap-3 sm:grid-cols-3">
+                    <FormField label="Declared value (₹)" htmlFor="declaredValue" hint="Optional. Above ₹50,000 an e-way bill is needed before departure." error={errors.declaredValue}>
+                        <TextInput
+                            id="declaredValue"
+                            type="number"
+                            min={0}
+                            step="any"
+                            inputMode="decimal"
+                            value={form.declaredValue}
+                            invalid={Boolean(errors.declaredValue)}
+                            onChange={(event) => onChange({ declaredValue: event.target.value })}
+                        />
+                    </FormField>
+                    <FormField label="Invoice number" htmlFor="invoiceNumber" hint="Optional" error={errors.invoiceNumber}>
+                        <TextInput id="invoiceNumber" maxLength={50} value={form.invoiceNumber} invalid={Boolean(errors.invoiceNumber)} onChange={(event) => onChange({ invoiceNumber: event.target.value })} />
+                    </FormField>
+                    <FormField label="Invoice date" htmlFor="invoiceDate" hint="Optional" error={errors.invoiceDate}>
+                        <TextInput id="invoiceDate" type="date" value={form.invoiceDate} onChange={(event) => onChange({ invoiceDate: event.target.value })} />
+                    </FormField>
+                </div>
             </FieldGroup>
         </div>
     );

@@ -11,8 +11,12 @@ test('customer posts a draft and opens it as a record page', async ({ page }) =>
     // Mode picker, then the wizard.
     await page.getByRole('button', { name: 'New load' }).first().click();
     await expect(page.getByRole('dialog')).toContainText('Choose how this load will be placed');
-    await page.getByRole('link', { name: /Ad Hoc/ }).click();
-    await page.waitForURL('**/customer/loads/new');
+    await expect(page.getByRole('button', { name: /Contract/ })).toHaveCount(0); // Contract is a disabled card until Wave 3
+    await page.getByRole('button', { name: /Ad Hoc/ }).click();
+    // The FTL / PTL gate; the wizard reads ?type=.
+    await expect(page.getByRole('dialog')).toContainText('How much are you moving?');
+    await page.getByRole('link', { name: /Full truck load/ }).click();
+    await page.waitForURL('**/customer/loads/new?type=FTL');
     await expect(page.getByRole('heading', { name: 'Route and schedule' })).toBeVisible();
 
     // Step 1: pickup, drop and schedule.
@@ -56,6 +60,35 @@ test('customer posts a draft and opens it as a record page', async ({ page }) =>
     await expect(page.getByText('Publish the load to open bidding.')).toBeVisible();
     await page.getByRole('tab', { name: /Activity/ }).click();
     await expect(page.getByText('Draft created')).toBeVisible();
+});
+
+test('a part load shows the cargo block with a live chargeable weight', async ({ page }) => {
+    await loginAs(page, USERS.customer);
+    await page.goto('/customer/loads/new?type=PTL');
+    await expect(page.getByRole('heading', { name: 'Route and schedule' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('PTL');
+
+    const pins = page.getByPlaceholder('700001');
+    await pins.nth(0).fill('700001');
+    await page.getByRole('textbox', { name: 'City' }).nth(0).fill('Kolkata');
+    await page.getByPlaceholder('Plant, warehouse or street address').nth(0).fill('Plot 5 Salt Lake');
+    await pins.nth(1).fill('110001');
+    await page.getByRole('textbox', { name: 'City' }).nth(1).fill('New Delhi');
+    await page.getByPlaceholder('Plant, warehouse or street address').nth(1).fill('Warehouse 9 Okhla');
+    await page.getByLabel('Pickup date').fill(new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10));
+    await page.getByRole('button', { name: 'Next' }).click();
+    await expect(page.getByRole('heading', { name: 'Material and truck' })).toBeVisible();
+
+    // 10 packages of 50 x 20 x 20 cm = 2,00,000 cm3 / 5000 = 40 kg volumetric; 30 kg actual; minimum 50 kg wins.
+    await expect(page.getByText('Part load cargo')).toBeVisible();
+    await page.locator('#pkg-0-count').fill('10');
+    await page.locator('#pkg-0-lengthCm').fill('50');
+    await page.locator('#pkg-0-widthCm').fill('20');
+    await page.locator('#pkg-0-heightCm').fill('20');
+    await page.locator('#actualWeightKg').fill('30');
+    await expect(page.getByText('50 kg', { exact: true }).first()).toBeVisible();
+    await page.locator('#actualWeightKg').fill('900');
+    await expect(page.getByText('900 kg', { exact: true }).first()).toBeVisible();
 });
 
 test('the loads list shows an error with Retry when the API fails', async ({ page }) => {

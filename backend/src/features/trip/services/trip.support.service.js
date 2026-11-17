@@ -8,7 +8,7 @@ import { and, avg, count, desc, eq, inArray, isNull, or } from 'drizzle-orm';
 import { db } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { companies } from '#features/company/schemas/company.Schema.js';
-import { documents } from '#features/document/schemas/documents.Schema.js';
+import { linkDocument } from '#features/document/document.link.js';
 import { companyConnections } from '#features/network/schemas/companyConnection.Schema.js';
 import { awards, loads } from '#features/load/schemas/index.js';
 import { recordLoadEvent } from '#features/load/services/loadEvent.service.js';
@@ -17,7 +17,8 @@ import { CUSTOMER_LINK, TRANSPORTER_LINK } from '#features/load/services/load.se
 import { PERMISSIONS } from '#features/team/team.permissions.js';
 import { drivers, vehicles } from '#features/fleet/schemas/fleet.Schema.js';
 import { discrepancies, placementMisses, ratings, tripCharges, tripEvents, trips } from '../schemas/trip.Schema.js';
-import { detentionCharge } from '../trip.rules.js';
+import { detentionCharge, podRejectionProblem, reAwardProblem } from '../trip.rules.js';
+import { POD_REJECTION } from '../trip.constants.js';
 import {
     actorOf,
     applyTransition,
@@ -78,10 +79,7 @@ export const addDocument = async (user, tripId, { documentType, fileUrl }) => {
     await db.transaction(async (tx) => {
         const { trip } = await requireExecutor(user, tripId, { tx, forUpdate: true });
         if (trip.status === 'cancelled') throw new AppError('This trip was cancelled', 409);
-        const [doc] = await tx
-            .insert(documents)
-            .values({ userId: user.userId, companyId: user.companyId, documentType, fileUrl, entityType: 'trip', entityId: tripId })
-            .returning({ id: documents.id });
+        const doc = await linkDocument(tx, { user, documentType, fileUrl, entityType: 'trip', entityId: tripId });
         await recordTripEvent(tx, { tripId, type: 'document', actor: actorOf(user), note: documentType, data: { documentType, documentId: doc.id } });
     });
     return getTripDetail(user, tripId);
@@ -177,9 +175,9 @@ export const addDiscrepancy = async (user, tripId, { kind, quantity, unit, note,
             .values({ tripId, kind, quantity: quantity ?? null, unit: unit ?? null, note: note ?? null, raisedByUserId: user.userId, raisedByCompanyId: user.companyId })
             .returning();
         if (photoUrls.length > 0) {
-            await tx.insert(documents).values(
-                photoUrls.map((fileUrl) => ({ userId: user.userId, companyId: user.companyId, documentType: 'discrepancy_photo', fileUrl, entityType: 'discrepancy', entityId: found.id })),
-            );
+            for (const fileUrl of photoUrls) {
+                await linkDocument(tx, { user, documentType: 'discrepancy_photo', fileUrl, entityType: 'discrepancy', entityId: found.id });
+            }
         }
         await recordTripEvent(tx, { tripId, type: 'discrepancy', actor: actorOf(user), note: `${kind}${quantity ? ` ${quantity} ${unit ?? ''}` : ''}`.trim(), data: { discrepancyId: found.id, kind, quantity, unit } });
         const title = `${kind === 'damage' ? 'Damage' : 'Shortage'} recorded on ${loadLabel(load)}`;
@@ -191,22 +189,22 @@ export const addDiscrepancy = async (user, tripId, { kind, quantity, unit, note,
 
 // ---------- customer confirmation ----------
 
-/** POST /trips/:id/confirm: the customer accepts the POD. The rating is saved only once the whole load is complete. */
+/** POST /trips/:id/confirm: the customer accepts the POD. A rating typed here is saved at once, once per load and pair (M10). */
 export const confirmTrip = async (user, tripId, { rating } = {}) => {
     let ratingSaved = false;
     const notices = await db.transaction(async (tx) => {
         const { trip, load } = await requireCustomerSide(user, tripId, [PERMISSIONS.LOADS_AWARD], { tx, forUpdate: true });
         const result = await applyTransition(tx, { trip, load, to: 'completed', actor: actorOf(user), side: 'customer' });
-        if (rating && result.loadChange?.to === 'completed') {
-            await tx.insert(ratings).values({
+        if (rating) {
+            const saved = await tx.insert(ratings).values({
                 loadId: load.id,
                 fromCompanyId: user.companyId,
                 toCompanyId: trip.transporterCompanyId,
                 givenByUserId: user.userId,
                 stars: rating.stars,
                 comment: rating.comment ?? null,
-            }).onConflictDoNothing();
-            ratingSaved = true;
+            }).onConflictDoNothing().returning({ id: ratings.id });
+            ratingSaved = saved.length > 0; // false when this pair was already rated on the load
         }
         return result.notices;
     });
@@ -218,12 +216,16 @@ export const confirmTrip = async (user, tripId, { rating } = {}) => {
 export const rejectPod = async (user, tripId, { reason }) => {
     const notice = await db.transaction(async (tx) => {
         const { trip, load } = await requireCustomerSide(user, tripId, [PERMISSIONS.LOADS_AWARD], { tx, forUpdate: true });
-        if (trip.status !== 'delivered') throw new AppError('Only a delivered trip can have its POD rejected', 409);
-        await tx
+        const problem = podRejectionProblem(trip);
+        if (problem) throw new AppError(problem.message, problem.status);
+        // The truck and driver are still held (they free only on completed or cancelled), so nothing to re-book.
+        const [back] = await tx
             .update(trips)
-            .set({ status: 'reached_drop', deliveredAt: null, autoCompleteAt: null, autoCompleteWarnedAt: null })
-            .where(and(eq(trips.id, tripId), eq(trips.status, 'delivered')));
-        await recordTripEvent(tx, { tripId, type: 'pod_rejected', fromStatus: 'delivered', toStatus: 'reached_drop', actor: actorOf(user), note: reason });
+            .set({ status: POD_REJECTION.to, deliveredAt: null, autoCompleteAt: null, autoCompleteWarnedAt: null })
+            .where(and(eq(trips.id, tripId), eq(trips.status, POD_REJECTION.from)))
+            .returning({ id: trips.id });
+        if (!back) throw new AppError('This trip was just changed by someone else. Reload and try again.', 409);
+        await recordTripEvent(tx, { tripId, type: 'pod_rejected', fromStatus: POD_REJECTION.from, toStatus: POD_REJECTION.to, actor: actorOf(user), note: reason });
         return notifyExecutor(load, trip, user, 'trip.pod_rejected', `POD rejected on ${loadLabel(load)}`, `${reason}. Upload a new POD and mark delivered again.`);
     });
     sendAfter([notice]);
@@ -265,11 +267,14 @@ export const decidePlacement = async (user, tripId, { decision, reason }) => {
             const result = await applyTransition(tx, { trip, load, to: 'cancelled', input: { cancelReason: why }, actor, side: 'customer' });
             out.push(...result.notices);
         } else {
+            const [award] = await tx.select().from(awards).where(eq(awards.id, trip.awardId)).for('update');
+            const [lockedLoad] = await tx.select().from(loads).where(eq(loads.id, load.id)).for('update');
+            const blocked = reAwardProblem({ load: lockedLoad, award, miss });
+            if (blocked) throw new AppError(blocked.message, blocked.status);
             const siblings = await tx.select().from(trips).where(eq(trips.awardId, trip.awardId)).for('update');
             if (siblings.some((s) => !['planned', 'cancelled'].includes(s.status))) {
                 throw new AppError('Some trucks of this award are already moving. Cancel only this truck instead.', 409);
             }
-            const [lockedLoad] = await tx.select().from(loads).where(eq(loads.id, load.id)).for('update');
             for (const sibling of siblings.filter((s) => s.status === 'planned')) {
                 await tx.update(trips).set({ status: 'cancelled', cancelledAt: now, cancelReason: why }).where(eq(trips.id, sibling.id));
                 await recordTripEvent(tx, { tripId: sibling.id, type: 'status', fromStatus: 'planned', toStatus: 'cancelled', actor, note: why, data: { side: 'customer', reason: 're_award' } });
@@ -278,9 +283,10 @@ export const decidePlacement = async (user, tripId, { decision, reason }) => {
                     await tx.update(drivers).set({ availability: 'available' }).where(and(eq(drivers.id, sibling.driverId ?? '00000000-0000-0000-0000-000000000000'), eq(drivers.availability, 'on_trip')));
                 }
             }
-            await tx.update(awards).set({ status: 'declined', respondedAt: now }).where(eq(awards.id, trip.awardId));
+            // Revoked (not declined): this transporter's bid cannot be awarded again on this load (awardLoad checks).
+            await tx.update(awards).set({ status: 'revoked', respondedAt: now }).where(eq(awards.id, trip.awardId));
             await tx.update(loads).set({ status: 'closed' }).where(eq(loads.id, load.id));
-            await recordLoadEvent({ loadId: load.id, type: 're_award_requested', fromStatus: lockedLoad.status, toStatus: 'closed', actor, note: why, data: { awardId: trip.awardId, tripId } }, tx);
+            await recordLoadEvent({ loadId: load.id, type: 're_award_requested', fromStatus: lockedLoad.status, toStatus: 'closed', actor, note: why, data: { awardId: trip.awardId, tripId, transporterCompanyId: award.transporterCompanyId } }, tx);
             out.push(notifyExecutor(load, trip, user, 'trip.re_awarded', `Load ${loadLabel(load)} was taken back`, `The truck was not placed on time. ${why}`));
         }
         await tx

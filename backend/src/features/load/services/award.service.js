@@ -51,6 +51,13 @@ export const awardLoad = async (user, loadId, { bidId, reason }) => {
             .where(and(eq(bids.id, bidId), eq(bids.loadId, loadId)))
             .limit(1);
         if (!row) throw new AppError('Bid not found on this load', 404);
+        // A transporter whose accepted award was taken back after a missed placement cannot win this load again (H6).
+        const [revoked] = await tx
+            .select({ id: awards.id })
+            .from(awards)
+            .where(and(eq(awards.loadId, loadId), eq(awards.transporterCompanyId, row.bid.transporterCompanyId), eq(awards.status, 'revoked')))
+            .limit(1);
+        if (revoked) throw new AppError('This bid cannot be awarded again: the transporter missed the truck placement on this load. Pick another bid.', 409);
 
         const [created] = await tx
             .insert(awards)

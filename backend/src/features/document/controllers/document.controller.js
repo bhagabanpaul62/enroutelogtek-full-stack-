@@ -5,7 +5,8 @@ import { documents, documentType as documentTypeEnum } from '#features/document/
 import { AppError } from '#shared/utils/AppError.js';
 import { isUuid } from '#features/auth/services/session.service.js';
 import { registrationDocumentProblem } from '#features/auth/registration.rules.js';
-import { documentOwnerProblem } from '#features/document/document.rules.js';
+import { documentOwnerProblem, entityShapeProblem, uploadPermissionProblem } from '#features/document/document.rules.js';
+import { assertEntityOwned } from '#features/document/document.entity.js';
 import { storage } from '#features/document/storage.js';
 import { companies, companyDocumentReviews } from '#features/company/schemas/index.js';
 import { REVIEWED_TYPES } from '#features/company/services/document.service.js';
@@ -19,7 +20,7 @@ const REVIEW_TRACKED = ['gst', 'pan', 'rc', 'insurance'];
  */
 export const uploadDocument = asyncHandler(async (req, res) => {
     const { userId, companyId, via } = req.documentActor;
-    const { documentType } = req.body;
+    const { documentType, entityType, entityId } = req.body;
     const file = req.file;
 
     if (typeof documentType !== 'string' || !documentTypeEnum.enumValues.includes(documentType)) {
@@ -29,18 +30,27 @@ export const uploadDocument = asyncHandler(async (req, res) => {
     if (via === 'registration') {
         const problem = registrationDocumentProblem('draft', documentType);
         if (problem) throw AppError.from(problem);
+        if (entityType || entityId) throw new AppError('Registration documents belong to the company only.', 400);
+    } else {
+        const permission = uploadPermissionProblem(req.user, documentType);
+        if (permission) throw AppError.from(permission);
+        const shape = entityShapeProblem(documentType, entityType, entityId);
+        if (shape) throw AppError.from(shape);
+        if (entityType) await assertEntityOwned(companyId, entityType, entityId);
     }
+    const entity = entityType && via === 'user' ? { entityType, entityId } : {};
 
     const fileLink = await storage.upload(file, companyId, documentType);
 
     const [newDoc] = await db
         .insert(documents)
-        .values({ userId, companyId, documentType, fileUrl: fileLink })
+        .values({ userId, companyId, documentType, fileUrl: fileLink, ...entity })
         .returning();
 
     // A signed-in upload is a replacement: GST/PAN wait for platform review. Without this row an
     // unreviewed newest file would read as approved and skip the review gate.
-    if (via === 'user' && REVIEW_TRACKED.includes(documentType)) {
+    // A vehicle's RC or insurance belongs to the vehicle, not to the company's identity documents.
+    if (via === 'user' && !entityType && REVIEW_TRACKED.includes(documentType)) {
         const needsReview = REVIEWED_TYPES.includes(documentType);
         await db.insert(companyDocumentReviews).values({
             documentId: newDoc.id,
@@ -53,7 +63,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
 
     return successResponse(
         res,
-        { documentId: newDoc.id, documentType: newDoc.documentType, fileUrl: newDoc.fileUrl },
+        { documentId: newDoc.id, documentType: newDoc.documentType, fileUrl: newDoc.fileUrl, entityType: newDoc.entityType, entityId: newDoc.entityId },
         'Document uploaded successfully',
         201,
     );
@@ -61,7 +71,7 @@ export const uploadDocument = asyncHandler(async (req, res) => {
 
 /** Deletes one of the actor's own company's documents; anything else is "not found". */
 export const deleteDocument = asyncHandler(async (req, res) => {
-    const { companyId } = req.documentActor;
+    const { companyId, via } = req.documentActor;
     const { documentId } = req.body ?? {};
     if (!isUuid(documentId)) throw new AppError('Document id is required', 400);
 
@@ -72,6 +82,10 @@ export const deleteDocument = asyncHandler(async (req, res) => {
         .limit(1);
     const problem = documentOwnerProblem(doc, { companyId });
     if (problem) throw AppError.from(problem);
+    if (via === 'user') {
+        const permission = uploadPermissionProblem(req.user, doc.documentType);
+        if (permission) throw AppError.from(permission);
+    }
 
     // GST/PAN are identity proofs: once past draft they can only be replaced, not removed.
     if (REVIEWED_TYPES.includes(doc.documentType)) {

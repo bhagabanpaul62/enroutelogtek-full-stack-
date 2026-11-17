@@ -2,7 +2,7 @@
 import { and, desc, eq, ilike, inArray, isNull, or, sql, getTableColumns } from 'drizzle-orm';
 import { db } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
-import { documents } from '#features/document/schemas/documents.Schema.js';
+import { linkDocument } from '#features/document/document.link.js';
 import { drivers } from '../schemas/fleet.Schema.js';
 import { docStatus, isAssignable, normalisePhone, todayIST } from '../fleet.rules.js';
 import {
@@ -129,10 +129,7 @@ export const addDriverDocument = async (user, id, { fileUrl, number, expiry }) =
     if (expiry) set.licenceExpiry = expiry;
     if (number) set.licenceNumber = number;
     return db.transaction(async (tx) => {
-        const [doc] = await tx
-            .insert(documents)
-            .values({ userId: user.userId, companyId: user.companyId, documentType: 'licence', fileUrl, entityType: 'driver', entityId: id })
-            .returning();
+        const doc = await linkDocument(tx, { user, documentType: 'licence', fileUrl, entityType: 'driver', entityId: id });
         if (Object.keys(set).length > 0) await tx.update(drivers).set(set).where(eq(drivers.id, id));
         return doc;
     });

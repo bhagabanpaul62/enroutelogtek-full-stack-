@@ -115,7 +115,7 @@ export default function DriverDetailPage({ basePath }) {
                         onChanged={reload}
                     />
                 ) : null}
-                {tab === 'trips' ? <RecordTrips match={(t) => (t.driverId ? t.driverId === driver.id : (t.driverName ?? t.driver?.name) === driver.name)} /> : null}
+                {tab === 'trips' ? <RecordTrips driverId={driver.id} /> : null}
             </div>
 
             {editing ? <DriverModal open onOpenChange={(v) => !v && setEditing(false)} driver={driver} onSaved={reload} /> : null}

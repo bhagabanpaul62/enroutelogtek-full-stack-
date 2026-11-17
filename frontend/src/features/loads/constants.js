@@ -29,6 +29,7 @@ export const PRICE_BASIS_LABELS = {
     per_vehicle: 'Per truck',
     per_ton: 'Per ton',
     per_km: 'Per km',
+    per_kg: 'Per kg',
 };
 
 export const MARGIN_TYPE_LABELS = { percent: '% of base', fixed: '₹ fixed' };
@@ -44,6 +45,34 @@ export const PACKAGING_LABELS = {
 };
 
 export const LOAD_TYPE_LABELS = { FTL: 'Full truck load', PTL: 'Part load' };
+export const LOAD_TYPE_SHORT = { FTL: 'FTL', PTL: 'PTL' };
+
+// Wave 2 (AJ-05..13). Values match backend/src/features/load/load.constants.js.
+export const PLACE_KIND_LABELS = { door: 'Door', godown: 'Godown' };
+export const HANDLING_LABELS = { manual: 'Manual', forklift: 'Forklift', crane: 'Crane', none: 'None needed' };
+export const PAYABLE_BY_LABELS = { consignor: 'Consignor (shipper)', consignee: 'Consignee', transporter: 'Transporter' };
+export const HAZMAT_CLASS_LABELS = {
+    1: '1 Explosives',
+    2: '2 Gases',
+    3: '3 Flammable liquids',
+    4: '4 Flammable solids',
+    5: '5 Oxidisers',
+    6: '6 Toxic',
+    7: '7 Radioactive',
+    8: '8 Corrosives',
+    9: '9 Miscellaneous',
+};
+
+// PRD section 4 (Q-10, Q-19, Q-20). The server recomputes everything; these only drive the live preview and the prefill.
+export const PTL_DEFAULTS = { volumetricDivisor: 5000, minChargeableKg: 50 };
+export const TERMS_DEFAULTS = {
+    freeTimeLoadingHours: 24,
+    freeTimeUnloadingHours: 24,
+    detentionRatePerHour: 0, // rupees (the API stores paise)
+    labourPayableBy: 'consignor',
+    freightPayableBy: 'consignor',
+    tollIncluded: true,
+};
 
 export const SPECIAL_REQUIREMENT_LABELS = {
     fragile: 'Fragile',

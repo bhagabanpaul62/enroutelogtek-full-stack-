@@ -2,9 +2,13 @@
 
 import { useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { SegmentedControl } from '@/shared/ui/kit';
 import { lookupPinCodeApi } from '../../../api/loads.api';
+import { PLACE_KIND_LABELS } from '../../../constants';
 import { todayIso } from '../loadTime';
-import { FieldGroup, FormField, TextInput } from './FormField';
+import { CheckboxRow, FieldGroup, FormField, TextInput } from './FormField';
+
+const PLACE_KIND_OPTIONS = Object.entries(PLACE_KIND_LABELS).map(([value, label]) => ({ value, label }));
 
 /** PIN code, city, state, address and optional contact for one end of the route. */
 function PlaceFields({ prefix, title, form, errors, onChange }) {
@@ -15,6 +19,8 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
         address: `${prefix}Address`,
         contactName: `${prefix}ContactName`,
         contactPhone: `${prefix}ContactPhone`,
+        kind: `${prefix}PlaceKind`,
+        oda: `${prefix}IsOda`,
     };
     const [lookingUp, setLookingUp] = useState(false);
     const [lookupNote, setLookupNote] = useState('');
@@ -105,6 +111,28 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                 />
             </FormField>
 
+            {/* AJ-06 / AJ-07: door or godown, and out-of-delivery-area */}
+            <div className="grid gap-3 sm:grid-cols-2">
+                <FormField
+                    label={prefix === 'pickup' ? 'Pickup is at a' : 'Drop is at a'}
+                    hint={form[keys.kind] === 'godown' ? 'A godown or warehouse the truck backs into' : 'The consignor or consignee premises'}
+                >
+                    <SegmentedControl
+                        label={`${title} place type`}
+                        options={PLACE_KIND_OPTIONS}
+                        value={form[keys.kind]}
+                        onChange={(value) => onChange({ [keys.kind]: value })}
+                    />
+                </FormField>
+                <CheckboxRow
+                    id={keys.oda}
+                    label="Out of delivery area (ODA)"
+                    description="Tick if this place is outside the normal delivery area; transporters price it in."
+                    checked={form[keys.oda]}
+                    onChange={(on) => onChange({ [keys.oda]: on })}
+                />
+            </div>
+
             {/* AJ-05: contact shared with the transporter after award acceptance */}
             <div className="grid gap-3 sm:grid-cols-2">
                 <FormField
@@ -183,7 +211,7 @@ export default function StepRoute({ form, errors, onChange }) {
                         />
                     </FormField>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
                     <FormField
                         label="Flexibility (days)"
                         htmlFor="flexibilityDays"
@@ -214,6 +242,24 @@ export default function StepRoute({ form, errors, onChange }) {
                             value={form.expectedDeliveryDate}
                             invalid={Boolean(errors.expectedDeliveryDate)}
                             onChange={(event) => onChange({ expectedDeliveryDate: event.target.value })}
+                        />
+                    </FormField>
+                    <FormField
+                        label="Distance (km)"
+                        htmlFor="distanceKm"
+                        hint="Optional. Helps transporters price per km."
+                        error={errors.distanceKm}
+                    >
+                        <TextInput
+                            id="distanceKm"
+                            type="number"
+                            min={1}
+                            max={10000}
+                            step={1}
+                            inputMode="numeric"
+                            value={form.distanceKm}
+                            invalid={Boolean(errors.distanceKm)}
+                            onChange={(event) => onChange({ distanceKm: event.target.value })}
                         />
                     </FormField>
                 </div>

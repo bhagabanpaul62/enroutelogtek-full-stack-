@@ -3,9 +3,7 @@ import { AppError } from '#shared/utils/AppError.js';
 import { authMiddleware } from '#shared/middleware/auth.middleware.js';
 import { findRegistrationApplicant } from '#features/auth/services/registrationApplicant.service.js';
 import { registrationDocumentProblem } from '#features/auth/registration.rules.js';
-import { hasPermission } from '#features/team/team.rules.js';
-import { PERMISSIONS } from '#features/team/team.permissions.js';
-import { companyUserProblem } from '#features/document/document.rules.js';
+import { companyUserProblem, mayUploadAnything } from '#features/document/document.rules.js';
 
 async function registrationActor(req, applicant) {
     const problem = registrationDocumentProblem(applicant.companyStatus);
@@ -33,8 +31,9 @@ export const documentActor = asyncHandler(async (req, res, next) => {
         }
         const problem = companyUserProblem(req.user);
         if (problem) throw AppError.from(problem);
-        // Same bar as the settings screens that show these documents.
-        if (!hasPermission(req.user, PERMISSIONS.TEAM_MANAGE)) {
+        // The type is only known once multer has parsed the form, so the controller checks it
+        // (uploadPermissionProblem). Here: the role must hold at least one upload permission.
+        if (!mayUploadAnything(req.user)) {
             throw new AppError('You do not have permission to change company documents.', 403);
         }
         req.documentActor = { userId: req.user.userId, companyId: req.user.companyId, via: 'user' };

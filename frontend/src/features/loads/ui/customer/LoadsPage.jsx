@@ -20,6 +20,7 @@ import { useCan } from '@/shared/hooks/useCan';
 import { PERMISSIONS } from '@/shared/lib/permissions';
 import { formatCountdown, formatRoute } from '../../lib/format';
 import { useNow } from './useNow';
+import LoadTypeBadge from '../components/LoadTypeBadge';
 import ModePickerModal from './ModePickerModal';
 
 const ALL = 'all';
@@ -49,6 +50,7 @@ function buildColumns(now) {
             value: (load) => (hasRoute(load) ? formatRoute(load) : ''),
             render: (load) => (hasRoute(load) ? <span className="block truncate font-medium">{formatRoute(load)}</span> : <span className="text-foreground/40">Not entered yet</span>),
         },
+        { key: 'loadType', label: 'Type', type: 'text', width: 80, value: (load) => load.loadType ?? '', render: (load) => (load.loadType ? <LoadTypeBadge type={load.loadType} /> : <EmptyCell />) },
         {
             key: 'truck',
             label: 'Truck',

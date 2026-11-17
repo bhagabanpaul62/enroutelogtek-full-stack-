@@ -1,11 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import { CircleCheck, Clock, XCircle } from 'lucide-react';
 import { useCan } from '@/shared/hooks/useCan';
 import { PERMISSIONS } from '@/shared/lib/permissions';
 import { formatDate } from '@/shared/lib/format';
 import { EntityHeader, ErrorState, Panel, SkeletonRows, ToneBadge } from '@/shared/ui/kit';
 import { formatCountdown, formatRoute } from '../../lib/format';
+import LoadTypeBadge from '../components/LoadTypeBadge';
 import StatusBadge from '../components/StatusBadge';
 import { useTransporterLoad } from './useTransporterLoad';
 import { useNow } from './useNow';
@@ -13,7 +15,7 @@ import MyStanding from './MyStanding';
 import BidCalculator from './BidCalculator';
 import MyAttempts from './MyAttempts';
 import AwardResponse from './AwardResponse';
-import AssignmentForm from './AssignmentForm';
+import TrucksPanel from './TrucksPanel';
 import LoadFacts from './LoadFacts';
 
 const BACK = { href: '/transporter/bids', label: 'Bids' };
@@ -58,8 +60,11 @@ export default function BidDetailPage({ loadId }) {
     const { load, error, isLoading, reload } = useTransporterLoad(loadId);
     const canBid = useCan(PERMISSIONS.BIDS_SUBMIT);
     const canRespond = useCan(PERMISSIONS.AWARDS_RESPOND);
-    const canAssign = useCan(PERMISSIONS.TRIPS_ASSIGN);
+    const canAssignTrucks = useCan(PERMISSIONS.TRIPS_ASSIGN);
+    const canUpdateTrips = useCan(PERMISSIONS.TRIPS_UPDATE);
+    const canAssign = canAssignTrucks || canUpdateTrips;
     const now = useNow();
+    const [assignOpen, setAssignOpen] = useState(false);
 
     if (isLoading) {
         return (
@@ -90,8 +95,7 @@ export default function BidDetailPage({ loadId }) {
 
     const closesIn = formatCountdown(load.closesAt, now);
     const award = load.award;
-    const showAssignment =
-        award?.status === 'accepted' && (load.status === 'accepted' || load.status === 'in_execution');
+    const showAssignment = award?.status === 'accepted' && ['accepted', 'in_execution', 'completed'].includes(load.status);
 
     return (
         <div className={SHELL}>
@@ -101,6 +105,7 @@ export default function BidDetailPage({ loadId }) {
                 chips={
                     <>
                         <StatusBadge status={load.status} />
+                        <LoadTypeBadge type={load.loadType} />
                         {load.status === 'live' && (
                             <ToneBadge label={closesIn ? `Closes in ${closesIn}` : 'Closing now'} tone="warning" />
                         )}
@@ -123,19 +128,21 @@ export default function BidDetailPage({ loadId }) {
                         <AwardResponse
                             award={award}
                             amount={load.myBid?.currentAmount}
+                            load={load}
                             canManage={canRespond}
                             now={now}
                             onChanged={reload}
+                            onAccepted={() => canAssign && setAssignOpen(true)}
                         />
                     )}
                     {showAssignment && (
-                        <AssignmentForm award={award} canManage={canAssign} onChanged={reload} />
+                        <TrucksPanel award={award} load={load} canAssign={canAssign} open={assignOpen} onOpenChange={setAssignOpen} />
                     )}
-                    <MyAttempts attempts={load.myBid?.attempts} maxAttempts={load.maxAttempts} />
+                    <MyAttempts attempts={load.myBid?.attempts} maxAttempts={load.maxAttempts} priceBasis={load.priceBasis} />
                 </div>
                 <div className="flex min-w-0 flex-col gap-4">
                     <MyStanding load={load} />
-                    <LoadFacts load={load} />
+                    <LoadFacts load={load} accepted={award?.status === 'accepted'} />
                 </div>
             </div>
         </div>

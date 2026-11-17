@@ -89,7 +89,7 @@ describe('fleet', { timeout: 180000 }, () => {
         assert.equal((await api(transporter, 'POST', '/fleet/drivers', { name: 'Dup', phone: '9876543210' })).status, 409);
         assert.equal((await api(other, 'POST', '/fleet/drivers', { name: 'Same phone, other company', phone: '9876543210' })).status, 201);
         assert.equal((await api(transporter, 'POST', '/fleet/drivers', { name: 'Bad', phone: '12345' })).status, 422);
-        const found = await api(transporter, 'GET', '/fleet/drivers?q=rame&availability=available');
+        const found = await api(transporter, 'GET', '/fleet/drivers?q=98765-43210&availability=available');
         assert.equal(found.body.data.length, 1);
         const picker = (await api(transporter, 'GET', '/fleet/availability')).body.data;
         assert.ok(picker.drivers.some((row) => row.id === created.body.data.id));

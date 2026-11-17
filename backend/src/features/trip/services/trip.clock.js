@@ -15,6 +15,8 @@ import { EWAY_WARN_HOURS, isAutoCompleteDue, isPlacementMissed, shouldWarnAutoCo
 import { applyTransition, loadLabel, recordTripEvent, sendAfter } from './trip.service.js';
 
 const HOUR_MS = 3600 * 1000;
+/** Optional scope for a run (tests, a manual sweep): only these trip ids. */
+const onlyIds = (tripIds) => (tripIds ? inArray(trips.id, tripIds) : undefined);
 const each = async (rows, label, work) => {
     let done = 0;
     for (const row of rows) {
@@ -48,11 +50,11 @@ const locked = async (id, build) => {
 };
 
 /** Delivered trips the customer did not confirm in time become completed (actor: system). */
-export const autoCompleteTrips = async (now = new Date()) => {
+export const autoCompleteTrips = async (now = new Date(), { tripIds } = {}) => {
     const due = await db
         .select({ id: trips.id })
         .from(trips)
-        .where(and(eq(trips.status, 'delivered'), isNotNull(trips.autoCompleteAt), lte(trips.autoCompleteAt, now)));
+        .where(and(eq(trips.status, 'delivered'), isNotNull(trips.autoCompleteAt), lte(trips.autoCompleteAt, now), onlyIds(tripIds)));
     return each(due, 'auto-complete', ({ id }) =>
         locked(id, async (tx, { trip, load }) => {
             if (!isAutoCompleteDue(trip, now)) return null;
@@ -63,12 +65,12 @@ export const autoCompleteTrips = async (now = new Date()) => {
 };
 
 /** One warning to both sides 24 h before auto-complete. */
-export const warnAutoComplete = async (now = new Date()) => {
+export const warnAutoComplete = async (now = new Date(), { tripIds } = {}) => {
     const soon = new Date(now.getTime() + TRIP_DEFAULTS.autoCompleteWarnHours * HOUR_MS);
     const due = await db
         .select({ id: trips.id })
         .from(trips)
-        .where(and(eq(trips.status, 'delivered'), sql`${trips.autoCompleteWarnedAt} is null`, isNotNull(trips.autoCompleteAt), lte(trips.autoCompleteAt, soon)));
+        .where(and(eq(trips.status, 'delivered'), sql`${trips.autoCompleteWarnedAt} is null`, isNotNull(trips.autoCompleteAt), lte(trips.autoCompleteAt, soon), onlyIds(tripIds)));
     return each(due, 'warn', ({ id }) =>
         locked(id, async (tx, { trip, load }) => {
             if (!shouldWarnAutoComplete(trip, now)) return null;
@@ -86,7 +88,7 @@ export const warnAutoComplete = async (now = new Date()) => {
 };
 
 /** A truck still `planned` 60 minutes after its expected placement: one miss row, the customer decides. */
-export const detectPlacementMisses = async (now = new Date()) => {
+export const detectPlacementMisses = async (now = new Date(), { tripIds } = {}) => {
     const cutoff = new Date(now.getTime() - TRIP_DEFAULTS.placementGraceMinutes * 60 * 1000);
     const due = await db
         .select({ id: trips.id })
@@ -98,6 +100,7 @@ export const detectPlacementMisses = async (now = new Date()) => {
                 isNotNull(trips.expectedPlacementAt),
                 lte(trips.expectedPlacementAt, cutoff),
                 inArray(loads.status, ['accepted', 'in_execution']),
+                onlyIds(tripIds),
                 sql`not exists (select 1 from placement_misses m where m.trip_id = ${trips.id})`,
             ),
         );
@@ -120,7 +123,7 @@ export const detectPlacementMisses = async (now = new Date()) => {
 };
 
 /** E-way bill running out within 12 h while the truck is still on the road (AJ-26). Once per trip. */
-export const warnEwayBills = async (now = new Date()) => {
+export const warnEwayBills = async (now = new Date(), { tripIds } = {}) => {
     const until = new Date(now.getTime() + EWAY_WARN_HOURS * HOUR_MS);
     const due = await db
         .select({ id: trips.id })
@@ -130,6 +133,7 @@ export const warnEwayBills = async (now = new Date()) => {
                 inArray(trips.status, ['in_transit', 'delayed']),
                 isNotNull(trips.ewayBillValidUntil),
                 lte(trips.ewayBillValidUntil, until),
+                onlyIds(tripIds),
                 sql`not exists (select 1 from trip_events e where e.trip_id = ${trips.id} and e.type = 'eway_warning')`,
             ),
         );

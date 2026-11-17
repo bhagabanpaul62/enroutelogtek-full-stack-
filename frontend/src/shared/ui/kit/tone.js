@@ -37,6 +37,23 @@ export const STATUS = {
     completed: { tone: 'success', label: 'Completed' },
     cancelled: { tone: 'neutral', label: 'Cancelled' },
     declined: { tone: 'danger', label: 'Declined' },
+    revoked: { tone: 'danger', label: 'Revoked' },
+    // trips (Wave 2)
+    planned: { tone: 'neutral', label: 'Planned' },
+    reported: { tone: 'info', label: 'At pickup' },
+    loading: { tone: 'info', label: 'Loading' },
+    loaded: { tone: 'info', label: 'Loaded' },
+    in_transit: { tone: 'accent', label: 'In transit' },
+    delayed: { tone: 'warning', label: 'Delayed' },
+    reached_drop: { tone: 'accent', label: 'At drop' },
+    delivered: { tone: 'success', label: 'Delivered' },
+    // trip charges
+    proposed: { tone: 'warning', label: 'Proposed' },
+    // vehicles and drivers
+    available: { tone: 'success', label: 'Available' },
+    on_trip: { tone: 'info', label: 'On trip' },
+    maintenance: { tone: 'warning', label: 'Maintenance' },
+    off_duty: { tone: 'warning', label: 'Off duty' },
     // money
     paid: { tone: 'success', label: 'Paid' },
     failed: { tone: 'danger', label: 'Failed' },

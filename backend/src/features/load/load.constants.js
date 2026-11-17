@@ -22,7 +22,8 @@ export const LOAD_STATUSES = [
 
 export const PRICE_BASES = ['per_vehicle', 'per_ton', 'per_km', 'per_kg'];
 export const MARGIN_TYPES = ['percent', 'fixed'];
-export const AWARD_STATUSES = ['pending', 'accepted', 'declined', 'expired'];
+// revoked: the customer took an accepted award back after the truck was not placed on time.
+export const AWARD_STATUSES = ['pending', 'accepted', 'declined', 'expired', 'revoked'];
 export const LOAD_TYPES = ['FTL', 'PTL'];
 export const PACKAGING_TYPES = ['bags', 'pallets', 'loose', 'coils', 'drums', 'boxes', 'other'];
 export const SPECIAL_REQUIREMENT_TAGS = [

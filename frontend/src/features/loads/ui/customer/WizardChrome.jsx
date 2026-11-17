@@ -5,6 +5,7 @@ import { cn } from '@/shared/lib/utils';
 import { Fact, FactList, Panel } from '@/shared/ui/kit';
 import { WIZARD_STEPS } from '../../constants';
 import { formatDate, formatDateTime, formatRoute } from '../../lib/format';
+import { chargeableWeight, isLineStarted } from '../../lib/ptl';
 
 const stepState = (n, step) => (n < step ? 'done' : n === step ? 'current' : 'upcoming');
 
@@ -97,13 +98,16 @@ export function FactsPanel({ form, masters }) {
         : form.commodityOther;
     const vehicleType = masters.vehicleTypes.find((item) => item.id === form.vehicleTypeId);
     const invited = form.inviteeCompanyIds.length;
+    const isPtl = form.loadType === 'PTL';
+    const chargeable = isPtl && (form.actualWeightKg || form.packageDims.some(isLineStarted)) ? chargeableWeight(form.packageDims, form.actualWeightKg).chargeableWeightKg : '';
     const hasRoute = Boolean(form.pickupCity || form.pickupPinCode || form.dropCity || form.dropPinCode);
 
     const facts = [
         ['Route', hasRoute ? formatRoute(form) : ''],
         ['Pickup', form.pickupDate ? formatDate(form.pickupDate) : ''],
-        ['Material', material ? `${material}${form.weightTons ? `, ${form.weightTons} t` : ''}` : ''],
-        ['Trucks', vehicleType ? `${form.vehicleCount || 1} × ${vehicleType.name}` : ''],
+        ['Type', form.loadType === 'PTL' ? 'Part load (PTL)' : 'Full truck load (FTL)'],
+        ['Material', material ? `${material}${isPtl ? (chargeable ? `, ${chargeable} kg chargeable` : '') : form.weightTons ? `, ${form.weightTons} t` : ''}` : ''],
+        ['Trucks', vehicleType ? `${isPtl ? 1 : form.vehicleCount || 1} × ${vehicleType.name}` : ''],
         ['Bidding closes', form.closesAt ? formatDateTime(form.closesAt) : ''],
         ['Invited', invited ? `${invited} ${invited === 1 ? 'transporter' : 'transporters'}` : ''],
     ];

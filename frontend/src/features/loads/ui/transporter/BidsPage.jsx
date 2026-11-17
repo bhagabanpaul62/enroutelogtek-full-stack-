@@ -10,8 +10,10 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/shared/ui/primitives/select';
-import { DataGrid } from '@/shared/ui/data-grid';
+import { DataGrid, EmptyCell } from '@/shared/ui/data-grid';
 import { ToneBadge } from '@/shared/ui/kit';
+import { formatINR } from '@/shared/lib/format';
+import LoadTypeBadge from '../components/LoadTypeBadge';
 import { useCursorList } from '@/shared/hooks/useCursorList';
 import { LOAD_STATUS_LABELS, MAX_ATTEMPTS } from '../../constants';
 import { getLoadsApi } from '../../api/loads.api';
@@ -56,6 +58,7 @@ const buildColumns = (now) => [
             </span>
         ),
     },
+    { key: 'loadType', label: 'Type', type: 'text', width: 80, value: (load) => load.loadType ?? '', render: (load) => (load.loadType ? <LoadTypeBadge type={load.loadType} /> : <EmptyCell />) },
     { key: 'truck', label: 'Truck', type: 'chip', value: truckOf },
     { key: 'weight', label: 'Weight (t)', type: 'number', value: (load) => (load.weightTons ? Number(load.weightTons) : null) },
     {
@@ -63,6 +66,16 @@ const buildColumns = (now) => [
         label: 'My best bid',
         type: 'money',
         value: (load) => (load.myBid ? Math.round(Number(load.myBid.currentAmount) * 100) : null),
+        // A part load is bid in ₹ per kg; say so next to the number.
+        render: (load) =>
+            load.myBid ? (
+                <span className="whitespace-nowrap tabular-nums">
+                    {formatINR(Math.round(Number(load.myBid.currentAmount) * 100))}
+                    {load.priceBasis === 'per_kg' ? '/kg' : ''}
+                </span>
+            ) : (
+                <EmptyCell />
+            ),
     },
     {
         key: 'rank',

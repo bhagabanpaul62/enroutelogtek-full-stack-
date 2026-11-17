@@ -14,6 +14,7 @@ import { PERMISSIONS } from '@/shared/lib/permissions';
 import { formatCountdown } from '../../lib/format';
 import { todayIso } from './loadTime';
 import { useNow } from './useNow';
+import LoadTypeBadge from '../components/LoadTypeBadge';
 import { FormAlert } from './steps/FormField';
 import { useMasters } from './steps/useMasters';
 import { fieldsForStep, formFromLoad, validateStep } from './steps/wizardForm';
@@ -66,10 +67,10 @@ function PublishedState({ load }) {
 }
 
 /** The step form, its buttons and the side panels. Remounted (key) when the draft gets its id. */
-function WizardForm({ draft, masters, onPublished }) {
+function WizardForm({ draft, masters, gateType, onPublished }) {
     const router = useRouter();
     const { load, step, goTo, saveStep, saving, saveError, fieldErrors } = draft;
-    const [form, setForm] = useState(() => formFromLoad(load));
+    const [form, setForm] = useState(() => formFromLoad(load, Date.now(), { loadType: gateType }));
     const [clientErrors, setClientErrors] = useState({});
     // Set when the review step sent the user back to fix something: Next returns to review.
     const [returnStep, setReturnStep] = useState(null);
@@ -181,6 +182,8 @@ function WizardView() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const idParam = searchParams.get('id');
+    // The FTL / PTL gate (mode picker) sends ?type=; a resumed draft keeps the type it was saved with.
+    const gateType = searchParams.get('type') === 'PTL' ? 'PTL' : 'FTL';
     const canManage = useCan(PERMISSIONS.LOADS_MANAGE);
     const draft = useLoadDraft(idParam);
     const masters = useMasters();
@@ -228,6 +231,7 @@ function WizardView() {
                 key={draft.load?.id ?? 'new'}
                 draft={draft}
                 masters={masters}
+                gateType={gateType}
                 onPublished={setPublished}
             />
         );
@@ -243,7 +247,9 @@ function WizardView() {
                     >
                         <ArrowLeft size={14} aria-hidden /> Loads
                     </Link>
-                    <h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-tight text-[var(--ds-on-surface)]">New Ad Hoc load</h1>
+                    <h1 className="mt-1 flex items-center gap-3 text-[28px] font-semibold leading-tight tracking-tight text-[var(--ds-on-surface)]">
+                        New Ad Hoc load <LoadTypeBadge type={draft.load?.loadType ?? gateType} className="mt-1" />
+                    </h1>
                 </div>
                 {draft.load && !published && (
                     <span className="flex items-center gap-2 text-[13px] text-[var(--ds-on-surface-muted)]">

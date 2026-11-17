@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 import { MARGIN_TYPE_LABELS, MAX_ATTEMPTS } from '../../constants';
 import { submitBidApi } from '../../api/loads.api';
 import { useBidActions } from '../../hooks/useBidActions';
+import { perKgTotal } from '../../lib/format';
 import { rs } from './money';
 
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -48,8 +49,12 @@ export default function BidCalculator({ load, canManage, now, onChanged }) {
     const isValid =
         baseRate.trim() !== '' && Number.isFinite(base) && base > 0 &&
         marginValue.trim() !== '' && Number.isFinite(margin) && margin >= 0;
+    const perKg = load.priceBasis === 'per_kg';
+    const unit = perKg ? ' per kg' : '';
+    const kg = Number(load.chargeableWeightKg) || 0;
     const marginRs = isValid ? marginAmount(base, marginType, margin) : null;
     const total = isValid ? round2(base + marginRs) : null;
+    const grandTotal = perKg && total !== null && kg > 0 ? perKgTotal(total, kg) : null;
 
     const submit = async (event) => {
         event.preventDefault();
@@ -74,7 +79,9 @@ export default function BidCalculator({ load, canManage, now, onChanged }) {
     return (
         <Panel title="Place a bid" action={<span className="text-xs tabular-nums text-[var(--ds-on-surface-muted)]">Attempt {Math.min(attemptNumber, maxAttempts)} of {maxAttempts}</span>}>
             <p className="-mt-2 mb-4 text-[13px] text-[var(--ds-on-surface-muted)]">
-                Your base rate plus your margin is the amount the customer sees.
+                {perKg
+                    ? `This is a part load: you bid in ₹ per kg, charged on ${kg || 'the'} kg chargeable weight. Your rate plus your margin is what the customer sees, with the total.`
+                    : 'Your base rate plus your margin is the amount the customer sees.'}
             </p>
 
             {reason && (
@@ -83,7 +90,7 @@ export default function BidCalculator({ load, canManage, now, onChanged }) {
 
             <form onSubmit={submit} noValidate className="flex flex-col gap-5">
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <ModalField label="Base rate (₹)" htmlFor="bid-base-rate">
+                    <ModalField label={perKg ? 'Base rate (₹ per kg)' : 'Base rate (₹)'} htmlFor="bid-base-rate">
                         <Input
                             id="bid-base-rate"
                             type="number"
@@ -93,10 +100,10 @@ export default function BidCalculator({ load, canManage, now, onChanged }) {
                             value={baseRate}
                             onChange={(event) => setBaseRate(event.target.value)}
                             disabled={locked}
-                            placeholder="e.g. 58000"
+                            placeholder={perKg ? 'e.g. 12.5' : 'e.g. 58000'}
                         />
                     </ModalField>
-                    <ModalField label={`Margin ${marginType === 'percent' ? '(%)' : '(₹)'}`} htmlFor="bid-margin-value">
+                    <ModalField label={`Margin ${marginType === 'percent' ? '(%)' : perKg ? '(₹ per kg)' : '(₹)'}`} htmlFor="bid-margin-value">
                         <div className="flex items-center gap-2">
                             <Input
                                 id="bid-margin-value"
@@ -107,7 +114,7 @@ export default function BidCalculator({ load, canManage, now, onChanged }) {
                                 value={marginValue}
                                 onChange={(event) => setMarginValue(event.target.value)}
                                 disabled={locked}
-                                placeholder={marginType === 'percent' ? 'e.g. 8' : 'e.g. 4000'}
+                                placeholder={marginType === 'percent' ? 'e.g. 8' : perKg ? 'e.g. 1' : 'e.g. 4000'}
                             />
                         </div>
                     </ModalField>
@@ -126,14 +133,19 @@ export default function BidCalculator({ load, canManage, now, onChanged }) {
 
                 <Inset>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] tabular-nums text-[var(--ds-on-surface-variant)]">
-                        <span>Base {rs(isValid ? base : null)}</span>
+                        <span>Base {rs(isValid ? base : null)}{unit}</span>
                         <span aria-hidden>+</span>
                         <span>Margin {rs(marginRs)}</span>
                         <span aria-hidden>=</span>
                     </div>
                     <p className="mt-1 text-[32px] font-medium leading-none tracking-tight tabular-nums text-[var(--ds-on-surface)]" aria-live="polite">
-                        {total === null ? '—' : rs(total)}
+                        {total === null ? '—' : `${rs(total)}${unit}`}
                     </p>
+                    {perKg && (
+                        <p className="mt-1 text-[13px] tabular-nums text-[var(--ds-on-surface-variant)]" aria-live="polite">
+                            {grandTotal === null ? `Total on ${kg} kg shows once you enter a rate` : `= ${rs(grandTotal)} on ${kg} kg`}
+                        </p>
+                    )}
                     <p className="mt-1.5 text-xs text-[var(--ds-on-surface-muted)]">Final amount the customer sees</p>
                 </Inset>
 

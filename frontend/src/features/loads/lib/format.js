@@ -45,3 +45,9 @@ export const toLocalInputValue = (iso) => {
 /** The route in one line: "Kolkata → New Delhi" */
 export const formatRoute = (load) =>
     [load.pickupCity || load.pickupPinCode || '?', load.dropCity || load.dropPinCode || '?'].join(' → ');
+
+/** A bid or award amount with its unit: "₹58,000" per truck, "₹56.50/kg" for a part load. */
+export const formatBid = (amount, priceBasis) => `${formatRupees(amount)}${priceBasis === 'per_kg' ? '/kg' : ''}`;
+
+/** Total in rupees of a ₹ per kg amount on the chargeable weight, rounded to paise. */
+export const perKgTotal = (amountPerKg, chargeableWeightKg) => Math.round(Number(amountPerKg) * Number(chargeableWeightKg) * 100) / 100;

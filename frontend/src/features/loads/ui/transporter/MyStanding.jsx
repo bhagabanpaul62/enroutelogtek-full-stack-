@@ -1,5 +1,6 @@
 import { BigStat, Fact, FactList, Panel, TickBar, StatGroup } from '@/shared/ui/kit';
 import { MAX_ATTEMPTS } from '../../constants';
+import { formatRupees, perKgTotal } from '../../lib/format';
 import { rs } from './money';
 
 /**
@@ -23,7 +24,11 @@ export default function MyStanding({ load }) {
                     tone={bid ? (bid.currentRank === 1 ? 'success' : 'warning') : 'default'}
                     size="lg"
                 />
-                <BigStat label="My amount" value={bid ? rs(bid.currentAmount) : '—'} />
+                <BigStat
+                    label="My amount"
+                    value={bid ? `${rs(bid.currentAmount)}${load.priceBasis === 'per_kg' ? '/kg' : ''}` : '—'}
+                    {...(bid && load.priceBasis === 'per_kg' && load.chargeableWeightKg ? { hint: `${formatRupees(perKgTotal(bid.currentAmount, load.chargeableWeightKg))} total` } : {})}
+                />
             </StatGroup>
 
             <div className="mt-5">

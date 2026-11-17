@@ -7,7 +7,7 @@ import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/primitives/button';
 import { getLoadBidsApi } from '../../api/loads.api';
 import { MARGIN_TYPE_LABELS, MAX_ATTEMPTS } from '../../constants';
-import { formatDateTime, formatRupees } from '../../lib/format';
+import { formatBid, formatDateTime, formatRupees } from '../../lib/format';
 
 const EMPTY_TEXT = {
     draft: 'Publish the load to open bidding.',
@@ -17,7 +17,7 @@ const EMPTY_TEXT = {
 };
 
 /** The attempts behind one bid, oldest first. */
-function AttemptsTable({ attempts }) {
+function AttemptsTable({ attempts, priceBasis }) {
     if (attempts.length === 0) return <p className="text-xs text-[var(--ds-on-surface-muted)]">No attempts recorded.</p>;
     return (
         <div className="overflow-x-auto">
@@ -41,7 +41,7 @@ function AttemptsTable({ attempts }) {
                                 {attempt.marginType === 'percent' ? `${attempt.marginValue}%` : formatRupees(attempt.marginValue)}{' '}
                                 <span className="text-[var(--ds-on-surface-muted)]">({MARGIN_TYPE_LABELS[attempt.marginType] ?? attempt.marginType})</span>
                             </td>
-                            <td className="py-1.5 text-right font-medium tabular-nums">{formatRupees(attempt.finalAmount)}</td>
+                            <td className="py-1.5 text-right font-medium tabular-nums">{formatBid(attempt.finalAmount, priceBasis)}</td>
                             <td className="py-1.5 text-right tabular-nums">L{attempt.rankAtSubmit}</td>
                             <td className="py-1.5 text-right tabular-nums text-[var(--ds-on-surface-variant)]">{formatDateTime(attempt.createdAt)}</td>
                         </tr>
@@ -98,6 +98,9 @@ export default function BidBoard({ load, canManage, onPick, busy = false }) {
     const signature = bids.map((bid) => `${bid.id}:${bid.attemptsUsed}`).join(',');
     const attempts = useBidAttempts(load.id, signature, openIds.size > 0);
     const canPick = canManage && load.status === 'closed';
+    const perKg = load.priceBasis === 'per_kg';
+    // A bid whose award already ended (declined, revoked after a missed placement, or timed out) has had its turn.
+    const hadTurn = new Set((load.awardHistory ?? []).filter((a) => ['declined', 'revoked', 'expired'].includes(a.status)).map((a) => a.bidId));
 
     const toggle = (bidId) =>
         setOpenIds((prev) => {
@@ -141,11 +144,19 @@ export default function BidBoard({ load, canManage, onPick, busy = false }) {
                                     {bid.attemptsUsed} of {load.maxAttempts ?? MAX_ATTEMPTS} attempts · last {formatDateTime(bid.lastAttemptAt)}
                                 </p>
                             </div>
-                            <p className={cn('text-[22px] font-medium leading-none tabular-nums tracking-tight sm:text-right', lowest ? 'text-primary' : 'text-[var(--ds-on-surface)]')}>
-                                {formatRupees(bid.currentAmount)}
-                            </p>
+                            <div className="sm:text-right">
+                                <p className={cn('text-[22px] font-medium leading-none tabular-nums tracking-tight', lowest ? 'text-primary' : 'text-[var(--ds-on-surface)]')}>
+                                    {formatBid(bid.currentAmount, load.priceBasis)}
+                                </p>
+                                {perKg && bid.totalAmount != null && (
+                                    <p className="mt-1 text-xs tabular-nums text-[var(--ds-on-surface-muted)]">
+                                        {formatRupees(bid.totalAmount)} on {load.chargeableWeightKg} kg
+                                    </p>
+                                )}
+                            </div>
                             <div className="flex shrink-0 items-center gap-2">
-                                {canPick && (
+                                {canPick && hadTurn.has(bid.id) && <ToneBadge label="Already had its turn" tone="warning" />}
+                                {canPick && !hadTurn.has(bid.id) && (
                                     <Button disabled={busy} onClick={() => onPick(bid)}>
                                         <Trophy /> Pick as winner
                                     </Button>
@@ -169,7 +180,7 @@ export default function BidBoard({ load, canManage, onPick, busy = false }) {
                                 ) : attempts.error ? (
                                     <ErrorState title="Couldn't load the attempts" description={attempts.error} onRetry={attempts.retry} />
                                 ) : (
-                                    <AttemptsTable attempts={attempts.byBid[bid.id] ?? []} />
+                                    <AttemptsTable attempts={attempts.byBid[bid.id] ?? []} priceBasis={load.priceBasis} />
                                 )}
                             </div>
                         )}

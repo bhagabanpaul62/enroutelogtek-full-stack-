@@ -8,10 +8,13 @@ import {
     detentionCharge,
     ewayBillState,
     freightPaise,
+    HOLDING_STATUSES,
     isAutoCompleteDue,
     isPlacementMissed,
     loadStatusFromTrips,
     plannedShareKg,
+    podRejectionProblem,
+    reAwardProblem,
     progressOf,
     shouldWarnAutoComplete,
     snapshotTerms,
@@ -208,5 +211,44 @@ describe('load status from trips', () => {
     });
     it('counts progress, delivered and completed together', () => {
         assert.equal(progressOf([t('completed'), t('delivered'), t('in_transit'), t('cancelled')]).label, '2 of 3 delivered');
+    });
+});
+
+describe('H7: holding the truck and rejecting a POD', () => {
+    it('keeps vehicle and driver held from planned until completed, including delivered', () => {
+        for (const status of ['planned', 'reported', 'in_transit', 'reached_drop', 'delivered']) assert.ok(HOLDING_STATUSES.includes(status), status);
+        for (const status of ['completed', 'cancelled']) assert.equal(HOLDING_STATUSES.includes(status), false, status);
+    });
+    it('lists delivered -> reached_drop explicitly, and only that backward step', () => {
+        assert.equal(canTransition('delivered', 'reached_drop'), true);
+        for (const [from, to] of [['completed', 'delivered'], ['cancelled', 'planned'], ['reached_drop', 'in_transit'], ['delivered', 'in_transit']]) {
+            assert.equal(canTransition(from, to), false, `${from} -> ${to}`);
+        }
+    });
+    it('/transition can never use the POD-rejection step', () => {
+        const problem = transitionProblems({ status: 'delivered' }, 'reached_drop', {});
+        assert.equal(problem.status, 409);
+        assert.match(problem.message, /reject-pod/);
+    });
+    it('a POD can be rejected only on a delivered trip', () => {
+        assert.equal(podRejectionProblem({ status: 'delivered' }), null);
+        for (const status of ['planned', 'reached_drop', 'completed', 'cancelled']) assert.equal(podRejectionProblem({ status }).status, 409, status);
+    });
+});
+
+describe('H6: re-award after a missed placement', () => {
+    const miss = { decision: null };
+    const load = { status: 'accepted' };
+    const award = { status: 'accepted' };
+    it('is allowed for an accepted load and award with an open miss', () => {
+        assert.equal(reAwardProblem({ load, award, miss }), null);
+    });
+    it('needs an open miss', () => {
+        assert.equal(reAwardProblem({ load, award, miss: null }).status, 422);
+        assert.equal(reAwardProblem({ load, award, miss: { decision: 'cancel' } }).status, 422);
+    });
+    it('is refused once trucks are moving or the award is not the accepted one', () => {
+        for (const status of ['in_execution', 'closed', 'awarded', 'completed']) assert.equal(reAwardProblem({ load: { status }, award, miss }).status, 409, status);
+        for (const status of ['pending', 'declined', 'revoked']) assert.equal(reAwardProblem({ load, award: { status }, miss }).status, 409, status);
     });
 });

@@ -81,3 +81,14 @@ test('delivered trip: closure sheet prints from its own page', async ({ page }) 
     await expect(page.getByLabel('Trip closure sheet')).toBeVisible();
     await expect(page.getByRole('button', { name: /Print/ })).toBeVisible();
 });
+
+test('a trip always says what happens next', async ({ page }) => {
+    await loginAs(page, USERS.transporter);
+    await page.goto('/transporter/trips');
+    const first = page.getByRole('row').nth(1);
+    test.skip(!(await first.isVisible().catch(() => false)), 'no trips seeded yet');
+    await first.click();
+    await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
+    // The guidance banner is the first status region on the page.
+    await expect(page.getByRole('status').first()).not.toBeEmpty();
+});

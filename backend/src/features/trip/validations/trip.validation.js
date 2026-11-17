@@ -27,6 +27,8 @@ export const companyIdRules = [param('companyId').isUUID().withMessage('companyI
 export const listTripsRules = [
     query('status').optional().isIn(TRIP_STATUSES).withMessage(`status must be one of: ${TRIP_STATUSES.join(', ')}`),
     query('loadId').optional().isUUID().withMessage('loadId must be a valid id'),
+    query('vehicleId').optional().isUUID().withMessage('vehicleId must be a valid id'),
+    query('driverId').optional().isUUID().withMessage('driverId must be a valid id'),
     query('role').optional().isIn(['executor', 'customer']).withMessage('role must be executor or customer'),
     query('cursor').optional().isString().isLength({ max: 500 }).withMessage('Invalid cursor'),
     query('limit').optional().isInt({ min: 1, max: MAX_LIMIT }).withMessage(`limit must be a number from 1 to ${MAX_LIMIT}`).toInt(),

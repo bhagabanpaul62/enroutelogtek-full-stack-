@@ -3,7 +3,7 @@
  * and load.constants.js; the services call these and only add the database work.
  */
 import { snapshotTerms as loadSnapshotTerms } from '#features/load/load.rules.js';
-import { POD_CONDITIONS, TRIP_ACTORS, TRIP_DEFAULTS, TRIP_TRANSITIONS } from './trip.constants.js';
+import { POD_CONDITIONS, POD_REJECTION, TRIP_ACTORS, TRIP_DEFAULTS, TRIP_TRANSITIONS } from './trip.constants.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -14,6 +14,8 @@ export const EWAY_BILL_THRESHOLD_PAISE = 50000 * 100;
 export const EWAY_WARN_HOURS = 12;
 
 export const ACTIVE_STATUSES = ['reported', 'loading', 'loaded', 'in_transit', 'delayed', 'reached_drop'];
+/** A vehicle and driver stay held by a trip until it is completed or cancelled, so a rejected POD cannot double-book them (H7). */
+export const HOLDING_STATUSES = ['planned', ...ACTIVE_STATUSES, 'delivered'];
 export const SWAPPABLE_STATUSES = ACTIVE_STATUSES.filter((status) => status !== 'reached_drop');
 export const FINISHED_STATUSES = ['completed', 'cancelled'];
 /** PTL leg updates during transit and unloading (AJ-25, AJ-27). */
@@ -137,6 +139,9 @@ export const transitionProblems = (trip, to, input = {}, ctx = {}) => {
     if (!canTransition(trip.status, to)) {
         return conflict(`A trip cannot go from ${trip.status} to ${to}`);
     }
+    if (trip.status === POD_REJECTION.from && to === POD_REJECTION.to) {
+        return conflict('Only the customer can send a POD back, with a reason (POST /trips/:id/reject-pod)');
+    }
     const eta = input.etaAt ?? trip.etaAt;
     switch (to) {
         case 'reported':
@@ -180,6 +185,23 @@ export const transitionProblems = (trip, to, input = {}, ctx = {}) => {
         default:
             return null;
     }
+};
+
+/** Whether the customer may send this trip's POD back. null = fine. */
+export const podRejectionProblem = (trip) =>
+    trip.status === POD_REJECTION.from && canTransition(POD_REJECTION.from, POD_REJECTION.to)
+        ? null
+        : conflict('Only a delivered trip can have its POD rejected');
+
+/**
+ * Re-award after a missed placement (H6): only while the load is `accepted` (no truck has moved),
+ * the award is the accepted one, and the miss is the open one. null = fine.
+ */
+export const reAwardProblem = ({ load, award, miss }) => {
+    if (!miss || miss.decision) return unprocessable('There is no missed placement waiting for your decision');
+    if (load.status !== 'accepted') return conflict('A load can be taken back only while it is accepted and no truck has started');
+    if (!award || award.status !== 'accepted') return conflict('Only an accepted award can be taken back');
+    return null;
 };
 
 /** Customers may cancel a trip only before the truck reports (spec 2). */

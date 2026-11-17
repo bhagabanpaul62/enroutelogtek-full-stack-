@@ -24,7 +24,7 @@ export const TRIP_TRANSITIONS = {
     in_transit: ['delayed', 'reached_drop'],
     delayed: ['in_transit', 'reached_drop'],
     reached_drop: ['delivered'],
-    delivered: ['completed'],
+    delivered: ['completed', 'reached_drop'], // delivered -> reached_drop only by POD rejection (customer), see POD_REJECTION
     completed: [],
     cancelled: [],
 };
@@ -41,6 +41,9 @@ export const TRIP_ACTORS = {
     completed: ['customer', 'system'],
     cancelled: ['executor', 'customer'], // customer only while planned; executor needs a reason
 };
+
+/** The one backward step: the customer sends a POD back. Never reachable through /transition. */
+export const POD_REJECTION = { from: 'delivered', to: 'reached_drop', who: 'customer' };
 
 export const CHARGE_KINDS = ['freight', 'detention', 'labour', 'toll', 'other'];
 export const CHARGE_STATUSES = ['proposed', 'approved', 'rejected'];

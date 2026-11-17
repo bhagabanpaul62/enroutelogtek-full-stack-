@@ -88,7 +88,10 @@ Chain of records: `RFQ / Load (requirement) → Bid (offer) → Award → Contra
 - Every state change is one transaction with a `load_events` / `team_events` style history row.
 - Money in paise (integers); dates shown "Nov 17", never ISO.
 - Every list: cursor pages, search, filters, loading skeleton, empty state with the action, error with retry.
-- No new dependency without a line in this file saying why.
+- No new dependency without a line in this file saying why. Approved so far:
+  - `recharts` (frontend): trend and bar charts on Overview, Reports, Earnings.
+  - `@playwright/test` (frontend, dev): browser end-to-end tests.
+  - `xlsx` 0.20.3 from cdn.sheetjs.com (backend), approved by Suman 18 Nov: Excel lane import and template for RFQs (ENR-020). Installed from the SheetJS CDN because the npm `xlsx` package is stuck at 0.18.5 with known advisories.
 
 ## 7. Design system (M14)
 

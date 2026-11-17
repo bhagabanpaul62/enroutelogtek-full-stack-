@@ -27,6 +27,9 @@ export const confirmTripApi = (tripId, body) => api.post(`/trips/${tripId}/confi
 export const rejectPodApi = (tripId, body) => api.post(`/trips/${tripId}/reject-pod`, body).then(unwrap);
 export const cancelTripApi = (tripId, body) => api.post(`/trips/${tripId}/cancel`, body).then(unwrap);
 export const placementDecisionApi = (tripId, body) => api.post(`/trips/${tripId}/placement-decision`, body).then(unwrap);
+export const swapVehicleApi = (tripId, body) => api.post(`/trips/${tripId}/swap-vehicle`, body).then(unwrap);
+export const recordLegApi = (tripId, body) => api.post(`/trips/${tripId}/leg`, body).then(unwrap);
+export const setPaymentApi = (tripId, body) => api.post(`/trips/${tripId}/payment`, body).then(unwrap);
 export const rateLoadApi = (loadId, body) => api.post(`/loads/${loadId}/ratings`, body).then(unwrap);
 export const getReliabilityApi = (companyId) => api.get(`/transporters/${companyId}/reliability`).then(unwrap);
 

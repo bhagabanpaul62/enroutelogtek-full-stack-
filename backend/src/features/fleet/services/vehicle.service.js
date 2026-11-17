@@ -3,7 +3,7 @@ import { and, desc, eq, ilike, inArray, isNull, sql, getTableColumns } from 'dri
 import { db } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { vehicleTypes } from '#features/load/schemas/master.Schema.js';
-import { documents } from '#features/document/schemas/documents.Schema.js';
+import { linkDocument } from '#features/document/document.link.js';
 import { vehicles } from '../schemas/fleet.Schema.js';
 import { isAssignable, normaliseRegistration, todayIST, vehicleDocStatus } from '../fleet.rules.js';
 import {
@@ -156,10 +156,7 @@ export const addVehicleDocument = async (user, id, { documentType, fileUrl, numb
     if (expiry) set[expiryColumn] = expiry;
     if (number && numberColumn) set[numberColumn] = number;
     return db.transaction(async (tx) => {
-        const [doc] = await tx
-            .insert(documents)
-            .values({ userId: user.userId, companyId: user.companyId, documentType, fileUrl, entityType: 'vehicle', entityId: id })
-            .returning();
+        const doc = await linkDocument(tx, { user, documentType, fileUrl, entityType: 'vehicle', entityId: id });
         if (Object.keys(set).length > 0) await tx.update(vehicles).set(set).where(eq(vehicles.id, id));
         return doc;
     });

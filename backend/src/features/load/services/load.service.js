@@ -48,7 +48,7 @@ import {
 import { afterCursor, cursorCreatedAt, toPage } from './load.pagination.js';
 import { listLoadEvents, recordLoadEvent } from './loadEvent.service.js';
 import { PERMISSIONS } from '#features/team/team.permissions.js';
-import { trips } from '#features/trip/schemas/trip.Schema.js';
+import { ratings, trips } from '#features/trip/schemas/trip.Schema.js';
 import {
     findInvitedLoad,
     findOwnLoad,
@@ -439,13 +439,23 @@ export const listLoads = async (user, { status, search, cursor, limit = DEFAULT_
 
 // ---------- detail ----------
 
+/** The rating this company already gave on the load (one per load and pair), or null (M10). */
+const findMyRating = async (companyId, loadId) => {
+    const [row] = await db
+        .select({ id: ratings.id, stars: ratings.stars, comment: ratings.comment, toCompanyId: ratings.toCompanyId, createdAt: ratings.createdAt })
+        .from(ratings)
+        .where(and(eq(ratings.loadId, loadId), eq(ratings.fromCompanyId, companyId)))
+        .limit(1);
+    return row ?? null;
+};
+
 const getCustomerLoad = async (customerCompanyId, loadId) => {
     const [row] = await withLookups(db.select({ load: loads, ...lookupFields }).from(loads))
         .where(and(eq(loads.id, loadId), eq(loads.customerCompanyId, customerCompanyId)))
         .limit(1);
     if (!row) throw new AppError('Load not found', 404);
 
-    const [invitationRows, bidRows, awardRows, events] = await Promise.all([
+    const [invitationRows, bidRows, awardRows, events, myRating] = await Promise.all([
         db
             .select({
                 id: loadInvitations.id,
@@ -470,6 +480,7 @@ const getCustomerLoad = async (customerCompanyId, loadId) => {
             .where(eq(awards.loadId, loadId))
             .orderBy(desc(awards.createdAt)),
         listLoadEvents(loadId),
+        findMyRating(customerCompanyId, loadId),
     ]);
 
     const load = present(row);
@@ -482,16 +493,19 @@ const getCustomerLoad = async (customerCompanyId, loadId) => {
             : [];
     const bidderIds = new Set(bidRows.map(({ bid }) => bid.transporterCompanyId));
     const awardList = awardRows.map(({ award, transporter }) => ({ ...award, transporter }));
+    // A revoked transporter (missed placement) cannot be awarded again; the bid board greys the bid out.
+    const revokedIds = new Set(awardList.filter((item) => item.status === 'revoked').map((item) => item.transporterCompanyId));
 
     return {
         ...load,
         problems,
         invitations: invitationRows.map((item) => ({ ...item, hasBid: bidderIds.has(item.company.id) })),
-        bids: bidRows.map(({ bid, transporter }) => ({ ...bid, transporter, totalAmount: bidTotal(load, bid.currentAmount) })),
+        bids: bidRows.map(({ bid, transporter }) => ({ ...bid, transporter, totalAmount: bidTotal(load, bid.currentAmount), awardRevoked: revokedIds.has(bid.transporterCompanyId) })),
         bidCount: bidRows.length,
         award: awardList[0] ?? null,
         awardHistory: awardList,
         events,
+        myRating,
     };
 };
 
@@ -555,6 +569,7 @@ const getTransporterLoad = async (transporterCompanyId, loadId) => {
         bidderCount,
         award: award ?? null,
         outcome: mine ? 'won' : settled ? 'lost' : null,
+        myRating: await findMyRating(transporterCompanyId, loadId),
     };
 };
 
@@ -583,10 +598,16 @@ export const listBids = async (user, loadId) => {
               .where(eq(bidAttempts.loadId, loadId))
               .orderBy(asc(bidAttempts.attemptNumber))
         : [];
+    const revoked = await db
+        .select({ transporterCompanyId: awards.transporterCompanyId })
+        .from(awards)
+        .where(and(eq(awards.loadId, loadId), eq(awards.status, 'revoked')));
+    const revokedIds = new Set(revoked.map((item) => item.transporterCompanyId));
     return rows.map(({ bid, transporter }) => ({
         ...bid,
         transporter,
         totalAmount: bidTotal(load, bid.currentAmount),
+        awardRevoked: revokedIds.has(bid.transporterCompanyId),
         attempts: attempts.filter((attempt) => attempt.bidId === bid.id),
     }));
 };

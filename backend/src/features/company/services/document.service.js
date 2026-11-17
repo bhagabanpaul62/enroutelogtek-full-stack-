@@ -5,7 +5,7 @@
  * replacement waits for platform review (status "pending"); the review screen is a later wave.
  * Documents uploaded at registration have no review row and count as approved once the company is.
  */
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { documents } from '#features/document/schemas/documents.Schema.js';
@@ -52,7 +52,7 @@ export async function listDocuments(user) {
         })
         .from(documents)
         .leftJoin(companyDocumentReviews, eq(companyDocumentReviews.documentId, documents.id))
-        .where(and(eq(documents.companyId, companyId), inArray(documents.documentType, ALL_TYPES)))
+        .where(and(eq(documents.companyId, companyId), isNull(documents.entityType), inArray(documents.documentType, ALL_TYPES)))
         .orderBy(desc(documents.createdAt), desc(documents.id));
 
     const wanted = TYPES_BY_COMPANY[company.companyType] ?? ['gst', 'pan'];

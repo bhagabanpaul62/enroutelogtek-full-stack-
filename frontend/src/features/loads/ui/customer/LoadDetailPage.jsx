@@ -3,25 +3,25 @@
 import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Ban, CalendarClock, CheckCheck, CheckCircle2, Clock, Gavel, Pencil, RefreshCw, Target, Trophy } from 'lucide-react';
+import { Ban, CalendarClock, CheckCheck, Clock, Gavel, Pencil, RefreshCw, Target, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/ui/primitives/button';
 import {
     EntityHeader,
     ErrorState,
-    Modal,
-    ModalFooter,
     Panel,
     SkeletonRows,
     StatCard,
     TabBar,
     formatINR,
 } from '@/shared/ui/kit';
-import { awardLoadApi, cancelLoadApi, completeLoadApi, extendLoadApi } from '../../api/loads.api';
+import { awardLoadApi, cancelLoadApi, extendLoadApi } from '../../api/loads.api';
+import TripsPanel from '@/features/trips/ui/TripsPanel';
 import { useCan } from '@/shared/hooks/useCan';
 import { PERMISSIONS } from '@/shared/lib/permissions';
-import { formatCountdown, formatDate, formatRoute, formatTimeWindow } from '../../lib/format';
+import { formatBid, formatCountdown, formatDate, formatRoute, formatTimeWindow } from '../../lib/format';
 import LoadSummary from '../components/LoadSummary';
+import LoadTypeBadge from '../components/LoadTypeBadge';
 import StatusBadge from '../components/StatusBadge';
 import AwardDialog from './AwardDialog';
 import AwardPanel from './AwardPanel';
@@ -29,6 +29,7 @@ import BidBoard from './BidBoard';
 import ExtendDialog from './ExtendDialog';
 import InvitedList from './InvitedList';
 import ActivityLog from './ActivityLog';
+import PlacementMissBanner from './PlacementMissBanner';
 import ReasonDialog from './ReasonDialog';
 import { useLoadDetail } from './useLoadDetail';
 import { useNow } from './useNow';
@@ -37,7 +38,8 @@ const LOADS_PATH = '/customer/loads';
 const CANCELLABLE = ['draft', 'live', 'closed', 'expired'];
 const EXTENDABLE = ['live', 'expired'];
 const COMPLETABLE = ['accepted', 'in_execution'];
-const TAB_IDS = ['overview', 'bids', 'invited', 'activity'];
+const TAB_IDS = ['overview', 'bids', 'trips', 'invited', 'activity'];
+const TRIP_STATUSES = ['accepted', 'in_execution', 'completed'];
 const PANEL_ID = 'load-tab-panel';
 
 const compactRupees = (rupees) => (rupees === null || rupees === undefined || rupees === '' ? '—' : formatINR(Math.round(Number(rupees) * 100), { compact: true }));
@@ -56,8 +58,13 @@ function KpiRow({ load, now }) {
     return (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatCard label="Bids received" value={String(bids.length)} icon={<Gavel className="size-4" />} meta={invited ? `${invited} invited` : undefined} />
-            <StatCard label="Lowest bid" value={best ? compactRupees(best.currentAmount) : '—'} icon={<Trophy className="size-4" />} meta={best ? best.transporter?.name : 'No bids yet'} />
-            <StatCard label="Target price" value={compactRupees(load.targetPrice)} icon={<Target className="size-4" />} meta="Hidden from transporters" />
+            <StatCard
+                label="Lowest bid"
+                value={best ? compactRupees(load.priceBasis === 'per_kg' ? best.totalAmount : best.currentAmount) : '—'}
+                icon={<Trophy className="size-4" />}
+                meta={best ? `${best.transporter?.name}${load.priceBasis === 'per_kg' ? `, ${formatBid(best.currentAmount, 'per_kg')}` : ''}` : 'No bids yet'}
+            />
+            <StatCard label={load.priceBasis === 'per_kg' ? 'Target per kg' : 'Target price'} value={compactRupees(load.targetPrice)} icon={<Target className="size-4" />} meta="Hidden from transporters" />
             {live ? (
                 <StatCard label="Bidding closes in" value={closesIn || 'Closing…'} icon={<Clock className="size-4" />} meta={`Pickup ${formatDate(load.pickupDate)}`} />
             ) : (
@@ -99,8 +106,9 @@ function LoadDetailView({ loadId }) {
     const tab = TAB_IDS.includes(tabParam) ? tabParam : 'overview';
     const setTab = (next) => router.replace(next === 'overview' ? pathname : `${pathname}?tab=${next}`, { scroll: false });
     const [busy, setBusy] = useState(false);
-    // Which dialog is open: null | 'extend' | 'cancel' | 'complete' | { bid } for the award.
+    // Which dialog is open: null | 'extend' | 'cancel' | { bid } for the award.
     const [dialog, setDialog] = useState(null);
+    const [tripsKey, setTripsKey] = useState(0); // remounts the trips panel after a decision
 
     if (isLoading) return <DetailSkeleton />;
 
@@ -158,10 +166,6 @@ function LoadDetailView({ loadId }) {
         if (await run(() => awardLoadApi(load.id, bid.id, reason || undefined))) setDialog(null);
     };
 
-    const complete = async () => {
-        if (await run(() => completeLoadApi(load.id), `${load.loadNumber} marked delivered`)) setDialog(null);
-    };
-
     const closesIn = load.status === 'live' ? formatCountdown(load.closesAt, now) : '';
     const bidCount = load.bids?.length ?? 0;
     const actions = canManage || canAward ? (
@@ -177,8 +181,8 @@ function LoadDetailView({ loadId }) {
                 </Button>
             )}
             {canAward && COMPLETABLE.includes(load.status) && (
-                <Button size="lg" disabled={busy} onClick={() => setDialog('complete')}>
-                    <CheckCheck /> Mark delivered
+                <Button size="lg" onClick={() => setTab('trips')}>
+                    <CheckCheck /> Confirm deliveries
                 </Button>
             )}
             {canManage && CANCELLABLE.includes(load.status) && (
@@ -192,6 +196,7 @@ function LoadDetailView({ loadId }) {
     const tabs = [
         { id: 'overview', label: 'Overview' },
         { id: 'bids', label: 'Bids', count: bidCount },
+        ...(load.award || TRIP_STATUSES.includes(load.status) ? [{ id: 'trips', label: 'Trips' }] : []),
         { id: 'invited', label: 'Invited', count: load.invitations?.length ?? 0 },
         { id: 'activity', label: 'Activity', count: load.events?.length ?? 0 },
     ];
@@ -201,7 +206,12 @@ function LoadDetailView({ loadId }) {
             <EntityHeader
                 back={{ href: LOADS_PATH, label: 'Loads' }}
                 title={load.loadNumber}
-                chips={<StatusBadge status={load.status} />}
+                chips={
+                    <>
+                        <StatusBadge status={load.status} />
+                        <LoadTypeBadge type={load.loadType} />
+                    </>
+                }
                 meta={[
                     formatRoute(load),
                     `Pickup ${formatDate(load.pickupDate)}, ${formatTimeWindow(load.pickupTimeFrom, load.pickupTimeTo)}`,
@@ -219,12 +229,23 @@ function LoadDetailView({ loadId }) {
                 </p>
             )}
 
+            <PlacementMissBanner
+                loadId={load.id}
+                status={load.status}
+                transporterCompanyId={load.award?.transporterCompanyId}
+                canDecide={canManage}
+                onDecided={() => {
+                    setTripsKey((n) => n + 1);
+                    reload();
+                }}
+            />
+
             <div id={PANEL_ID} role="tabpanel" className="flex flex-col gap-6">
                 {tab === 'overview' && (
                     <>
                         <KpiRow load={load} now={now} />
-                        {load.award && <AwardPanel award={load.award} history={load.awardHistory ?? []} now={now} />}
-                        <LoadSummary load={load} showTarget className="items-stretch lg:grid-cols-3" />
+                        {load.award && <AwardPanel award={load.award} history={load.awardHistory ?? []} now={now} load={load} />}
+                        <LoadSummary load={load} showTarget className="items-stretch lg:grid-cols-2" />
                     </>
                 )}
 
@@ -241,6 +262,8 @@ function LoadDetailView({ loadId }) {
                     </Panel>
                 )}
 
+                {tab === 'trips' && <TripsPanel key={tripsKey} loadId={load.id} />}
+
                 {tab === 'invited' && (
                     <Panel title={`Invited transporters (${load.invitations?.length ?? 0})`}>
                         <InvitedList invitations={load.invitations ?? []} />
@@ -254,21 +277,6 @@ function LoadDetailView({ loadId }) {
                 )}
             </div>
 
-            <Modal
-                open={dialog === 'complete'}
-                onOpenChange={(next) => !next && !busy && setDialog(null)}
-                size="sm"
-                icon={<CheckCircle2 className="size-5" />}
-                title={`Mark ${load.loadNumber} as delivered?`}
-                description="The load is closed as completed. The transporter is told the trip is done."
-                footer={
-                    <ModalFooter
-                        summary={formatRoute(load)}
-                        secondary={{ onClick: () => setDialog(null), disabled: busy }}
-                        primary={{ label: busy ? 'Working…' : 'Mark delivered', onClick: complete, disabled: busy }}
-                    />
-                }
-            />
             <ExtendDialog
                 key={dialog === 'extend' ? 'extend-open' : 'extend-closed'}
                 open={dialog === 'extend'}
@@ -296,6 +304,7 @@ function LoadDetailView({ loadId }) {
                 key={dialog?.bid ? `award-${dialog.bid.id}` : 'award-closed'}
                 open={Boolean(dialog?.bid)}
                 bid={dialog?.bid ?? null}
+                priceBasis={load.priceBasis}
                 busy={busy}
                 onCancel={() => setDialog(null)}
                 onSubmit={award}

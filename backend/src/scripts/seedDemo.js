@@ -16,6 +16,8 @@ import { users } from '#features/auth/schemas/index.js';
 import { branch, companies } from '#features/company/schemas/index.js';
 import { companyConnections } from '#features/network/schemas/index.js';
 import { createPresetRoles } from '#features/team/services/role.service.js';
+import { vehicleTypes } from '#features/load/schemas/master.Schema.js';
+import { drivers, vehicles } from '#features/fleet/schemas/fleet.Schema.js';
 
 export const ADMIN = { email: 'admin@enroute.local', password: 'Admin@12345', name: 'Platform Admin' };
 export const DEMO_PASSWORD = 'Demo@12345';
@@ -36,6 +38,73 @@ const CONNECTIONS = [
     ['transporter', 'broker'],
     ['broker', 'fleetowner'],
 ];
+
+// Fleet for the demo trip screens. Expiry offsets are days from today (all in the future); the one
+// marked `soon` runs out inside 20 days so the expiry warning has something to show.
+const FLEET = {
+    transporter: {
+        vehicles: [
+            { reg: 'MH12DM1001', rc: 400, ins: 300, permit: 250, fitness: 200 },
+            { reg: 'MH12DM1002', rc: 420, ins: 15, permit: 260, fitness: 210, soon: true },
+            { reg: 'MH14DM1003', rc: 380, ins: 280, permit: 240, fitness: 190 },
+        ],
+        drivers: [
+            { name: 'Ramesh Patil', phone: '9100000011', licence: 'MH1220200011', exp: 900 },
+            { name: 'Sunil Jadhav', phone: '9100000012', licence: 'MH1220200012', exp: 700 },
+            { name: 'Imran Shaikh', phone: '9100000013', licence: 'MH1420200013', exp: 600 },
+        ],
+    },
+    fleetowner: {
+        vehicles: [
+            { reg: 'MH15FO2001', rc: 500, ins: 320, permit: 270, fitness: 220 },
+            { reg: 'MH15FO2002', rc: 450, ins: 310, permit: 260, fitness: 230 },
+        ],
+        drivers: [
+            { name: 'Dattatray More', phone: '9100000021', licence: 'MH1520200021', exp: 800 },
+            { name: 'Vijay Gaikwad', phone: '9100000022', licence: 'MH1520200022', exp: 750 },
+        ],
+    },
+};
+
+const inDays = (days) => {
+    const date = new Date(Date.now() + days * 86400000);
+    return date.toISOString().slice(0, 10);
+};
+
+async function seedFleet(key, companyId, types) {
+    const spec = FLEET[key];
+    for (const [i, v] of spec.vehicles.entries()) {
+        const [found] = await db.select({ id: vehicles.id }).from(vehicles).where(eq(vehicles.registrationNumber, v.reg)).limit(1);
+        if (found) {
+            log(false, `vehicle ${v.reg}`);
+            continue;
+        }
+        const type = types[i % types.length];
+        await db.insert(vehicles).values({
+            ownerCompanyId: companyId,
+            registrationNumber: v.reg,
+            vehicleTypeId: type.id,
+            capacityTons: type.capacityTons,
+            rcNumber: `RC-${v.reg}`, rcExpiry: inDays(v.rc),
+            insuranceNumber: `INS-${v.reg}`, insuranceExpiry: inDays(v.ins),
+            permitNumber: `PRM-${v.reg}`, permitExpiry: inDays(v.permit),
+            fitnessNumber: `FIT-${v.reg}`, fitnessExpiry: inDays(v.fitness),
+            pucExpiry: inDays(120),
+        });
+        log(true, `vehicle ${v.reg}${v.soon ? ' (insurance expires soon)' : ''}`);
+    }
+    for (const d of spec.drivers) {
+        const [found] = await db.select({ id: drivers.id }).from(drivers).where(and(eq(drivers.ownerCompanyId, companyId), eq(drivers.phone, d.phone))).limit(1);
+        if (found) {
+            log(false, `driver ${d.name}`);
+            continue;
+        }
+        await db.insert(drivers).values({
+            ownerCompanyId: companyId, name: d.name, phone: d.phone, licenceNumber: d.licence, licenceExpiry: inDays(d.exp), yearsExperience: 8,
+        });
+        log(true, `driver ${d.name}`);
+    }
+}
 
 const log = (changed, text) => console.log(`${changed ? 'created' : 'exists '} ${text}`);
 
@@ -143,6 +212,9 @@ const run = async () => {
     const ids = {};
     for (const spec of COMPANIES) ids[spec.key] = await seedCompany(spec, passwordHash);
     for (const [a, b] of CONNECTIONS) await seedConnection(ids[a], ids[b], `${a} <-> ${b}`);
+    const types = await db.select({ id: vehicleTypes.id, capacityTons: vehicleTypes.capacityTons }).from(vehicleTypes).orderBy(vehicleTypes.sortOrder).limit(3);
+    if (types.length === 0) console.log('No vehicle types yet (run the migrations); skipping demo vehicles.');
+    else for (const key of Object.keys(FLEET)) await seedFleet(key, ids[key], types);
     console.log('Demo seed done.');
 };
 

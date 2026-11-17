@@ -25,7 +25,7 @@ import { drivers, vehicles } from '#features/fleet/schemas/fleet.Schema.js';
 import { discrepancies, placementMisses, ratings, tripCharges, tripEvents, trips } from '../schemas/trip.Schema.js';
 import { DEFAULT_TRIP_PAGE_LIMIT } from '../trip.constants.js';
 import {
-    ACTIVE_STATUSES,
+    HOLDING_STATUSES,
     LEGS,
     MILESTONE,
     SWAPPABLE_STATUSES,
@@ -154,10 +154,12 @@ export const createTripsForAward = async (tx, { load, award }) => {
     const terms = award.termsSnapshot;
     if (!terms) throw new AppError('The award has no frozen terms yet', 500);
     const expectedPlacementAt = pickupMoment(load);
+    // a re-award restarts the count at 1, but cancelled trucks of the revoked award still hold their numbers
+    const [{ top }] = await tx.select({ top: sql`coalesce(max(${trips.seqNo}), 0)::int` }).from(trips).where(eq(trips.loadId, load.id));
     const rows = Array.from({ length: load.vehicleCount }, (_, i) => ({
         loadId: load.id,
         awardId: award.id,
-        seqNo: i + 1,
+        seqNo: top + i + 1,
         transporterCompanyId: award.transporterCompanyId,
         executorCompanyId: award.transporterCompanyId, // until Wave 3 allocation
         expectedPlacementAt,
@@ -180,7 +182,7 @@ export const createTripsForAward = async (tx, { load, award }) => {
             tripId: trip.id,
             type: 'created',
             toStatus: 'planned',
-            note: `Truck ${trip.seqNo} of ${load.vehicleCount}`,
+            note: `Truck ${created.indexOf(trip) + 1} of ${load.vehicleCount}`,
             data: { awardId: award.id, freightPaise: freight },
         });
     }
@@ -275,8 +277,9 @@ export const applyTransition = async (tx, { trip, load, to, input = {}, actor, s
         },
     });
 
-    // The truck and driver are free as soon as the goods are handed over or the trip is cancelled.
-    if (['delivered', 'cancelled'].includes(to)) await freeFleet(tx, trip.vehicleId, trip.driverId);
+    // The truck and driver stay held until the trip is completed or cancelled: a rejected POD sends
+    // the trip back to the drop point and the same truck must not have been booked elsewhere meanwhile.
+    if (['completed', 'cancelled'].includes(to)) await freeFleet(tx, trip.vehicleId, trip.driverId);
 
     // BR-16: per-ton and per-kg freight is billed on the loaded weight.
     if (to === 'delivered') {
@@ -330,7 +333,15 @@ export const transitionTrip = async (user, tripId, input) => {
             needAny(user, PERMISSIONS.TRIPS_UPDATE);
             if (!sides.executor) throw new AppError('Only the company moving this truck can update it', 403);
         }
-        return (await applyTransition(tx, { trip, load, to, input, actor: actorOf(user), side })).notices;
+        const result = await applyTransition(tx, { trip, load, to, input, actor: actorOf(user), side });
+        // A customer cancelling a truck that missed its placement settles the open miss (M11).
+        if (to === 'cancelled' && side === 'customer') {
+            await tx
+                .update(placementMisses)
+                .set({ decision: 'cancel', decidedByUserId: user.userId, decidedAt: new Date() })
+                .where(and(eq(placementMisses.tripId, trip.id), isNull(placementMisses.decision)));
+        }
+        return result.notices;
     });
     sendAfter(notices);
     return getTripDetail(user, tripId);
@@ -362,7 +373,7 @@ const lockAndCheck = async (tx, { companyId, vehicleId, driverId, trip, load, cu
         .from(trips)
         .where(
             and(
-                inArray(trips.status, ['planned', ...ACTIVE_STATUSES]),
+                inArray(trips.status, HOLDING_STATUSES),
                 ne(trips.id, trip.id),
                 or(eq(trips.vehicleId, vehicleId), eq(trips.driverId, driverId)),
             ),
@@ -549,6 +560,9 @@ export const getTripDetail = async (user, tripId) => {
         db.select({ status: trips.status, reportedAt: trips.reportedAt }).from(trips).where(eq(trips.loadId, trip.loadId)),
     ]);
     const ownRatings = ratingRows.filter((row) => row.fromCompanyId === user.companyId || row.toCompanyId === user.companyId);
+    // The rating this company already gave on this load to the other side of this trip (one per load + pair).
+    const otherSide = sides.customer ? trip.transporterCompanyId : load.customerCompanyId;
+    const myRating = ratingRows.find((row) => row.fromCompanyId === user.companyId && row.toCompanyId === otherSide) ?? null;
     return {
         trip,
         load: { ...publicLoad, loadNumber: loadLabel(load), ...(sides.customer && { targetPrice }) },
@@ -560,6 +574,7 @@ export const getTripDetail = async (user, tripId) => {
         discrepancies: found,
         documents: docs,
         ratings: ownRatings,
+        myRating,
         hasCurrentPod: await podExists(db, trip.id),
         placementMiss: misses[0] ?? null,
         loadProgress: progressOf(siblings),
@@ -570,7 +585,7 @@ export const getTripDetail = async (user, tripId) => {
 const lastEventSql = sql`(select json_build_object('type', e.type, 'note', e.note, 'at', e.created_at) from trip_events e where e.trip_id = ${trips.id} order by e.created_at desc, e.id desc limit 1)`;
 
 /** GET /trips: the company's trips (customer: its loads' trucks; others: trucks it moves or is paid for). */
-export const listTrips = async (user, { status, loadId, role, cursor, limit = DEFAULT_TRIP_PAGE_LIMIT }) => {
+export const listTrips = async (user, { status, loadId, vehicleId, driverId, role, cursor, limit = DEFAULT_TRIP_PAGE_LIMIT }) => {
     const company = await requireCompany(user);
     const asCustomer = role ? role === 'customer' : company.companyType === 'customer';
     const conditions = [
@@ -580,6 +595,8 @@ export const listTrips = async (user, { status, loadId, role, cursor, limit = DE
     ];
     if (status) conditions.push(eq(trips.status, status));
     if (loadId) conditions.push(eq(trips.loadId, loadId));
+    if (vehicleId) conditions.push(eq(trips.vehicleId, vehicleId));
+    if (driverId) conditions.push(eq(trips.driverId, driverId));
     if (cursor) conditions.push(afterCursor(trips.createdAt, trips.id, cursor));
     const rows = await db
         .select({

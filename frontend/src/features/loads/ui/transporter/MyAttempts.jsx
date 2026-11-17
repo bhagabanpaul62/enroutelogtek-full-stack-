@@ -10,14 +10,15 @@ const marginText = (attempt) =>
  * My earlier attempts on this load, as a feed. Renders nothing when there are none.
  * @param {{ attempts?: object[], maxAttempts?: number }} props
  */
-export default function MyAttempts({ attempts, maxAttempts = MAX_ATTEMPTS }) {
+export default function MyAttempts({ attempts, maxAttempts = MAX_ATTEMPTS, priceBasis }) {
+    const unit = priceBasis === 'per_kg' ? '/kg' : '';
     if (!attempts?.length) return null;
 
     const steps = attempts.map((attempt, i) => ({
         key: attempt.attemptNumber,
         state: i === attempts.length - 1 ? 'current' : 'done',
-        label: `Attempt ${attempt.attemptNumber}: ${rs(attempt.finalAmount)} (L${attempt.rankAtSubmit})`,
-        note: `Base ${rs(attempt.baseRate)} + ${marginText(attempt)} margin`,
+        label: `Attempt ${attempt.attemptNumber}: ${rs(attempt.finalAmount)}${unit} (L${attempt.rankAtSubmit})`,
+        note: `Base ${rs(attempt.baseRate)}${unit} + ${marginText(attempt)} margin`,
         time: formatDateTime(attempt.createdAt),
     }));
 

@@ -133,7 +133,7 @@ export default function VehicleDetailPage({ basePath }) {
                     />
                 ) : null}
                 {tab === 'trips' ? (
-                    <RecordTrips match={(t) => (t.vehicleId ? t.vehicleId === vehicle.id : (t.vehicleRegistration ?? t.vehicleRegistrationNumber ?? t.vehicle?.registrationNumber) === vehicle.registrationNumber)} />
+                    <RecordTrips vehicleId={vehicle.id} />
                 ) : null}
             </div>
 

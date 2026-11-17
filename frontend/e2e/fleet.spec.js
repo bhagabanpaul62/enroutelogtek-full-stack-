@@ -33,7 +33,7 @@ test('transporter adds a vehicle and sees it in the list', async ({ page }) => {
 
     // Back in the list: the row and the Expiring soon panel.
     await page.goto('/transporter/fleet');
-    await expect(page.getByText(REG)).toBeVisible();
+    await expect(page.getByRole('cell', { name: REG }).first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Expiring soon' })).toBeVisible();
 });
 
