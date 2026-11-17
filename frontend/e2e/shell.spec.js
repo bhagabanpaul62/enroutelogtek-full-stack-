@@ -27,11 +27,12 @@ test.describe('dashboard shell', () => {
         await expect(page.getByRole('menuitem', { name: 'Sign out' })).toBeVisible();
     });
 
-    test('a page that is not built shows the honest placeholder', async ({ page }) => {
+    test('a page that does not exist shows the honest 404, and every sidebar page is built', async ({ page }) => {
         await loginAs(page, USERS.customer);
-        await page.getByRole('navigation', { name: 'Dashboard' }).getByRole('link', { name: 'Contracts' }).click();
-        await expect(page.getByRole('heading', { name: 'Contracts' })).toBeVisible();
-        await expect(page.getByText('Not built yet')).toBeVisible();
+        // Every page is built now, so no sidebar link carries a "Soon" tag.
+        await expect(page.getByRole('navigation', { name: 'Dashboard' }).getByText('Soon')).toHaveCount(0);
+        await page.goto('/customer/no-such-page');
+        await expect(page.getByRole('heading', { name: 'There is no page here.' })).toBeVisible();
     });
 
     test('on a phone the sidebar is a drawer', async ({ page }) => {

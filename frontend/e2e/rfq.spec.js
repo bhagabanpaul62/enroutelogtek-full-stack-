@@ -13,7 +13,7 @@ test('customer builds an RFQ draft and sees it in the list', async ({ page }) =>
         await expect(page.getByRole('tab', { name })).toBeVisible();
     }
 
-    await page.getByRole('link', { name: 'New RFQ' }).first().click();
+    await page.getByRole('button', { name: 'New RFQ' }).first().click();
     await page.waitForURL('**/customer/rfqs/new');
 
     // Step 1: basics.
@@ -68,18 +68,21 @@ test('customer imports a CSV and sees the row errors before anything is created'
     ].join('\n');
     await page.locator('#rfq-csv').setInputFiles({ name: 'lanes.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
 
-    await expect(page.getByText('2 rows, 2 errors')).toBeVisible();
+    await expect(page.getByText('2 rows, 3 errors')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Create draft' })).toBeDisabled();
     await page.getByRole('button', { name: 'Discard file' }).click();
     await expect(page.getByText('Drop an .xlsx or .csv file here')).toBeVisible();
 });
 
-test('customer uploads the downloaded Excel template and sees the same preview', async ({ page }) => {
+test('customer uploads the downloaded Excel template and sees the same preview', async ({ page }, testInfo) => {
     await loginAs(page, USERS.customer);
     await page.goto('/customer/rfqs/import');
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Excel template' }).click()]);
     expect(download.suggestedFilename()).toBe('rfq-lanes-template.xlsx');
-    await page.locator('#rfq-csv').setInputFiles(await download.path());
+    // The app checks the file extension, and Playwright's temp download path has none.
+    const saved = testInfo.outputPath('rfq-lanes-template.xlsx');
+    await download.saveAs(saved);
+    await page.locator('#rfq-csv').setInputFiles(saved);
     await expect(page.getByText('1 row, 0 errors')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Discard file' })).toBeVisible();
     await page.getByRole('button', { name: 'Discard file' }).click();

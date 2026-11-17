@@ -72,7 +72,10 @@ test.describe('admin billing', () => {
     test('approved and rejected tabs open from the URL', async ({ page }) => {
         await page.goto('/rootAdmin/payments?status=approved');
         await expect(page.getByRole('tab', { name: 'Approved' })).toHaveAttribute('aria-selected', 'true');
-        await page.getByRole('tab', { name: 'Rejected' }).click();
-        await expect(page).toHaveURL(/status=rejected/);
+        // The tab is server-rendered; a click before hydration does nothing, so retry it until the URL moves.
+        await expect(async () => {
+            await page.getByRole('tab', { name: 'Rejected' }).click();
+            await expect(page).toHaveURL(/status=rejected/, { timeout: 1000 });
+        }).toPass();
     });
 });

@@ -65,7 +65,7 @@ export default function PlansPage() {
     };
 
     const save = async (values) => {
-        const plan = dialog.plan;
+        const plan = dialog?.plan;
         const done = await run(() => (plan ? updatePlanApi(plan.id, values) : createPlanApi(values)), plan ? 'Plan saved' : 'Plan created');
         if (!done) return;
         setDialog(null);

@@ -38,14 +38,14 @@ const GENERAL = [
 const MAIN = {
     customer: [
         { slug: 'loads', icon: 'loads', name: 'Loads', description: 'Ad Hoc loads: post one, invite transporters, pick the winning bid.', ready: true },
-        { slug: 'rfqs', icon: 'rfqs', name: 'RFQs', description: 'Contract RFQs: a lane or volume over a period.' },
-        { slug: 'contracts', icon: 'contracts', name: 'Contracts', description: 'The awarded bids and their terms.' },
+        { slug: 'rfqs', icon: 'rfqs', name: 'RFQs', description: 'Contract RFQs: a lane or volume over a period.', ready: true },
+        { slug: 'contracts', icon: 'contracts', name: 'Contracts', description: 'The awarded bids and their terms.', ready: true },
         { slug: 'trips', icon: 'trips', name: 'Trips', description: 'Every truck on your loads, from dispatch to proof of delivery.', ready: true },
     ],
     transporter: [
-        { slug: 'rfqs', icon: 'rfqs', name: 'RFQs', description: 'Loads open to you from connected shippers, on a clock.' },
+        { slug: 'rfqs', icon: 'rfqs', name: 'RFQs', description: 'Loads open to you from connected shippers, on a clock.', ready: true },
         { slug: 'bids', icon: 'bids', name: 'Bids', description: 'Loads you were invited to, your bids and where each one stands.', ready: true },
-        { slug: 'contracts', icon: 'contracts', name: 'Contracts', description: 'What you have won and accepted.' },
+        { slug: 'contracts', icon: 'contracts', name: 'Contracts', description: 'What you have won and accepted.', ready: true },
         { slug: 'fleet', icon: 'fleet', name: 'Fleet', description: 'Your vehicles and their papers.', ready: true },
         { slug: 'drivers', icon: 'drivers', name: 'Drivers', description: 'Who is on which trip.', ready: true },
         { slug: 'trips', icon: 'trips', name: 'Trips', description: 'Dispatch to proof of delivery for every truck.', ready: true },

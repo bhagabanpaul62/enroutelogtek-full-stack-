@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { DataGrid } from '@/shared/ui/data-grid';
 import { TabBar } from '@/shared/ui/kit';
@@ -36,14 +36,15 @@ const COLUMNS = [
 ];
 
 function PaymentsView() {
-    const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     // The open tab lives in the URL (?status=approved) so refresh and the back button keep it.
     const statusParam = searchParams.get('status');
     const status = PAYMENT_TABS.some((tab) => tab.id === statusParam) ? statusParam : 'submitted';
+    // Native replaceState: Next syncs it into useSearchParams without a server round trip.
+    // router.replace did nothing in the production build when the URL already had ?status=.
     const openTab = (tabId) => {
-        if (tabId !== status) router.replace(`${pathname}?status=${tabId}`, { scroll: false });
+        if (tabId !== status) window.history.replaceState(null, '', `${pathname}?status=${tabId}`);
     };
     // key: switching tab resets the grid's own search and filters.
     return <PaymentsBody key={status} status={status} onTab={openTab} />;
@@ -85,7 +86,8 @@ function PaymentsBody({ status, onTab }) {
             setBusy(false);
         }
     };
-    const approve = (note) => decide(dialog.payment, () => approvePaymentApi(dialog.payment.id, note), 'Payment approved');
+    // dialog?. : the React Compiler can hoist these reads into render, where dialog is null (crashed PlansPage).
+    const approve = (note) => decide(dialog?.payment, () => approvePaymentApi(dialog?.payment?.id, note), 'Payment approved');
     return (
         <div className="flex flex-col gap-5">
             <header>
@@ -123,7 +125,7 @@ function PaymentsBody({ status, onTab }) {
                     payment={dialog.payment}
                     busy={busy}
                     onCancel={() => setDialog(null)}
-                    onSubmit={(reason) => decide(dialog.payment, () => rejectPaymentApi(dialog.payment.id, reason), 'Payment rejected')}
+                    onSubmit={(reason) => decide(dialog?.payment, () => rejectPaymentApi(dialog?.payment?.id, reason), 'Payment rejected')}
                 />
             ) : null}
         </div>

@@ -8,7 +8,8 @@ for (const role of ['customer', 'transporter', 'broker', 'fleetowner']) {
         await page.getByRole('radio', { name: '7 days' }).click();
         await expect(page.getByRole('radio', { name: '7 days' })).toHaveAttribute('aria-checked', 'true');
         // Either real numbers with export, or an honest empty state; never a blank page.
-        await expect(page.getByRole('button', { name: 'Export CSV' }).or(page.getByText('No trips in this period'))).toBeVisible();
+        // With no data both show (a disabled export + the empty line), so take the first match.
+        await expect(page.getByRole('button', { name: 'Export CSV' }).or(page.getByText('No trips in this period')).first()).toBeVisible();
     });
 }
 
@@ -17,7 +18,7 @@ test('fleet owner Earnings says earned, not paid', async ({ page }) => {
     await page.goto('/fleet-owner/earnings');
     await expect(page.getByRole('heading', { name: 'Earnings' })).toBeVisible();
     await expect(page.getByText(/not what has been paid/)).toBeVisible();
-    await expect(page.getByText('Earned').first().or(page.getByText('No completed trips in this period'))).toBeVisible();
+    await expect(page.getByText('Earned', { exact: true }).first().or(page.getByText('No completed trips in this period'))).toBeVisible();
 });
 
 test('overview shows real numbers or hides the section, never fake ones', async ({ page }) => {
