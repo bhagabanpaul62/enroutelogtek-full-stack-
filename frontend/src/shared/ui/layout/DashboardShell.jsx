@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import AuthGuard from '@/shared/guards/guard';
 import { SidePanel } from '@/shared/ui/kit';
+import BillingBanner from '@/features/billing/ui/BillingBanner';
 import DashboardSidebar, { Brand, NavList } from './DashboardSidebar';
 import DashboardTopBar from './DashboardTopBar';
 
@@ -20,6 +21,7 @@ export default function DashboardShell({ children }) {
                     </SidePanel>
                     <main className="min-w-0 flex-1">
                         <DashboardTopBar onOpenNav={() => setNavOpen(true)} />
+                        <BillingBanner />
                         {children}
                     </main>
                 </div>

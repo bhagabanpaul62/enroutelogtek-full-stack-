@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner';
-import { Building2, KeyRound, LogOut, Menu, ShieldCheck, Users } from 'lucide-react';
+import { Building2, KeyRound, BadgeCheck, Layers, LogOut, Menu, ShieldCheck, Users, Wallet } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
 import { SidePanel } from '@/shared/ui/kit';
 import { Brand, NavList } from '@/shared/ui/layout/DashboardSidebar';
@@ -17,6 +17,9 @@ const SECTIONS = [
         name: 'platform',
         items: [
             { link: '/rootAdmin', name: 'Companies', icon: Building2, ready: true, match: /^\/rootAdmin(\/companies.*)?$/ },
+            { link: '/rootAdmin/plans', name: 'Plans', icon: Layers, ready: true, match: /^\/rootAdmin\/plans/ },
+            { link: '/rootAdmin/payments', name: 'Payments', icon: Wallet, ready: true, match: /^\/rootAdmin\/payments/ },
+            { link: '/rootAdmin/subscriptions', name: 'Subscriptions', icon: BadgeCheck, ready: true, match: /^\/rootAdmin\/subscriptions/ },
             { link: '/rootAdmin/users', name: 'Users', icon: Users, ready: true, match: /^\/rootAdmin\/users/ },
             { link: '/rootAdmin/admins', name: 'Platform admins', icon: ShieldCheck, ready: true, match: /^\/rootAdmin\/admins/ },
         ],

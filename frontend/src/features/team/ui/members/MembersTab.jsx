@@ -9,6 +9,7 @@ import RecordPanel from '@/shared/ui/components/RecordPanel';
 import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
 import { ruleValue } from '@/shared/ui/components/gridQuery';
 import { useCursorList } from '@/shared/hooks/useCursorList';
+import SeatLimitModal from '@/features/billing/ui/SeatLimitModal';
 import { useTeamAction } from '../../hooks/useTeamAction';
 import CredentialsDialog from './CredentialsDialog';
 import MemberDialog from './MemberDialog';
@@ -61,6 +62,21 @@ export default function MembersTab({ api, roles, onChanged }) {
     const [dialog, setDialog] = useState(null);
     const [dialogCount, setDialogCount] = useState(0);
     const [viewing, setViewing] = useState(null);
+    const [seatLimit, setSeatLimit] = useState(null); // the API's message when the seats are used up
+
+    // Adding or reactivating over the seat count explains itself and points to Billing instead of a bare toast.
+    const withSeatPrompt = (action) => async () => {
+        try {
+            return await action();
+        } catch (error) {
+            if (error.response?.data?.error?.code === 'SEAT_LIMIT') {
+                error.handled = true;
+                setSeatLimit(error.response.data.message || '');
+                close();
+            }
+            throw error;
+        }
+    };
 
     const open = (next) => {
         setDialogCount((count) => count + 1);
@@ -73,7 +89,7 @@ export default function MembersTab({ api, roles, onChanged }) {
     };
 
     const add = async (values) => {
-        const created = await run(() => api.addMember(values), `${values.name} added`);
+        const created = await run(withSeatPrompt(() => api.addMember(values)), `${values.name} added`);
         if (!created) return;
         refresh();
         open({ type: 'credentials', name: created.name, email: created.email, password: values.temporaryPassword });
@@ -112,7 +128,7 @@ export default function MembersTab({ api, roles, onChanged }) {
                   },
         );
         if (!confirmed) return;
-        const action = deactivating ? () => api.deactivateMember(member.id) : () => api.reactivateMember(member.id);
+        const action = deactivating ? () => api.deactivateMember(member.id) : withSeatPrompt(() => api.reactivateMember(member.id));
         if (await run(action, deactivating ? `${member.name} deactivated` : `${member.name} reactivated`)) refresh();
     };
 
@@ -210,6 +226,7 @@ export default function MembersTab({ api, roles, onChanged }) {
                 />
             )}
             {confirmDialog}
+            <SeatLimitModal open={seatLimit !== null} message={seatLimit} onClose={() => setSeatLimit(null)} />
         </>
     );
 }

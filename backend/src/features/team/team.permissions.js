@@ -20,6 +20,7 @@ export const PERMISSIONS = Object.freeze({
     NETWORK_MANAGE: 'network.manage',
     TEAM_MANAGE: 'team.manage',
     ROLES_MANAGE: 'roles.manage',
+    BILLING_MANAGE: 'billing.manage',
 });
 
 const ALL_TYPES = ['customer', 'transporter', 'broker', 'fleet_owner'];
@@ -127,6 +128,13 @@ export const PERMISSION_CATALOGUE = Object.freeze([
         description: 'Create, edit and delete roles and choose their permissions.',
         companyTypes: ALL_TYPES,
     },
+    {
+        key: PERMISSIONS.BILLING_MANAGE,
+        area: 'Administration',
+        label: 'Manage billing',
+        description: 'Choose a plan, submit payment proof, renew and buy extra seats.',
+        companyTypes: ALL_TYPES,
+    },
 ]);
 
 /**
@@ -222,8 +230,8 @@ export const PRESET_ROLES = Object.freeze([
         name: 'Accounts',
         legacyRole: 'accounts',
         isOwner: false,
-        description: 'Billing and finance. Read-only until you add permissions.',
-        permissions: [],
+        description: 'Billing and finance: plans, payments, renewals and extra seats.',
+        permissions: [PERMISSIONS.BILLING_MANAGE],
     },
 ]);
 
