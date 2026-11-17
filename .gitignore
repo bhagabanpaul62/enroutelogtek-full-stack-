@@ -23,3 +23,8 @@ out/
 
 # Deploy history written on the server by deploy/remote-deploy.sh
 deploy/history.log
+
+# Playwright output
+frontend/test-results/
+frontend/playwright-report/
+.next-e2e/
