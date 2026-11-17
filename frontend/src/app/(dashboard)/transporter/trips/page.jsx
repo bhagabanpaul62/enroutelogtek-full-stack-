@@ -1,7 +1,7 @@
-import ComingSoon from '@/shared/ui/layout/ComingSoon';
+import TripsListPage from '@/features/trips/ui/TripsListPage';
 
 export const metadata = { title: 'Trips' };
 
 export default function Page() {
-    return <ComingSoon companyType="transporter" slug="trips" />;
+    return <TripsListPage />;
 }

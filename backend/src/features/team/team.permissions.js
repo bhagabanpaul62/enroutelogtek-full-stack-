@@ -11,6 +11,8 @@ export const PERMISSIONS = Object.freeze({
     BIDS_SUBMIT: 'bids.submit',
     AWARDS_RESPOND: 'awards.respond',
     TRIPS_ASSIGN: 'trips.assign',
+    TRIPS_UPDATE: 'trips.update',
+    FLEET_MANAGE: 'fleet.manage',
     NETWORK_MANAGE: 'network.manage',
     TEAM_MANAGE: 'team.manage',
     ROLES_MANAGE: 'roles.manage',
@@ -59,6 +61,20 @@ export const PERMISSION_CATALOGUE = Object.freeze([
         companyTypes: ['transporter'],
     },
     {
+        key: PERMISSIONS.TRIPS_UPDATE,
+        area: 'Trips',
+        label: 'Update trips',
+        description: 'Move a trip through its stages, add documents, charges and delay notes.',
+        companyTypes: ['transporter', 'fleet_owner', 'broker'],
+    },
+    {
+        key: PERMISSIONS.FLEET_MANAGE,
+        area: 'Fleet',
+        label: 'Manage vehicles and drivers',
+        description: 'Add, edit and retire vehicles and drivers, and upload their documents.',
+        companyTypes: ['transporter', 'fleet_owner'],
+    },
+    {
         key: PERMISSIONS.NETWORK_MANAGE,
         area: 'Network',
         label: 'Manage the network',
@@ -103,7 +119,8 @@ export function catalogueFor(companyType) {
     );
 }
 
-const { LOADS_MANAGE, LOADS_AWARD, BIDS_SUBMIT, AWARDS_RESPOND, TRIPS_ASSIGN } = PERMISSIONS;
+const { LOADS_MANAGE, LOADS_AWARD, BIDS_SUBMIT, AWARDS_RESPOND, TRIPS_ASSIGN, TRIPS_UPDATE, FLEET_MANAGE } =
+    PERMISSIONS;
 
 /**
  * The roles a new company starts with. They reproduce the old fixed roles exactly, so moving to
@@ -132,14 +149,20 @@ export const PRESET_ROLES = Object.freeze([
         legacyRole: 'bid_manager',
         isOwner: false,
         description: 'Runs loads and bids day to day.',
-        permissions: [LOADS_MANAGE, LOADS_AWARD, BIDS_SUBMIT, AWARDS_RESPOND, TRIPS_ASSIGN],
+        permissions: [
+            LOADS_MANAGE,
+            LOADS_AWARD,
+            BIDS_SUBMIT,
+            AWARDS_RESPOND,
+            TRIPS_ASSIGN,
+        ],
     },
     {
         name: 'Trip manager',
         legacyRole: 'trip_manager',
         isOwner: false,
-        description: 'Follows trips. Read-only until you add permissions.',
-        permissions: [],
+        description: 'Follows and updates trips and keeps the fleet list.',
+        permissions: [TRIPS_UPDATE, FLEET_MANAGE],
     },
     {
         name: 'Viewer',

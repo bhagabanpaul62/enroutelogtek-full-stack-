@@ -2,6 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
     acceptByFrom,
+    autoExtendTo,
+    bidTotal,
+    chargeableWeight,
+    derivedShape,
+    shapeProblems,
+    snapshotTerms,
     canBid,
     computeFinalAmount,
     extensionProblems,
@@ -161,5 +167,86 @@ describe('extensionProblems', () => {
         assert.ok(extensionProblems(completeDraft(), '2026-11-12T04:00:00Z', NOW).length > 0);
         assert.ok(extensionProblems(completeDraft(), '2026-11-08T09:30:00Z', NOW).length > 0);
         assert.ok(extensionProblems(completeDraft(), 'not a date', NOW).length > 0);
+    });
+});
+
+describe('chargeableWeight (PTL)', () => {
+    const box = { count: 10, lengthCm: 100, widthCm: 50, heightCm: 50 }; // 2,500,000 cm3 / 5000 = 500 kg
+    it('uses volumetric when it is the largest', () => {
+        assert.deepEqual(chargeableWeight({ packageDims: [box], actualWeightKg: 200 }), {
+            volumetricWeightKg: 500,
+            chargeableWeightKg: 500,
+        });
+    });
+    it('uses actual when heavier', () => {
+        assert.equal(chargeableWeight({ packageDims: [box], actualWeightKg: 800 }).chargeableWeightKg, 800);
+    });
+    it('never goes below the 50 kg minimum', () => {
+        const r = chargeableWeight({ packageDims: [{ count: 1, lengthCm: 10, widthCm: 10, heightCm: 10 }], actualWeightKg: 5 });
+        assert.equal(r.volumetricWeightKg, 0.2);
+        assert.equal(r.chargeableWeightKg, 50);
+    });
+    it('handles no packages', () => {
+        assert.equal(chargeableWeight({ actualWeightKg: 70 }).chargeableWeightKg, 70);
+    });
+});
+
+describe('PTL shape rules', () => {
+    it('rejects per_kg on FTL', () => {
+        assert.equal(shapeProblems({ loadType: 'FTL', priceBasis: 'per_kg' }).length, 1);
+        assert.deepEqual(shapeProblems({ loadType: 'PTL', priceBasis: 'per_kg' }), []);
+    });
+    it('rejects bad package lines and stray hazmat class', () => {
+        assert.equal(shapeProblems({ loadType: 'PTL', packageDims: [{ count: 0, lengthCm: 1, widthCm: 1, heightCm: 1 }] }).length, 1);
+        assert.equal(shapeProblems({ loadType: 'FTL', hazmatClass: '3', specialRequirements: [] }).length, 1);
+    });
+    it('PTL forces per_kg and derives weights', () => {
+        const out = derivedShape({ loadType: 'PTL', priceBasis: 'per_vehicle', actualWeightKg: 120, packageDims: [{ count: 2, lengthCm: 10, widthCm: 10, heightCm: 10 }] });
+        assert.equal(out.priceBasis, 'per_kg');
+        assert.equal(out.chargeableWeightKg, 120);
+        assert.equal(out.packageCount, 2);
+        assert.equal(out.weightTons, 0.12);
+    });
+    it('FTL clears PTL numbers and drops per_kg', () => {
+        const out = derivedShape({ loadType: 'FTL', priceBasis: 'per_kg' });
+        assert.equal(out.chargeableWeightKg, null);
+        assert.equal(out.priceBasis, 'per_vehicle');
+    });
+    it('per_kg bid total multiplies by chargeable kg', () => {
+        assert.equal(bidTotal({ priceBasis: 'per_kg', chargeableWeightKg: 120 }, 2.5), 300);
+        assert.equal(bidTotal({ priceBasis: 'per_vehicle' }, 41000), 41000);
+    });
+    it('publish needs PTL block and hazmat details', () => {
+        const ptl = { ...completeDraft(), loadType: 'PTL', weightTons: null, packageDims: [], actualWeightKg: null };
+        const problems = publishProblems(ptl, 1, NOW);
+        assert.ok(problems.some((p) => p.includes('package sizes')));
+        assert.ok(problems.some((p) => p.includes('actual weight')));
+        assert.ok(!problems.some((p) => p.includes('tons')));
+        const hz = publishProblems({ ...completeDraft(), specialRequirements: ['hazmat'] }, 1, NOW);
+        assert.ok(hz.some((p) => p.includes('hazmat class')));
+    });
+});
+
+describe('snapshotTerms', () => {
+    it('copies the commercial terms', () => {
+        const t = snapshotTerms({ freeTimeLoadingHours: 24, freeTimeUnloadingHours: 24, detentionRatePaisePerHour: 5000, labourPayableBy: 'consignor', freightPayableBy: 'consignor', tollIncluded: true, priceBasis: 'per_kg', loadType: 'PTL', pickupIsOda: false, dropIsOda: true });
+        assert.equal(t.freeTimeLoadingHours, 24);
+        assert.equal(t.dropIsOda, true);
+        assert.equal(t.declaredValuePaise, null);
+    });
+});
+
+describe('autoExtendTo', () => {
+    const load = { ...completeDraft(), autoExtendOnce: true, extensionCount: 0 };
+    it('extends once when nobody bid', () => {
+        assert.ok(autoExtendTo(load, 0, NOW) instanceof Date);
+    });
+    it('does not extend with bids, a second time, or when not asked', () => {
+        assert.equal(autoExtendTo(load, 1, NOW), null);
+        assert.equal(autoExtendTo({ ...load, extensionCount: 1 }, 0, NOW), null);
+        assert.equal(autoExtendTo({ ...load, autoExtendOnce: false }, 0, NOW), null);
+    });
+    it('does not extend when pickup is too close', () => {
+        assert.equal(autoExtendTo({ ...load, pickupDate: '2026-11-09', pickupTimeFrom: '12:00' }, 0, NOW), null);
     });
 });

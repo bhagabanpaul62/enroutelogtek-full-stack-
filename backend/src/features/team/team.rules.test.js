@@ -51,12 +51,13 @@ describe('permission catalogue', () => {
         const keys = permissionKeysFor('transporter');
         assert.deepEqual(
             keys.filter((key) => !key.startsWith('network') && !key.startsWith('team') && !key.startsWith('roles')),
-            [P.BIDS_SUBMIT, P.AWARDS_RESPOND, P.TRIPS_ASSIGN],
+            [P.BIDS_SUBMIT, P.AWARDS_RESPOND, P.TRIPS_ASSIGN, P.TRIPS_UPDATE, P.FLEET_MANAGE],
         );
     });
-    it('gives brokers and fleet owners only the shared administration permissions', () => {
-        assert.deepEqual(permissionKeysFor('broker'), [P.NETWORK_MANAGE, P.TEAM_MANAGE, P.ROLES_MANAGE]);
-        assert.deepEqual(permissionKeysFor('fleet_owner'), [P.NETWORK_MANAGE, P.TEAM_MANAGE, P.ROLES_MANAGE]);
+    it('gives brokers and fleet owners trip updates, fleet owners also fleet, plus administration', () => {
+        const admin = [P.NETWORK_MANAGE, P.TEAM_MANAGE, P.ROLES_MANAGE];
+        assert.deepEqual(permissionKeysFor('broker'), [P.TRIPS_UPDATE, ...admin]);
+        assert.deepEqual(permissionKeysFor('fleet_owner'), [P.TRIPS_UPDATE, P.FLEET_MANAGE, ...admin]);
     });
     it('describes each permission without leaking the type list', () => {
         const entry = catalogueFor('customer')[0];
