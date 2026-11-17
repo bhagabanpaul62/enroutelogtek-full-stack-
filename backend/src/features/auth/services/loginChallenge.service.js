@@ -115,9 +115,18 @@ export async function startLogin({ email, password }, now = new Date()) {
         await sendLoginOtpEmail(user.email, code);
     } catch (error) {
         console.error('Login code email failed:', error.message);
+        // In development, log the code to the terminal so local testing works without email.
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`\n[DEV] Login code for ${user.email}: ${code}\n`);
+        }
         // Remove the unsent challenge so a retry emails a new code instead of reusing this one.
         await db.delete(loginChallenges).where(eq(loginChallenges.id, id));
         throw new AppError(SEND_FAILED, 502);
+    }
+
+    // In development, also log the code even when the email succeeded (saves checking inbox).
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`\n[DEV] Login code for ${user.email}: ${code}\n`);
     }
     return describe(challenge, user.email, now);
 }
@@ -205,6 +214,9 @@ export async function resendLoginCode(challengeId, now = new Date()) {
         await sendLoginOtpEmail(outcome.email, code);
     } catch (error) {
         console.error('Login code email failed:', error.message);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`\n[DEV] Resend login code for ${outcome.email}: ${code}\n`);
+        }
         // Give the resend back so the person can retry at once instead of waiting out the cooldown.
         await db
             .update(loginChallenges)
@@ -214,6 +226,10 @@ export async function resendLoginCode(challengeId, now = new Date()) {
             })
             .where(eq(loginChallenges.id, outcome.previous.id));
         throw new AppError(SEND_FAILED, 502);
+    }
+
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`\n[DEV] Resend login code for ${outcome.email}: ${code}\n`);
     }
     return describe(outcome.updated, outcome.email, now);
 }

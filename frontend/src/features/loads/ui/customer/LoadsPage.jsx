@@ -23,9 +23,10 @@ import { PERMISSIONS } from '@/shared/lib/permissions';
 import { formatCountdown, formatDate, formatRoute } from '../../lib/format';
 import StatusBadge from '../components/StatusBadge';
 import { useNow } from './useNow';
+import ModePickerModal from './ModePickerModal';
 
 const ALL = 'all';
-const NEW_PATH = '/customer/loads/new';
+const NEW_PATH = '/customer/loads/new'; // used by loadHref to resume a draft
 const STATUS_ITEMS = [
     { value: ALL, label: 'All statuses' },
     ...Object.entries(LOAD_STATUS_LABELS).map(([value, label]) => ({ value, label })),
@@ -83,14 +84,15 @@ function LoadsView() {
     const canManage = useCan(PERMISSIONS.LOADS_MANAGE);
     const now = useNow();
     const list = useCursorList(getLoadsApi, { status, search: debouncedSearch });
+    const [modeOpen, setModeOpen] = useState(false);
 
     const setStatus = (value) =>
         router.replace(!value || value === ALL ? pathname : `${pathname}?status=${value}`, { scroll: false });
 
     const isFiltered = Boolean(status || debouncedSearch);
     const newButton = canManage ? (
-        <Button size="lg" nativeButton={false} render={<Link href={NEW_PATH} />}>
-            <Plus /> New Ad Hoc load
+        <Button size="lg" onClick={() => setModeOpen(true)}>
+            <Plus /> New load
         </Button>
     ) : null;
 
@@ -157,13 +159,15 @@ function LoadsView() {
                               icon: Package,
                               title: 'No loads yet',
                               description: canManage
-                                  ? 'Post your first Ad Hoc load: enter the route, the material and the trucks, then invite your transporters to bid.'
+                                  ? 'Post your first load: choose Ad Hoc for a one-off movement, then enter the route, the material and the trucks.'
                                   : 'Loads your company posts will show up here.',
                               action: newButton,
                           }
                 }
                 renderItem={(load) => <LoadRow load={load} now={now} />}
             />
+
+            <ModePickerModal open={modeOpen} onClose={() => setModeOpen(false)} />
         </div>
     );
 }

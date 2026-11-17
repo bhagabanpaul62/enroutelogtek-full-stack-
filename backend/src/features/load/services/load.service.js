@@ -97,9 +97,15 @@ const present = ({ load, vehicleType, commodity, ...extra }) => ({
     ...extra,
 });
 
-/** What a transporter may see: never the target price, the invite list or clock bookkeeping. */
-const presentForTransporter = (row) => {
-    const { targetPrice, inviteeCompanyIds, closingSoonNotifiedAt, ...rest } = present(row);
+/** What a transporter may see: never the target price, the invite list or clock bookkeeping.
+ *  Contact details (pickup/drop name + phone) are only shared after the award is accepted. */
+const presentForTransporter = (row, { shareContacts = false } = {}) => {
+    const { targetPrice, inviteeCompanyIds, closingSoonNotifiedAt,
+            pickupContactName, pickupContactPhone, dropContactName, dropContactPhone,
+            ...rest } = present(row);
+    if (shareContacts) {
+        return { ...rest, pickupContactName, pickupContactPhone, dropContactName, dropContactPhone };
+    }
     return rest;
 };
 
@@ -495,7 +501,9 @@ const getTransporterLoad = async (transporterCompanyId, loadId) => {
         .limit(1);
 
     const { customer, ...loadRow } = row;
-    const load = presentForTransporter(loadRow);
+    // Share pickup/drop contacts once the award is accepted (AJ-05).
+    const shareContacts = Boolean(award && award.status === 'accepted');
+    const load = presentForTransporter(loadRow, { shareContacts });
     // won: the current award is mine. lost: the load went to someone else for good (a pending
     // award to a rival may still be declined, so until then the outcome stays open).
     const mine = Boolean(award && ['pending', 'accepted'].includes(award.status));
