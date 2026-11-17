@@ -8,6 +8,10 @@
 export const PERMISSIONS = Object.freeze({
     LOADS_MANAGE: 'loads.manage',
     LOADS_AWARD: 'loads.award',
+    RFQS_MANAGE: 'rfqs.manage',
+    CONTRACTS_MANAGE: 'contracts.manage',
+    QUOTES_SUBMIT: 'quotes.submit',
+    CONTRACTS_RESPOND: 'contracts.respond',
     BIDS_SUBMIT: 'bids.submit',
     AWARDS_RESPOND: 'awards.respond',
     TRIPS_ASSIGN: 'trips.assign',
@@ -40,6 +44,20 @@ export const PERMISSION_CATALOGUE = Object.freeze([
         companyTypes: ['customer'],
     },
     {
+        key: PERMISSIONS.RFQS_MANAGE,
+        area: 'Contracts',
+        label: 'Run RFQs',
+        description: 'Create, import, publish, extend and cancel RFQs, and award lanes.',
+        companyTypes: ['customer'],
+    },
+    {
+        key: PERMISSIONS.CONTRACTS_MANAGE,
+        area: 'Contracts',
+        label: 'Manage contracts',
+        description: 'Propose or answer amendments, cancel contracts and place indents.',
+        companyTypes: ['customer'],
+    },
+    {
         key: PERMISSIONS.BIDS_SUBMIT,
         area: 'Bids',
         label: 'Place bids',
@@ -51,6 +69,20 @@ export const PERMISSION_CATALOGUE = Object.freeze([
         area: 'Bids',
         label: 'Accept or decline awards',
         description: 'Answer when a customer awards your company a load.',
+        companyTypes: ['transporter'],
+    },
+    {
+        key: PERMISSIONS.QUOTES_SUBMIT,
+        area: 'Contracts',
+        label: 'Quote RFQs',
+        description: 'Submit and revise lane quotations on RFQs your company is invited to.',
+        companyTypes: ['transporter'],
+    },
+    {
+        key: PERMISSIONS.CONTRACTS_RESPOND,
+        area: 'Contracts',
+        label: 'Run contracts',
+        description: 'Accept or decline lane awards, answer amendments, cancel contracts and acknowledge indents.',
         companyTypes: ['transporter'],
     },
     {
@@ -119,8 +151,19 @@ export function catalogueFor(companyType) {
     );
 }
 
-const { LOADS_MANAGE, LOADS_AWARD, BIDS_SUBMIT, AWARDS_RESPOND, TRIPS_ASSIGN, TRIPS_UPDATE, FLEET_MANAGE } =
-    PERMISSIONS;
+const {
+    LOADS_MANAGE,
+    LOADS_AWARD,
+    BIDS_SUBMIT,
+    AWARDS_RESPOND,
+    TRIPS_ASSIGN,
+    TRIPS_UPDATE,
+    FLEET_MANAGE,
+    RFQS_MANAGE,
+    CONTRACTS_MANAGE,
+    QUOTES_SUBMIT,
+    CONTRACTS_RESPOND,
+} = PERMISSIONS;
 
 /**
  * The roles a new company starts with. They reproduce the old fixed roles exactly, so moving to
@@ -155,6 +198,10 @@ export const PRESET_ROLES = Object.freeze([
             BIDS_SUBMIT,
             AWARDS_RESPOND,
             TRIPS_ASSIGN,
+            RFQS_MANAGE,
+            CONTRACTS_MANAGE,
+            QUOTES_SUBMIT,
+            CONTRACTS_RESPOND,
         ],
     },
     {
