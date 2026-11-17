@@ -1,59 +1,42 @@
-import { formatCountdown, formatDateTime } from '../../lib/format';
+import { Fact, FactList, Panel, StatusChip } from '@/shared/ui/kit';
+import { formatCountdown, formatDateTime, formatRupees } from '../../lib/format';
 
-const STATUS_TEXT = {
-    pending: 'Waiting for the transporter to accept',
-    accepted: 'Accepted',
-    declined: 'Declined',
-    expired: 'No answer in time',
-};
-
-const TONE = {
-    pending: 'text-primary',
-    accepted: 'text-[#3ccf7a]',
-    declined: 'text-destructive',
-    expired: 'text-[#f0955a]',
-};
+const STATUS_OPTIONS = [
+    { value: 'pending', label: 'Waiting to accept' },
+    { value: 'expired', label: 'No answer in time' },
+];
 
 function AwardLine({ award, now }) {
     const acceptIn = award.status === 'pending' ? formatCountdown(award.acceptBy, now) : '';
     return (
-        <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-            <div>
-                <p className="text-[14px] font-medium text-foreground">{award.transporter?.name}</p>
-                <p className="font-mono text-[11px] text-muted-foreground">{award.transporter?.enrouteCompanyId}</p>
+        <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="min-w-0 truncate text-base font-medium text-[var(--ds-on-surface)]">{award.transporter?.name}</p>
+                <StatusChip value={award.status} options={STATUS_OPTIONS} />
             </div>
-            <div>
-                <p className={`text-[13px] ${TONE[award.status] ?? 'text-foreground'}`}>
-                    {STATUS_TEXT[award.status] ?? award.status}
-                </p>
+            <FactList>
+                {award.amount != null && <Fact label="Winning bid">{formatRupees(award.amount)}</Fact>}
                 {award.status === 'pending' && (
-                    <p className="text-[12px] text-[#c6c6c7]">
-                        Accept by {formatDateTime(award.acceptBy)}
+                    <Fact label="Accept by">
+                        {formatDateTime(award.acceptBy)}
                         {acceptIn ? ` · ${acceptIn} left` : ''}
-                    </p>
+                    </Fact>
                 )}
-                {award.respondedAt && award.status !== 'pending' && (
-                    <p className="text-[12px] text-[#c6c6c7]">{formatDateTime(award.respondedAt)}</p>
+                {award.respondedAt && award.status !== 'pending' && <Fact label="Answered">{formatDateTime(award.respondedAt)}</Fact>}
+                {award.reason && <Fact label="Reason">{award.reason}</Fact>}
+                {award.assignedAt && (
+                    <>
+                        <Fact label="Truck">{award.vehicleNumber}</Fact>
+                        <Fact label="Driver">{award.driverName}</Fact>
+                        <Fact label="Driver phone" copy={award.driverPhone}>
+                            <a href={`tel:${award.driverPhone}`} className="text-primary hover:underline">
+                                {award.driverPhone}
+                            </a>
+                        </Fact>
+                        <Fact label="Assigned">{formatDateTime(award.assignedAt)}</Fact>
+                    </>
                 )}
-            </div>
-            {award.reason && (
-                <div className="sm:col-span-2">
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Reason</p>
-                    <p className="text-[13px] text-foreground">{award.reason}</p>
-                </div>
-            )}
-            {award.assignedAt && (
-                <div className="sm:col-span-2 rounded-[4px] border border-border bg-background p-3">
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Truck and driver</p>
-                    <p className="mt-1 text-[13px] text-foreground">
-                        <span className="font-mono">{award.vehicleNumber}</span> · {award.driverName} ·{' '}
-                        <a href={`tel:${award.driverPhone}`} className="text-primary hover:underline">
-                            {award.driverPhone}
-                        </a>
-                    </p>
-                    <p className="text-[12px] text-[#c6c6c7]">Assigned {formatDateTime(award.assignedAt)}</p>
-                </div>
-            )}
+            </FactList>
         </div>
     );
 }
@@ -66,23 +49,20 @@ function AwardLine({ award, now }) {
 export default function AwardPanel({ award, history, now }) {
     const earlier = history.filter((item) => item.id !== award.id);
     return (
-        <section className="rounded-[4px] border border-primary/40 bg-card p-4">
-            <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-[#c6c6c7]">Winner</h2>
+        <Panel title="Winner">
             <AwardLine award={award} now={now} />
             {earlier.length > 0 && (
-                <div className="mt-4 border-t border-border pt-3">
-                    <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Earlier awards
-                    </p>
-                    <ul className="grid gap-3">
+                <div className="mt-6 pt-2">
+                    <h4 className="mb-3 font-mono text-[11px] uppercase tracking-[0.05em] text-[var(--ds-on-surface-muted)]">Earlier awards</h4>
+                    <ul className="flex flex-col gap-5 opacity-80">
                         {earlier.map((item) => (
-                            <li key={item.id} className="opacity-80">
+                            <li key={item.id}>
                                 <AwardLine award={item} now={now} />
                             </li>
                         ))}
                     </ul>
                 </div>
             )}
-        </section>
+        </Panel>
     );
 }

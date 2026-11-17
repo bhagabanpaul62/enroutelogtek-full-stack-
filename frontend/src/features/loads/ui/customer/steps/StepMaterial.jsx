@@ -1,7 +1,6 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
-import { Button } from '@/shared/ui/primitives/button';
+import { ErrorState, SkeletonRows } from '@/shared/ui/kit';
 import { SelectGroup, SelectItem, SelectLabel } from '@/shared/ui/primitives/select';
 import {
     LOAD_TYPE_LABELS,
@@ -9,7 +8,7 @@ import {
     SPECIAL_REQUIREMENT_LABELS,
 } from '../../../constants';
 import AttachmentUpload from './AttachmentUpload';
-import { CheckboxRow, FormField, SelectField, TextArea, TextInput } from './FormField';
+import { CheckboxRow, FieldGroup, FormField, SelectField, TextArea, TextInput } from './FormField';
 
 const bodyTypeLabel = (bodyType) =>
     String(bodyType || 'other').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
@@ -60,29 +59,23 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
 
     if (isLoading) {
         return (
-            <div className="flex items-center gap-2 py-10 text-[13px] text-muted-foreground" aria-busy="true">
-                <Loader2 size={16} className="animate-spin" /> Loading material and truck lists…
+            <div className="rounded-3xl bg-[var(--ds-surface-container-low)] p-5">
+                <SkeletonRows rows={4} />
             </div>
         );
     }
 
     if (mastersError) {
         return (
-            <div className="flex flex-col items-start gap-3 rounded-[4px] border border-dashed border-border px-4 py-6">
-                <p className="text-[13px] text-foreground">{mastersError}</p>
-                <Button variant="outline" onClick={reload}>
-                    Try again
-                </Button>
+            <div className="rounded-3xl bg-[var(--ds-surface-container-low)] p-5">
+                <ErrorState title="Couldn't load the material and truck lists" description={mastersError} onRetry={reload} />
             </div>
         );
     }
 
     return (
         <div className="grid gap-4">
-            <fieldset className="grid gap-3 rounded-[4px] border border-border bg-card p-4">
-                <legend className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Material
-                </legend>
+            <FieldGroup title="Material">
                 <div className="grid gap-3 sm:grid-cols-2">
                     <FormField label="Material" htmlFor="commodityId" required error={errors.commodityId}>
                         <SelectField
@@ -135,12 +128,9 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
                         />
                     </FormField>
                 </div>
-            </fieldset>
+            </FieldGroup>
 
-            <fieldset className="grid gap-3 rounded-[4px] border border-border bg-card p-4">
-                <legend className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Truck
-                </legend>
+            <FieldGroup title="Truck">
                 <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
                     <FormField label="Truck type" htmlFor="vehicleTypeId" required error={errors.vehicleTypeId}>
                         <SelectField
@@ -153,7 +143,7 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
                         >
                             {vehicleGroups.map(([bodyType, types]) => (
                                 <SelectGroup key={bodyType}>
-                                    <SelectLabel className="font-mono text-[10px] uppercase tracking-wider">
+                                    <SelectLabel className="font-mono text-[11px] uppercase tracking-wider">
                                         {bodyTypeLabel(bodyType)}
                                     </SelectLabel>
                                     {types.map((type) => (
@@ -198,7 +188,7 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
                 </div>
 
                 <div className="grid gap-1.5">
-                    <p className="text-[12px] text-[#c6c6c7]">Special requirements</p>
+                    <p className="text-[13px] font-medium text-[var(--ds-on-surface-variant)]">Special requirements</p>
                     <div className="grid gap-2 sm:grid-cols-2">
                         {Object.entries(SPECIAL_REQUIREMENT_LABELS).map(([tag, label]) => (
                             <CheckboxRow
@@ -228,7 +218,7 @@ export default function StepMaterial({ form, errors, onChange, masters }) {
                     onChange={(attachmentUrl) => onChange({ attachmentUrl })}
                     error={errors.attachmentUrl}
                 />
-            </fieldset>
+            </FieldGroup>
         </div>
     );
 }

@@ -19,9 +19,10 @@ export function ToneBadge({ label, tone = 'default', className }) {
     );
 }
 
-/** A status value as the API sends it ("in_execution") becomes its badge; empty renders a muted dash. */
-export function StatusChip({ value, className }) {
+/** A status value as the API sends it ("in_execution") becomes its badge; empty renders a muted dash. `options` ([{ value, label?, tone? }]) may override label/tone. */
+export function StatusChip({ value, options, className }) {
     const meta = statusMeta(value);
     if (!meta) return <span className="text-[var(--ds-on-surface-muted)]">—</span>;
-    return <ToneBadge label={meta.label} tone={meta.tone} className={className} />;
+    const override = options?.find((o) => o.value === value);
+    return <ToneBadge label={override?.label ?? meta.label} tone={override?.tone ?? meta.tone} className={className} />;
 }

@@ -71,6 +71,13 @@
       "when": 1794936378730,
       "tag": "0009_pickup_drop_contacts",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794938920504,
+      "tag": "0010_company_settings",
+      "breakpoints": true
     }
   ]
 }

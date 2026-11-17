@@ -24,7 +24,7 @@ export function DeltaChip({ children, direction, tone = 'default', className }) 
     );
 }
 
-/** KPI tile: icon chip + label, the number, how it moved, and (only for real data) a small viz. It is a panel; never nest it in one. */
+/** KPI tile: icon chip + label, the number, how it moved, and (only for real data) a viz under it. Pass money as formatINR(p, { compact: true }) so the number never wraps. It is a panel; never nest it in one. */
 export function StatCard({ label, value, icon, delta, meta, viz, href, tooltip, delay = 0, className }) {
     const card = (
         <article
@@ -35,19 +35,19 @@ export function StatCard({ label, value, icon, delta, meta, viz, href, tooltip, 
                 className,
             )}
         >
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-2.5">
                     {icon ? <IconChip>{icon}</IconChip> : null}
-                    <p className="flex min-w-0 items-center gap-1.5 text-[13px] text-[var(--ds-on-surface-variant)]">
-                        <span className="truncate">{label}</span>
+                    <p className="flex min-w-0 items-center gap-1.5 text-[13px] leading-snug text-[var(--ds-on-surface-variant)]">
+                        <span className="min-w-0 break-words">{label}</span>
                         {tooltip}
                     </p>
                 </div>
                 {href ? <ArrowButton decorative /> : null}
             </div>
-            <div className="flex items-end justify-between gap-3">
+            <div className="flex flex-col gap-3">
                 <div className="min-w-0">
-                    <p className="text-[34px] font-medium leading-none tabular-nums tracking-tight text-[var(--ds-on-surface)]">
+                    <p className="whitespace-nowrap text-[34px] font-medium leading-none tabular-nums tracking-tight text-[var(--ds-on-surface)]">
                         <CountUp value={value} />
                     </p>
                     {delta || meta ? (
@@ -57,7 +57,7 @@ export function StatCard({ label, value, icon, delta, meta, viz, href, tooltip, 
                         </div>
                     ) : null}
                 </div>
-                {viz ? <div className="shrink-0">{viz}</div> : null}
+                {viz ? <div className="w-full">{viz}</div> : null}
             </div>
         </article>
     );
@@ -74,7 +74,7 @@ export function StatCard({ label, value, icon, delta, meta, viz, href, tooltip, 
 export function BigStat({ label, value, hint, delta, tone = 'default', size = 'md', className }) {
     return (
         <div className={cn('min-w-0', className)}>
-            <p className="truncate text-[13px] text-[var(--ds-on-surface-variant)]">{label}</p>
+            <p className="break-words text-[13px] leading-snug text-[var(--ds-on-surface-variant)]">{label}</p>
             <p
                 className={cn(
                     'mt-2 font-medium leading-none tabular-nums tracking-tight',

@@ -1,19 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { Button } from '@/shared/ui/primitives/button';
-import TeamDialog, { FormField, inputClass } from '@/features/team/ui/components/TeamDialog';
+import { RefreshCw, UserPlus } from 'lucide-react';
+import { Input } from '@/shared/ui/primitives/input';
+import { Modal, ModalField, ModalFooter } from '@/shared/ui/kit';
 import { generateTemporaryPassword, temporaryPasswordProblem } from '@/features/team/lib/tempPassword';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const FIELD = 'h-10 rounded-xl border-0 bg-white/[0.05] px-3 text-sm md:text-sm';
 
 /**
  * Adds a platform admin (Enroute staff with full access to every company). The parent remounts
  * it (key) each time it opens.
  * @param {{ open: boolean, busy: boolean, onCancel: () => void, onSubmit: (values: { name: string, email: string, temporaryPassword: string }) => void }} props
  */
-export default function AdminDialog({ open, busy, onCancel, onSubmit }) {
+export default function AdminModal({ open, busy, onCancel, onSubmit }) {
     const [values, setValues] = useState(() => ({ name: '', email: '', temporaryPassword: generateTemporaryPassword() }));
     const [touched, setTouched] = useState(false);
     const problems = {
@@ -32,53 +33,53 @@ export default function AdminDialog({ open, busy, onCancel, onSubmit }) {
     };
 
     return (
-        <TeamDialog
+        <Modal
             open={open}
-            busy={busy}
-            onClose={onCancel}
+            onOpenChange={(next) => {
+                if (!next && !busy) onCancel();
+            }}
+            icon={<UserPlus className="size-5" />}
             title="Add a platform admin"
             description="Platform admins can approve companies and manage every company's users. Only add Enroute staff."
+            footer={
+                <ModalFooter
+                    summary="They choose their own password at the first sign-in"
+                    secondary={{ label: 'Cancel', onClick: onCancel, disabled: busy }}
+                    primary={{ label: 'Add admin', type: 'submit', form: 'admin-form', loading: busy }}
+                />
+            }
         >
-            <form onSubmit={submit} noValidate className="flex flex-col gap-2">
-                <FormField id="admin-name" label="Name" error={shown.name}>
-                    <input id="admin-name" className={inputClass} value={values.name} onChange={set('name')} maxLength={255} autoComplete="off" aria-invalid={Boolean(shown.name) || undefined} aria-describedby="admin-name-note" />
-                </FormField>
-                <FormField id="admin-email" label="Email" error={shown.email}>
-                    <input id="admin-email" type="email" className={inputClass} value={values.email} onChange={set('email')} maxLength={255} autoComplete="off" aria-invalid={Boolean(shown.email) || undefined} aria-describedby="admin-email-note" />
-                </FormField>
-                <FormField id="admin-password" label="Temporary password" error={shown.temporaryPassword} hint="They choose their own at the first sign-in.">
+            <form id="admin-form" onSubmit={submit} noValidate className="flex flex-col gap-4">
+                <ModalField label="Name" htmlFor="admin-name" error={shown.name}>
+                    <Input id="admin-name" className={FIELD} value={values.name} onChange={set('name')} maxLength={255} autoComplete="off" aria-invalid={Boolean(shown.name) || undefined} />
+                </ModalField>
+                <ModalField label="Email" htmlFor="admin-email" error={shown.email}>
+                    <Input id="admin-email" type="email" className={FIELD} value={values.email} onChange={set('email')} maxLength={255} autoComplete="off" aria-invalid={Boolean(shown.email) || undefined} />
+                </ModalField>
+                <ModalField label="Temporary password" htmlFor="admin-password" error={shown.temporaryPassword}>
                     <div className="flex gap-2">
-                        <input
+                        <Input
                             id="admin-password"
-                            className={`${inputClass} font-mono`}
+                            className={`${FIELD} font-mono`}
                             value={values.temporaryPassword}
                             onChange={set('temporaryPassword')}
                             maxLength={72}
                             autoComplete="off"
                             spellCheck={false}
                             aria-invalid={Boolean(shown.temporaryPassword) || undefined}
-                            aria-describedby="admin-password-note"
                         />
-                        <Button
+                        <button
                             type="button"
-                            variant="outline"
-                            className="mt-1.5 h-9"
                             onClick={() => setValues((prev) => ({ ...prev, temporaryPassword: generateTemporaryPassword() }))}
                             aria-label="Generate a new temporary password"
+                            title="Generate a new temporary password"
+                            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-[var(--ds-on-surface-variant)] transition-colors hover:bg-white/[0.12] hover:text-[var(--ds-on-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ds-primary)]"
                         >
-                            <RefreshCw />
-                        </Button>
+                            <RefreshCw className="size-4" aria-hidden />
+                        </button>
                     </div>
-                </FormField>
-                <div className="mt-2 flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
-                        Cancel
-                    </Button>
-                    <Button type="submit" disabled={busy}>
-                        {busy ? 'Saving…' : 'Add admin'}
-                    </Button>
-                </div>
+                </ModalField>
             </form>
-        </TeamDialog>
+        </Modal>
     );
 }

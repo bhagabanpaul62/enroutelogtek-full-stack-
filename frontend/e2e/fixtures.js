@@ -24,22 +24,8 @@ export async function loginAs(page, user) {
     await page.waitForURL(`**${user.home}`, { timeout: 30_000 });
 }
 
-export const test = base.extend({
-    // The API's CORS allows one origin (:3001 by default); re-stamp responses for the test origin.
-    page: async ({ page, baseURL }, use) => {
-        await page.route('http://localhost:8100/**', async (route) => {
-            const response = await route.fetch();
-            await route.fulfill({
-                response,
-                headers: {
-                    ...response.headers(),
-                    'access-control-allow-origin': baseURL,
-                    'access-control-allow-credentials': 'true',
-                },
-            });
-        });
-        await use(page);
-    },
-});
+// No request interception: the test backend (e2e/stack.js) already allows this origin via
+// FRONTEND_URL, and proxying every API call through page.route raced test teardown.
+export const test = base;
 
 export { expect };

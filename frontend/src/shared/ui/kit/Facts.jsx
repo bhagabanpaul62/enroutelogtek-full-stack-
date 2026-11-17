@@ -8,9 +8,9 @@ import { toneChip, toneOf } from './tone';
 import { riseStyle } from './motion';
 import { IconChip } from './Panel';
 
-/** Definition list for a record's facts. */
+/** Definition list for a record's facts. Rows stack label over value in narrow panels and sit side by side once the list is 24rem wide (container query, so it follows the panel, not the screen). */
 export function FactList({ children, className }) {
-    return <dl className={cn('flex flex-col', className)}>{children}</dl>;
+    return <dl className={cn('@container flex flex-col', className)}>{children}</dl>;
 }
 
 /** One fact. Pass `copy` (the raw string) for emails, phones, ids: a copy button shows on hover/focus. Empty shows a muted dash. */
@@ -31,16 +31,16 @@ export function Fact({ label, children, copy, className }) {
     return (
         <div
             className={cn(
-                'group/fact grid grid-cols-[minmax(0,120px)_minmax(0,1fr)] items-baseline gap-3 rounded-xl px-2 py-2 transition-colors duration-150 hover:bg-white/[0.03]',
+                'group/fact grid grid-cols-1 gap-0.5 rounded-xl px-2 py-2 @sm:grid-cols-[minmax(0,130px)_minmax(0,1fr)] @sm:items-baseline @sm:gap-3 transition-colors duration-150 hover:bg-white/[0.03]',
                 className,
             )}
         >
-            <dt className="truncate text-[13px] text-[var(--ds-on-surface-muted)]">{label}</dt>
+            <dt className="break-words text-[13px] text-[var(--ds-on-surface-muted)]">{label}</dt>
             <dd className="flex min-w-0 items-center gap-1.5 text-sm text-[var(--ds-on-surface)]">
                 {empty ? (
                     <span className="text-[var(--ds-on-surface-muted)]">—</span>
                 ) : (
-                    <span className="min-w-0 truncate" title={typeof children === 'string' ? children : undefined}>
+                    <span className="min-w-0 break-words">
                         {children}
                     </span>
                 )}
@@ -70,8 +70,8 @@ export function SummaryRows({ rows }) {
                 const content = (
                     <>
                         {row.icon ? <IconChip className={colored ? toneChip(tone) : undefined}>{row.icon}</IconChip> : null}
-                        <span className={cn('min-w-0 flex-1 truncate text-sm', colored ? toneOf(tone).text : 'text-[var(--ds-on-surface-variant)]')}>{row.label}</span>
-                        <span className={cn('text-base font-medium tabular-nums', colored ? toneOf(tone).text : 'text-[var(--ds-on-surface)]')}>{row.value}</span>
+                        <span className={cn('min-w-0 flex-1 break-words text-sm leading-snug', colored ? toneOf(tone).text : 'text-[var(--ds-on-surface-variant)]')}>{row.label}</span>
+                        <span className={cn('shrink-0 text-base font-medium tabular-nums', colored ? toneOf(tone).text : 'text-[var(--ds-on-surface)]')}>{row.value}</span>
                         {row.href ? <ChevronRight className="size-4 shrink-0 text-[var(--ds-on-surface-muted)]" aria-hidden /> : null}
                     </>
                 );

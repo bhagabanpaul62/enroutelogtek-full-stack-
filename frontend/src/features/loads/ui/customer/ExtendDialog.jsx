@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertDialog } from '@base-ui/react/alert-dialog';
-import { Button } from '@/shared/ui/primitives/button';
+import { Clock } from 'lucide-react';
+import { Modal, ModalField, ModalFooter } from '@/shared/ui/kit';
+import { TextInput } from './steps/FormField';
 import { DEFAULT_WINDOW_HOURS } from '../../constants';
 import { formatDate, formatDateTime, formatTimeWindow, toLocalInputValue } from '../../lib/format';
 import { MS_PER_HOUR, localInputToIso, pickupMoment } from './loadTime';
@@ -35,51 +36,41 @@ export default function ExtendDialog({ open, load, now, busy = false, onCancel, 
     const reopening = load.status === 'expired';
 
     return (
-        <AlertDialog.Root
+        <Modal
             open={open}
             onOpenChange={(next) => {
                 if (!next && !busy) onCancel();
             }}
+            size="sm"
+            icon={<Clock className="size-5" />}
+            title={reopening ? 'Reopen bidding?' : 'Extend bidding?'}
+            description={`${
+                reopening
+                    ? 'Invited transporters are told bidding is open again. '
+                    : 'Invited transporters are told about the new close time. '
+            }Bidding must close before the pickup on ${formatDate(load.pickupDate)}, ${formatTimeWindow(load.pickupTimeFrom, load.pickupTimeTo)}.`}
+            footer={
+                <ModalFooter
+                    summary={iso && !problem ? `Closes ${formatDateTime(iso)}` : null}
+                    secondary={{ onClick: onCancel, disabled: busy }}
+                    primary={{
+                        label: busy ? 'Saving…' : reopening ? 'Reopen bidding' : 'Extend bidding',
+                        onClick: () => onSubmit(iso),
+                        disabled: busy || Boolean(problem),
+                    }}
+                />
+            }
         >
-            <AlertDialog.Portal>
-                <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
-                <AlertDialog.Popup className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md border border-border bg-card p-5 text-foreground shadow-2xl">
-                    <AlertDialog.Title className="text-[15px] font-semibold text-foreground">
-                        {reopening ? 'Reopen bidding?' : 'Extend bidding?'}
-                    </AlertDialog.Title>
-                    <AlertDialog.Description className="mt-2 text-[13px] leading-relaxed text-[#c6c6c7]">
-                        {reopening
-                            ? 'Invited transporters are told bidding is open again. '
-                            : 'Invited transporters are told about the new close time. '}
-                        Bidding must close before the pickup on {formatDate(load.pickupDate)},{' '}
-                        {formatTimeWindow(load.pickupTimeFrom, load.pickupTimeTo)}.
-                    </AlertDialog.Description>
-
-                    <label htmlFor="extend-closes-at" className="mt-4 block text-[12px] text-[#c6c6c7]">
-                        New close time
-                    </label>
-                    <input
-                        id="extend-closes-at"
-                        type="datetime-local"
-                        value={value}
-                        aria-invalid={Boolean(problem) || undefined}
-                        onChange={(event) => setValue(event.target.value)}
-                        className="mt-1.5 h-9 w-full rounded-md border border-border bg-background px-3 text-[13px] text-foreground focus:border-primary focus:outline-none aria-invalid:border-destructive"
-                    />
-                    <p className={`mt-1 text-[12px] ${problem ? 'text-destructive' : 'text-muted-foreground'}`}>
-                        {problem || (iso ? `${formatDateTime(iso)} IST` : '')}
-                    </p>
-
-                    <div className="mt-4 flex justify-end gap-2">
-                        <Button variant="outline" onClick={onCancel} disabled={busy}>
-                            Cancel
-                        </Button>
-                        <Button disabled={busy || Boolean(problem)} onClick={() => onSubmit(iso)}>
-                            {busy ? 'Saving…' : reopening ? 'Reopen bidding' : 'Extend bidding'}
-                        </Button>
-                    </div>
-                </AlertDialog.Popup>
-            </AlertDialog.Portal>
-        </AlertDialog.Root>
+            <ModalField label="New close time" htmlFor="extend-closes-at" error={problem} hint={iso ? 'Indian time (IST)' : undefined}>
+                <TextInput
+                    id="extend-closes-at"
+                    type="datetime-local"
+                    value={value}
+                    invalid={Boolean(problem)}
+                    onChange={(event) => setValue(event.target.value)}
+                    autoFocus
+                />
+            </ModalField>
+        </Modal>
     );
 }

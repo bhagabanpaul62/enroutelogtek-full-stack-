@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { lookupPinCodeApi } from '../../../api/loads.api';
 import { todayIso } from '../loadTime';
-import { FormField, TextInput } from './FormField';
+import { FieldGroup, FormField, TextInput } from './FormField';
 
 /** PIN code, city, state, address and optional contact for one end of the route. */
 function PlaceFields({ prefix, title, form, errors, onChange }) {
@@ -47,10 +47,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
     };
 
     return (
-        <fieldset className="grid gap-3 rounded-[4px] border border-border bg-card p-4">
-            <legend className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                {title}
-            </legend>
+        <FieldGroup title={title}>
             <div className="grid gap-3 sm:grid-cols-[140px_1fr_1fr]">
                 <FormField
                     label="PIN code"
@@ -143,7 +140,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                     />
                 </FormField>
             </div>
-        </fieldset>
+        </FieldGroup>
     );
 }
 
@@ -156,10 +153,7 @@ export default function StepRoute({ form, errors, onChange }) {
             <PlaceFields prefix="pickup" title="Pickup" form={form} errors={errors} onChange={onChange} />
             <PlaceFields prefix="drop" title="Drop" form={form} errors={errors} onChange={onChange} />
 
-            <fieldset className="grid gap-3 rounded-[4px] border border-border bg-card p-4">
-                <legend className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Schedule
-                </legend>
+            <FieldGroup title="Schedule">
                 <div className="grid gap-3 sm:grid-cols-3">
                     <FormField label="Pickup date" htmlFor="pickupDate" required error={errors.pickupDate}>
                         <TextInput
@@ -223,7 +217,7 @@ export default function StepRoute({ form, errors, onChange }) {
                         />
                     </FormField>
                 </div>
-            </fieldset>
+            </FieldGroup>
         </div>
     );
 }

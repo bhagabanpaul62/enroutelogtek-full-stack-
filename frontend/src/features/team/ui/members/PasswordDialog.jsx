@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { KeyRound, RefreshCw } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
-import TeamDialog, { FormField, inputClass } from '../components/TeamDialog';
+import { ModalField } from '@/shared/ui/kit';
+import TeamDialog, { inputClass } from '../components/TeamDialog';
 import { generateTemporaryPassword, temporaryPasswordProblem } from '../../lib/tempPassword';
 
 /**
@@ -19,17 +20,21 @@ export default function PasswordDialog({ open, member, busy, onCancel, onSubmit 
             open={open}
             busy={busy}
             onClose={onCancel}
+            icon={<KeyRound className="size-5" />}
             title={`New temporary password for ${member.name}`}
             description="They are signed out now and must choose their own password at the next sign-in."
+            form="password-form"
+            primary={{ label: 'Set password', disabled: Boolean(problem) }}
         >
             <form
+                id="password-form"
                 noValidate
                 onSubmit={(event) => {
                     event.preventDefault();
                     if (!problem) onSubmit(password);
                 }}
             >
-                <FormField id="reset-password" label="Temporary password" error={problem}>
+                <ModalField label="Temporary password" htmlFor="reset-password" error={problem}>
                     <div className="flex gap-2">
                         <input
                             id="reset-password"
@@ -40,27 +45,19 @@ export default function PasswordDialog({ open, member, busy, onCancel, onSubmit 
                             autoComplete="off"
                             spellCheck={false}
                             aria-invalid={Boolean(problem) || undefined}
-                            aria-describedby="reset-password-note"
                         />
                         <Button
                             type="button"
-                            variant="outline"
-                            className="mt-1.5 h-9"
+                            variant="secondary"
+                            className="size-10 shrink-0 rounded-xl"
                             onClick={() => setPassword(generateTemporaryPassword())}
                             aria-label="Generate a new temporary password"
+                            title="Generate a new temporary password"
                         >
                             <RefreshCw />
                         </Button>
                     </div>
-                </FormField>
-                <div className="mt-3 flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
-                        Cancel
-                    </Button>
-                    <Button type="submit" disabled={busy || Boolean(problem)}>
-                        {busy ? 'Saving…' : 'Set password'}
-                    </Button>
-                </div>
+                </ModalField>
             </form>
         </TeamDialog>
     );

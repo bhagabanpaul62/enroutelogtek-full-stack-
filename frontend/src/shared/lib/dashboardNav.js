@@ -68,7 +68,7 @@ const MAIN = {
 const ADMINISTRATION = [
     { slug: 'reports', icon: 'reports', name: 'Reports', description: 'Across RFQs, contracts and trips.' },
     { slug: 'team', icon: 'team', name: 'Team', description: 'Your people, their roles and what each role may do.', ready: true },
-    { slug: 'settings', icon: 'settings', name: 'Settings', description: 'Company profile, branches and documents.' },
+    { slug: 'settings', icon: 'settings', name: 'Settings', description: 'Company profile, branches and documents.', ready: true },
 ];
 
 const withLink = (basePath) => (item) => ({

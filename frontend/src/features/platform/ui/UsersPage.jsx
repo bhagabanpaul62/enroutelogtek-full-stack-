@@ -2,21 +2,19 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { KeyRound, Search, UserCheck, Users, UserX } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { useRouter } from 'next/navigation';
+import { KeyRound, UserCheck, UserX } from 'lucide-react';
 import { COMPANY_TYPE_LABELS } from '@/shared/lib/dashboardNav';
-import { Button } from '@/shared/ui/primitives/button';
-import { Input } from '@/shared/ui/primitives/input';
-import CursorList from '@/shared/ui/components/CursorList';
-import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
-import { useCursorList } from '@/shared/hooks/useCursorList';
-import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
+import { DataGrid } from '@/shared/ui/data-grid';
+import { SegmentedControl } from '@/shared/ui/kit';
+import { formatDate } from '@/shared/lib/format';
 import { platformTeamApi } from '@/features/team/api/team.api';
 import { useTeamAction } from '@/features/team/hooks/useTeamAction';
 import CredentialsDialog from '@/features/team/ui/members/CredentialsDialog';
 import PasswordDialog from '@/features/team/ui/members/PasswordDialog';
 import { listUsersApi } from '../api/platform.api';
-import { formatDate } from '../lib/formatDate';
+import { useGridQuery } from '../lib/useGridQuery';
+import ConfirmModal from './components/ConfirmModal';
 
 const STATUS_FILTERS = [
     { value: '', label: 'Everyone' },
@@ -27,68 +25,36 @@ const STATUS_FILTERS = [
 
 const TYPE_FILTERS = [{ value: '', label: 'All types' }, ...Object.entries(COMPANY_TYPE_LABELS).map(([value, label]) => ({ value, label }))];
 
-function Chips({ options, value, onChange, label }) {
-    return (
-        <div role="group" aria-label={label} className="flex flex-wrap gap-1">
-            {options.map((option) => (
-                <button
-                    key={option.value || 'all'}
-                    type="button"
-                    aria-pressed={value === option.value}
-                    onClick={() => onChange(option.value)}
-                    className={cn(
-                        'rounded-md border px-2.5 py-1 text-[12px] transition-colors',
-                        value === option.value
-                            ? 'border-primary bg-primary/10 text-foreground'
-                            : 'border-border text-[#c6c6c7] hover:text-foreground',
-                    )}
-                >
-                    {option.label}
-                </button>
-            ))}
-        </div>
-    );
-}
+const TYPE_OPTIONS = TYPE_FILTERS.slice(1);
 
-function UserRow({ user, busy, onPassword, onToggleActive }) {
-    const inactive = user.status !== 'active';
-    return (
-        <li className="flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-[#181818] sm:flex-row sm:items-center">
-            <div className={cn('min-w-0 flex-1', inactive && 'opacity-60')}>
-                <p className="truncate text-[14px] font-medium text-foreground">{user.name}</p>
-                <p className="truncate text-[12px] text-[#c6c6c7]">
-                    {user.email}
-                    {user.phone ? ` · ${user.phone}` : ''}
-                </p>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
-                    <Link href={`/rootAdmin/companies/${user.company.id}`} className="text-foreground underline-offset-2 hover:underline">
-                        {user.company.name}
-                    </Link>
-                    <span className="rounded-[2px] border border-border px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[#c6c6c7]">
-                        {COMPANY_TYPE_LABELS[user.company.type] ?? user.company.type}
-                    </span>
-                    <span className={user.role?.isOwner ? 'text-primary' : ''}>{user.role?.name ?? 'No role'}</span>
-                    {user.status === 'inactive' && <span className="text-[#f0955a]">Deactivated</span>}
-                    {user.status === 'blocked' && <span className="text-[#f0955a]">Blocked</span>}
-                    {user.status === 'active' && user.mustChangePassword && <span>Temporary password</span>}
-                    <span>{user.lastLogin ? `Last sign-in ${formatDate(user.lastLogin)}` : 'Never signed in'}</span>
-                </div>
-            </div>
-            {user.status !== 'blocked' && (
-                <div className="flex flex-wrap gap-2 sm:justify-end">
-                    {user.status === 'active' && (
-                        <Button variant="outline" disabled={busy} onClick={onPassword}>
-                            <KeyRound /> New password
-                        </Button>
-                    )}
-                    <Button variant={inactive ? 'outline' : 'destructive'} disabled={busy} onClick={onToggleActive}>
-                        {inactive ? <UserCheck /> : <UserX />} {inactive ? 'Reactivate' : 'Deactivate'}
-                    </Button>
-                </div>
-            )}
-        </li>
-    );
-}
+const COLUMNS = [
+    { key: 'name', label: 'User', type: 'person', value: (u) => ({ name: u.name, sub: [u.email, u.phone].filter(Boolean).join(' · ') }) },
+    {
+        key: 'company',
+        label: 'Company',
+        type: 'text',
+        value: (u) => u.company.name,
+        render: (u) => (
+            <Link
+                href={`/rootAdmin/companies/${u.company.id}`}
+                onClick={(event) => event.stopPropagation()}
+                className="truncate text-[13px] text-[var(--ds-on-surface)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-[var(--ds-primary)]"
+            >
+                {u.company.name}
+            </Link>
+        ),
+    },
+    { key: 'type', label: 'Type', type: 'chip', options: TYPE_OPTIONS, value: (u) => u.company.type, width: 130 },
+    { key: 'role', label: 'Role', type: 'text', value: (u) => u.role?.name ?? 'No role', width: 150 },
+    { key: 'status', label: 'Status', type: 'status', width: 120 },
+    {
+        key: 'lastLogin',
+        label: 'Last sign-in',
+        type: 'date',
+        width: 130,
+        render: (u) => <span className="tabular-nums">{u.lastLogin ? formatDate(u.lastLogin) : 'Never'}</span>,
+    },
+];
 
 /**
  * Every company user on Enroute, for support: find someone, set a temporary password,
@@ -96,14 +62,12 @@ function UserRow({ user, busy, onPassword, onToggleActive }) {
  * company's rules (e.g. keep one active Owner) still apply.
  */
 export default function UsersPage() {
-    const [search, setSearch] = useState('');
+    const router = useRouter();
     const [status, setStatus] = useState('');
     const [companyType, setCompanyType] = useState('');
-    const debouncedSearch = useDebouncedValue(search.trim());
-    const list = useCursorList(listUsersApi, { search: debouncedSearch, status, companyType });
+    const { list, rows, onQueryChange } = useGridQuery(listUsersApi, { status, companyType }, COLUMNS);
     const { run, busy } = useTeamAction();
-    const [confirmDialog, confirm] = useConfirm();
-    // null | { type: 'password', user } | { type: 'credentials', name, email, password }
+    // null | { type: 'confirm', user } | { type: 'password', user } | { type: 'credentials', name, email, password }
     const [dialog, setDialog] = useState(null);
 
     const setPassword = async (user, password) => {
@@ -116,64 +80,54 @@ export default function UsersPage() {
 
     const toggleActive = async (user) => {
         const deactivating = user.status === 'active';
-        const confirmed = await confirm({
-            title: `${deactivating ? 'Deactivate' : 'Reactivate'} ${user.name}?`,
-            description: deactivating
-                ? `They are signed out at once and cannot sign in to ${user.company.name} until reactivated.`
-                : 'They can sign in again with their current password and role.',
-            confirmLabel: deactivating ? 'Deactivate' : 'Reactivate',
-            destructive: deactivating,
-        });
-        if (!confirmed) return;
         const api = platformTeamApi(user.company.id);
         const action = deactivating ? () => api.deactivateMember(user.id) : () => api.reactivateMember(user.id);
-        if (await run(action, `${user.name} ${deactivating ? 'deactivated' : 'reactivated'}`)) list.reload();
+        if (await run(action, `${user.name} ${deactivating ? 'deactivated' : 'reactivated'}`)) {
+            list.reload();
+            setDialog(null);
+        }
     };
 
-    const isFiltered = Boolean(debouncedSearch || status || companyType);
+    const confirming = dialog?.type === 'confirm' ? dialog.user : null;
+    const deactivating = confirming?.status === 'active';
 
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
             <header>
-                <h1 className="text-[22px] font-semibold tracking-tight text-foreground">Users</h1>
-                <p className="mt-1 text-[13px] text-[#c6c6c7]">
-                    Everyone in every company. To add people or change roles, open their company.
-                </p>
+                <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-[var(--ds-on-surface)]">Users</h1>
+                <p className="mt-1.5 text-sm text-[var(--ds-on-surface-muted)]">Everyone in every company. To add people or change roles, open their company.</p>
             </header>
 
-            <div className="relative">
-                <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search by name, email or company"
-                    aria-label="Search by name, email or company"
-                    maxLength={100}
-                    className="pl-8"
-                />
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-                <Chips label="Filter by status" options={STATUS_FILTERS} value={status} onChange={setStatus} />
-                <Chips label="Filter by company type" options={TYPE_FILTERS} value={companyType} onChange={setCompanyType} />
+            <div className="flex flex-col gap-3 md:flex-row md:justify-between">
+                <div className="-mx-1 overflow-x-auto px-1">
+                    <SegmentedControl label="Filter by status" size="sm" options={STATUS_FILTERS} value={status} onChange={setStatus} />
+                </div>
+                <div className="-mx-1 overflow-x-auto px-1">
+                    <SegmentedControl label="Filter by company type" size="sm" options={TYPE_FILTERS} value={companyType} onChange={setCompanyType} />
+                </div>
             </div>
 
-            <CursorList
+            <DataGrid
+                columns={COLUMNS}
+                rows={rows}
                 list={list}
-                getKey={(user) => user.id}
-                empty={
-                    isFiltered
-                        ? { icon: Users, title: 'Nobody matches', description: 'Try another search or filter.' }
-                        : { icon: Users, title: 'No users yet' }
-                }
-                renderItem={(user) => (
-                    <UserRow
-                        user={user}
-                        busy={busy}
-                        onPassword={() => setDialog({ type: 'password', user })}
-                        onToggleActive={() => toggleActive(user)}
-                    />
-                )}
+                onQueryChange={onQueryChange}
+                getRowId={(user) => user.id}
+                onRowClick={(user) => router.push(`/rootAdmin/companies/${user.company.id}`)}
+                rowActions={[
+                    { label: 'New password', icon: KeyRound, hidden: (user) => user.status !== 'active', onClick: (user) => setDialog({ type: 'password', user }) },
+                    {
+                        label: 'Deactivate',
+                        icon: UserX,
+                        danger: true,
+                        hidden: (user) => user.status !== 'active',
+                        onClick: (user) => setDialog({ type: 'confirm', user }),
+                    },
+                    { label: 'Reactivate', icon: UserCheck, hidden: (user) => user.status !== 'inactive', onClick: (user) => setDialog({ type: 'confirm', user }) },
+                ]}
+                empty={{ title: status || companyType ? 'Nobody matches' : 'No users yet', description: status || companyType ? 'Try another filter.' : undefined }}
+                searchPlaceholder="Search by name, email or company"
+                maxHeight="calc(100vh - 22rem)"
             />
 
             {dialog?.type === 'password' && (
@@ -186,15 +140,24 @@ export default function UsersPage() {
                 />
             )}
             {dialog?.type === 'credentials' && (
-                <CredentialsDialog
-                    open
-                    name={dialog.name}
-                    email={dialog.email}
-                    password={dialog.password}
-                    onClose={() => setDialog(null)}
-                />
+                <CredentialsDialog open name={dialog.name} email={dialog.email} password={dialog.password} onClose={() => setDialog(null)} />
             )}
-            {confirmDialog}
+            <ConfirmModal
+                open={Boolean(confirming)}
+                icon={deactivating ? <UserX className="size-5" /> : <UserCheck className="size-5" />}
+                title={confirming ? `${deactivating ? 'Deactivate' : 'Reactivate'} ${confirming.name}?` : ''}
+                description={
+                    deactivating
+                        ? `They cannot sign in to ${confirming.company.name} until reactivated.`
+                        : 'They can sign in again with their current password and role.'
+                }
+                summary={deactivating ? 'Signed out at once' : 'Access restored'}
+                confirmLabel={deactivating ? 'Deactivate' : 'Reactivate'}
+                danger={deactivating}
+                busy={busy}
+                onConfirm={() => toggleActive(confirming)}
+                onCancel={() => setDialog(null)}
+            />
         </div>
     );
 }

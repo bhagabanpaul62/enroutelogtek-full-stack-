@@ -1,23 +1,27 @@
 'use client';
 
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { timeAgo } from '@/features/network/lib/timeAgo';
+import { EmptyState, ErrorState, SkeletonRows, formatDate, formatRelative } from '@/shared/ui/kit';
 
-const LINK_BUTTON = 'text-[11px] text-primary hover:underline disabled:opacity-50';
+const dayKey = (value) => new Date(value).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 
-function Skeleton() {
-    return (
-        <ul aria-busy="true" aria-label="Loading" className="divide-y divide-[#1c1b1b]">
-            {[0, 1, 2].map((row) => (
-                <li key={row} className="space-y-2 px-3 py-3">
-                    <div className="h-3 w-2/3 animate-pulse rounded bg-[#1c1b1b]" />
-                    <div className="h-2.5 w-full animate-pulse rounded bg-[#1c1b1b]" />
-                    <div className="h-2 w-1/4 animate-pulse rounded bg-[#1c1b1b]" />
-                </li>
-            ))}
-        </ul>
-    );
+/** Items (newest first) into [{ key, label, items }] with "Today" / "Yesterday" / "Nov 15" labels. */
+function groupByDay(items) {
+    const todayMs = Date.now();
+    const today = dayKey(todayMs);
+    const yesterday = dayKey(todayMs - 86400000);
+    const groups = [];
+    for (const item of items) {
+        const key = dayKey(item.createdAt);
+        let group = groups[groups.length - 1];
+        if (group?.key !== key) {
+            group = { key, label: key === today ? 'Today' : key === yesterday ? 'Yesterday' : formatDate(item.createdAt), items: [] };
+            groups.push(group);
+        }
+        group.items.push(item);
+    }
+    return groups;
 }
 
 function Item({ item, onOpen }) {
@@ -26,28 +30,16 @@ function Item({ item, onOpen }) {
             <button
                 type="button"
                 onClick={() => onOpen(item)}
-                className="flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-[#181818]"
+                className="flex w-full gap-3 rounded-2xl px-3 py-3 text-left transition-colors duration-150 hover:bg-white/[0.05] focus-visible:outline-2 focus-visible:outline-[var(--ds-primary)]"
             >
-                <span
-                    aria-hidden="true"
-                    className={cn('mt-1.5 size-1.5 shrink-0 rounded-full', item.isRead ? 'bg-transparent' : 'bg-primary')}
-                />
+                <span aria-hidden className={cn('mt-1.5 size-2 shrink-0 rounded-full', item.isRead ? 'bg-transparent' : 'bg-primary')} />
                 <span className="min-w-0 flex-1">
-                    <span
-                        className={cn(
-                            'block truncate text-[13px]',
-                            item.isRead ? 'text-[#c6c6c7]' : 'font-medium text-[#e5e2e1]',
-                        )}
-                    >
-                        {!item.isRead && <span className="sr-only">Unread: </span>}
+                    <span className={cn('block text-[13px]', item.isRead ? 'text-[var(--ds-on-surface-variant)]' : 'font-medium text-[var(--ds-on-surface)]')}>
+                        {!item.isRead ? <span className="sr-only">Unread: </span> : null}
                         {item.title}
                     </span>
-                    <span className="mt-0.5 line-clamp-2 block text-[12px] leading-snug text-[#9a9a9a]">
-                        {item.message}
-                    </span>
-                    <span className="mt-1 block font-mono text-[10px] uppercase tracking-wider text-[#525B7A]">
-                        {timeAgo(item.createdAt)}
-                    </span>
+                    <span className="mt-0.5 line-clamp-2 block text-xs leading-snug text-[var(--ds-on-surface-muted)]">{item.message}</span>
+                    <span className="mt-1 block text-[11px] text-[var(--ds-on-surface-muted)]">{formatRelative(item.createdAt)}</span>
                 </span>
             </button>
         </li>
@@ -55,76 +47,42 @@ function Item({ item, onOpen }) {
 }
 
 /**
- * The dropdown under the bell: the list with its loading, error and empty states, "Mark all
- * read" and "Load more".
+ * The body of the notifications side panel: the list grouped by day, with its loading, error and
+ * empty states and "Load more". "Mark all read" lives in the panel header (NotificationBell).
  * @param {{ notifications: ReturnType<import('../hooks/useNotifications').useNotifications>, onOpenItem: (item: object) => void }} props
  */
 export default function NotificationPanel({ notifications, onOpenItem }) {
-    const { items, unreadCount, isLoading, error, hasMore, loadingMore, loadMore, markAllRead, reload } =
-        notifications;
+    const { items, isLoading, error, hasMore, loadingMore, loadMore, reload } = notifications;
 
-    let body;
-    if (isLoading) {
-        body = <Skeleton />;
-    } else if (error) {
-        body = (
-            <div className="flex flex-col items-start gap-2 p-4">
-                <p className="flex items-center gap-1.5 text-[13px] text-[#c6c6c7]">
-                    <AlertTriangle size={14} className="shrink-0 text-[#f0955a]" /> {error}
-                </p>
-                <button type="button" onClick={reload} className={LINK_BUTTON}>
-                    Try again
-                </button>
-            </div>
-        );
-    } else if (items.length === 0) {
-        body = (
-            <p className="p-4 text-[13px] text-[#525B7A]">
-                Nothing yet. Load invitations, bids and awards will show here.
-            </p>
-        );
-    } else {
-        body = (
-            <ul className="divide-y divide-[#1c1b1b]">
-                {items.map((item) => (
-                    <Item key={item.id} item={item} onOpen={onOpenItem} />
-                ))}
-            </ul>
-        );
+    if (isLoading) return <SkeletonRows rows={5} />;
+    if (error) return <ErrorState title="Couldn't load notifications" description={error} onRetry={reload} />;
+    if (items.length === 0) {
+        return <EmptyState title="Nothing yet" description="Load invitations, bids and awards will show up here." />;
     }
 
     return (
-        <div
-            role="dialog"
-            aria-label="Notifications"
-            className="absolute right-0 mt-2 w-80 bg-[#111111] border border-[#222222] rounded-[6px] shadow-2xl z-50 overflow-hidden"
-        >
-            <div className="flex items-center justify-between gap-3 border-b border-[#222222] p-3">
-                <span className="font-mono text-[11px] uppercase tracking-wider text-[#e5e2e1] font-semibold">
-                    Notifications
-                </span>
-                {unreadCount > 0 && (
-                    <button type="button" onClick={markAllRead} className={LINK_BUTTON}>
-                        Mark all read
-                    </button>
-                )}
-            </div>
-
-            <div className="max-h-[70vh] overflow-y-auto">{body}</div>
-
-            {hasMore && !isLoading && !error && (
-                <div className="flex justify-center border-t border-[#222222] p-2">
-                    <button
-                        type="button"
-                        onClick={loadMore}
-                        disabled={loadingMore}
-                        className="flex items-center gap-1.5 rounded-[4px] px-3 py-1 text-[12px] text-[#c6c6c7] hover:bg-[#181818] hover:text-[#e5e2e1] disabled:opacity-50"
-                    >
-                        {loadingMore && <Loader2 size={12} className="animate-spin" />}
-                        {loadingMore ? 'Loading…' : 'Load more'}
-                    </button>
-                </div>
-            )}
+        <div className="flex flex-col gap-5">
+            {groupByDay(items).map((group) => (
+                <section key={group.key} aria-label={group.label}>
+                    <h3 className="px-3 pb-1 font-mono text-[11px] uppercase tracking-[0.05em] text-[var(--ds-on-surface-muted)]">{group.label}</h3>
+                    <ul>
+                        {group.items.map((item) => (
+                            <Item key={item.id} item={item} onOpen={onOpenItem} />
+                        ))}
+                    </ul>
+                </section>
+            ))}
+            {hasMore ? (
+                <button
+                    type="button"
+                    onClick={loadMore}
+                    disabled={loadingMore}
+                    className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-white/[0.06] px-4 py-2 text-xs font-medium text-[var(--ds-on-surface-variant)] transition-colors duration-150 hover:bg-white/[0.12] disabled:opacity-50"
+                >
+                    {loadingMore ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : null}
+                    {loadingMore ? 'Loading…' : 'Load more'}
+                </button>
+            ) : null}
         </div>
     );
 }

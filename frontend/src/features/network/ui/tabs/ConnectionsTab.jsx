@@ -1,27 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { Ban, Compass, UserMinus, Users } from 'lucide-react';
+import { Ban, Compass, UserMinus } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
-import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
+import { formatDate } from '@/shared/ui/kit';
 import { blockCompanyApi, getNetworkApi, removeConnectionApi } from '../../api/network.api';
 import { useCursorList } from '@/shared/hooks/useCursorList';
 import { useNetworkAction } from '../../hooks/useNetworkAction';
-import CompanyRow from '../components/CompanyRow';
-import CursorList from '@/shared/ui/components/CursorList';
-import FilterBar from '../components/FilterBar';
+import CompanyGrid from '../components/CompanyGrid';
+import { ruleValue } from '@/shared/ui/components/gridQuery';
 import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
 
-export default function ConnectionsTab({ canManage, typeOptions, onGoToDiscover }) {
-    const [search, setSearch] = useState('');
-    const [companyType, setCompanyType] = useState('');
-    const debouncedSearch = useDebouncedValue(search.trim());
+const COLUMNS = [{ key: 'createdAt', label: 'Connected', type: 'date' }];
 
-    const list = useCursorList(getNetworkApi, {
-        status: 'accepted',
-        search: debouncedSearch,
-        companyType,
-    });
+export default function ConnectionsTab({ canManage, typeOptions, onGoToDiscover }) {
+    // Search and the type filter go to the API, so they cover every connection, not just the loaded page.
+    const [query, setQuery] = useState({ search: '', companyType: '' });
+    const list = useCursorList(getNetworkApi, { status: 'accepted', ...query });
     const { run, isBusy } = useNetworkAction();
     const [confirmDialog, confirm] = useConfirm();
 
@@ -32,23 +27,20 @@ export default function ConnectionsTab({ canManage, typeOptions, onGoToDiscover 
     };
 
     const remove = async (item) => {
+        if (isBusy(item.connectionId)) return;
         const confirmed = await confirm({
             title: `Remove ${item.company.name}?`,
-            description:
-                'You will no longer be connected. Either company can send a new request later.',
+            description: 'You will no longer be connected. Either company can send a new request later.',
             confirmLabel: 'Remove',
             destructive: true,
         });
         if (confirmed) {
-            runAndUpdate(
-                item,
-                () => removeConnectionApi(item.connectionId),
-                `${item.company.name} removed from your network`,
-            );
+            runAndUpdate(item, () => removeConnectionApi(item.connectionId), `${item.company.name} removed from your network`);
         }
     };
 
     const block = async (item) => {
+        if (isBusy(item.connectionId)) return;
         const confirmed = await confirm({
             title: `Block ${item.company.name}?`,
             description:
@@ -61,34 +53,32 @@ export default function ConnectionsTab({ canManage, typeOptions, onGoToDiscover 
         }
     };
 
-    const isFiltered = Boolean(debouncedSearch || companyType);
+    const actions = canManage
+        ? [
+              { label: 'Remove', icon: UserMinus, onClick: remove },
+              { label: 'Block', icon: Ban, onClick: block, danger: true },
+          ]
+        : [];
+
+    const isFiltered = Boolean(query.search || query.companyType);
 
     return (
-        <div className="flex flex-col gap-4">
-            <FilterBar
-                search={search}
-                onSearchChange={setSearch}
-                searchPlaceholder="Search your connections"
-                companyType={companyType}
-                onCompanyTypeChange={setCompanyType}
-                typeOptions={typeOptions}
-            />
-
-            <CursorList
+        <>
+            <CompanyGrid
                 list={list}
-                getKey={(item) => item.connectionId}
+                getRowId={(item) => item.connectionId}
+                extraColumns={COLUMNS}
+                actions={actions}
+                typeOptions={typeOptions}
+                factsFor={(item) => [{ label: 'Connected', value: formatDate(item.createdAt) }]}
+                searchPlaceholder="Search your connections"
+                remote={({ search, filters }) => setQuery({ search: search.trim(), companyType: ruleValue(filters, 'type') })}
                 empty={
                     isFiltered
-                        ? {
-                              icon: Users,
-                              title: 'No connections match your filters',
-                              description: 'Try a different name or company type.',
-                          }
+                        ? { title: 'No connections match', description: 'Try a different name or company type.' }
                         : {
-                              icon: Users,
                               title: 'No connections yet',
-                              description:
-                                  'Find transporters, brokers and fleet owners in Discover and send them a request.',
+                              description: 'Find transporters, brokers and fleet owners in Discover.',
                               action: (
                                   <Button onClick={onGoToDiscover}>
                                       <Compass /> Discover companies
@@ -96,34 +86,8 @@ export default function ConnectionsTab({ canManage, typeOptions, onGoToDiscover 
                               ),
                           }
                 }
-                renderItem={(item) => (
-                    <CompanyRow
-                        company={item.company}
-                        actions={
-                            canManage && (
-                                <>
-                                    <Button
-                                        variant="outline"
-                                        disabled={isBusy(item.connectionId)}
-                                        onClick={() => remove(item)}
-                                    >
-                                        <UserMinus /> Remove
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        disabled={isBusy(item.connectionId)}
-                                        onClick={() => block(item)}
-                                    >
-                                        <Ban /> Block
-                                    </Button>
-                                </>
-                            )
-                        }
-                    />
-                )}
             />
-
             {confirmDialog}
-        </div>
+        </>
     );
 }

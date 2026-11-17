@@ -2,9 +2,11 @@
 
 // Eyeball page for the shared DataGrid: 30 fake loads, every state switchable. Not linked from nav.
 import { useMemo, useState } from 'react';
-import { Eye, Trash2, X } from 'lucide-react';
+import { Eye, Trash2, Truck } from 'lucide-react';
 import { DataGrid } from '@/shared/ui/data-grid';
 import { Button } from '@/shared/ui/primitives/button';
+import { Fact, FactList, SidePanel, StatusChip } from '@/shared/ui/kit';
+import { formatDate, formatINR, formatWeight } from '@/shared/lib/format';
 
 const CITIES = ['Mumbai', 'Delhi', 'Pune', 'Chennai', 'Kolkata', 'Jaipur', 'Surat', 'Indore', 'Nagpur', 'Kochi'];
 const TRUCKS = ['Container 32 ft', 'Open 19 ft', 'Trailer 40 ft', 'Tipper', 'Reefer 20 ft'];
@@ -108,18 +110,25 @@ export default function GridPreviewPage() {
                 searchPlaceholder="Search loads"
             />
 
-            {opened && (
-                <aside className="fixed inset-y-0 right-0 z-40 w-full max-w-sm bg-surface-container p-6 shadow-2xl">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-light text-foreground">{opened.id}</h2>
-                        <Button variant="ghost" size="icon" aria-label="Close" onClick={() => setOpened(null)}>
-                            <X />
-                        </Button>
-                    </div>
-                    <p className="mt-2 text-[13px] text-foreground/60">{opened.route}</p>
-                    <p className="mt-1 text-[13px] text-foreground/40">A SidePanel from the kit opens here.</p>
-                </aside>
-            )}
+            <SidePanel
+                open={Boolean(opened)}
+                onOpenChange={(o) => !o && setOpened(null)}
+                icon={<Truck className="size-5" />}
+                title={opened?.id ?? ''}
+                description={opened?.route}
+            >
+                {opened && (
+                    <FactList>
+                        <Fact label="Status"><StatusChip value={opened.status} /></Fact>
+                        <Fact label="Truck type">{opened.truck}</Fact>
+                        <Fact label="Weight">{formatWeight(opened.weightKg)}</Fact>
+                        <Fact label="Target price">{opened.targetPaise == null ? null : formatINR(opened.targetPaise)}</Fact>
+                        <Fact label="Pickup">{formatDate(opened.pickup)}</Fact>
+                        <Fact label="Customer">{opened.customer.name}</Fact>
+                        <Fact label="Email" copy={opened.email}>{opened.email}</Fact>
+                    </FactList>
+                )}
+            </SidePanel>
         </div>
     );
 }

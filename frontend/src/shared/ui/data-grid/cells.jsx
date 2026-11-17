@@ -3,36 +3,9 @@
 import { useState } from 'react';
 import { Check, Copy, Minus } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { statusMeta, TONE } from '@/shared/ui/kit/tone';
-import { cellValue, toDateValue } from './filter-logic';
-
-/* Formatters: Intl only, no date library. Dates read "Nov 17", never ISO (PRD section 6). */
-
-const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
-const inrPaise = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 });
-const plain = new Intl.NumberFormat('en-IN');
-const shortDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-const longDate = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' });
-
-/** Paise (integer) to "₹12,500". Shows paise only when there are some. */
-export function formatMoney(paise) {
-    const n = Number(paise);
-    if (Number.isNaN(n)) return '';
-    return n % 100 === 0 ? inr.format(n / 100) : inrPaise.format(n / 100);
-}
-
-/** "Nov 17", with the year only when it is not the current one. */
-export function formatDate(value) {
-    const d = toDateValue(value);
-    if (!d) return '';
-    return (d.getFullYear() === new Date().getFullYear() ? shortDate : longDate).format(d);
-}
-
-export function formatDateTime(value) {
-    const d = toDateValue(value);
-    return d ? `${formatDate(d)}, ${time.format(d)}` : '';
-}
+import { StatusChip as KitStatusChip } from '@/shared/ui/kit/Badges';
+import { formatDate, formatDateTime, formatINR, formatNumber } from '@/shared/lib/format';
+import { cellValue } from './filter-logic';
 
 const initials = (name) =>
     String(name)
@@ -43,26 +16,6 @@ const initials = (name) =>
         .join('');
 
 export const EmptyCell = () => <span className="text-foreground/30">—</span>;
-
-/** Status chip: tone dot + label, colour from the one STATUS table. Options may override label/tone. */
-export function StatusChip({ value, options }) {
-    const override = options?.find((o) => o.value === value);
-    const meta = statusMeta(value);
-    if (!meta) return <EmptyCell />;
-    const tone = TONE[override?.tone ?? meta.tone] ?? TONE.neutral;
-    return (
-        <span
-            className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] leading-none font-medium',
-                tone.soft,
-                tone.text,
-            )}
-        >
-            <span className={cn('size-1.5 rounded-full', tone.dot)} />
-            {override?.label ?? meta.label}
-        </span>
-    );
-}
 
 /** Neutral category chip: no severity, so no colour. */
 export function Chip({ children }) {
@@ -150,15 +103,15 @@ export function renderCell(column, row) {
 
     switch (column.type) {
         case 'number':
-            return <span className="tabular-nums">{plain.format(Number(raw))}</span>;
+            return <span className="tabular-nums">{formatNumber(raw)}</span>;
         case 'money':
-            return <span className="tabular-nums">{formatMoney(raw)}</span>;
+            return <span className="tabular-nums">{formatINR(raw)}</span>;
         case 'date':
             return <span className="tabular-nums">{formatDate(raw) || <EmptyCell />}</span>;
         case 'datetime':
             return <span className="tabular-nums">{formatDateTime(raw) || <EmptyCell />}</span>;
         case 'status':
-            return <StatusChip value={raw} options={column.options} />;
+            return <KitStatusChip value={raw} options={column.options} />;
         case 'chip':
             return <Chip>{column.options?.find((o) => o.value === raw)?.label ?? String(raw)}</Chip>;
         case 'person': {

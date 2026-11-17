@@ -16,13 +16,9 @@ export default function CompanyTeamSection({ companyId }) {
     const api = useMemo(() => platformTeamApi(companyId), [companyId]);
 
     return (
-        <section className="rounded-md border border-border bg-card p-4">
-            <div className="mb-1 flex items-center justify-between gap-3">
-                <h2 className="text-[13px] font-semibold uppercase tracking-wider text-[#c6c6c7]">Team</h2>
-            </div>
-            <p className="mb-3 text-[12px] text-muted-foreground">
-                You act as this company&apos;s Owner. Every change is recorded as made by Enroute.
-            </p>
+        <section className="flex flex-col gap-4">
+            <h2 className="text-lg font-medium text-[var(--ds-on-surface)]">Team</h2>
+            <p className="text-sm text-[var(--ds-on-surface-muted)]">You act as this company&apos;s Owner. Every change is recorded as made by Enroute.</p>
             <TeamManager api={api} canManageTeam canManageRoles canGrant={grantAll} />
         </section>
     );

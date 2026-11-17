@@ -1,74 +1,71 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell } from 'lucide-react';
+import { SidePanel } from '@/shared/ui/kit';
 import { useNotifications } from '../hooks/useNotifications';
 import NotificationPanel from './NotificationPanel';
 
-/**
- * The header bell: an unread badge and a dropdown with the latest notifications. Owns its
- * open state (outside click and Escape close it) so the header can drop it in as one block.
- */
-export default function NotificationBell() {
+/** The top-bar bell: an unread badge and a side panel with the notifications grouped by day. */
+export default function NotificationBell({ iconButtonClass }) {
     const [open, setOpen] = useState(false);
-    const rootRef = useRef(null);
     const router = useRouter();
     const notifications = useNotifications();
+    const { unreadCount, markAllRead } = notifications;
 
-    useEffect(() => {
-        if (!open) return undefined;
-        const onPointerDown = (event) => {
-            if (!rootRef.current?.contains(event.target)) setOpen(false);
-        };
-        const onKeyDown = (event) => {
-            if (event.key === 'Escape') setOpen(false);
-        };
-        document.addEventListener('mousedown', onPointerDown);
-        document.addEventListener('keydown', onKeyDown);
-        return () => {
-            document.removeEventListener('mousedown', onPointerDown);
-            document.removeEventListener('keydown', onKeyDown);
-        };
-    }, [open]);
-
-    const toggle = () => {
+    const onOpenChange = (next) => {
         // Fresh page each time the panel opens; the first open is what loads it at all.
-        if (!open) notifications.reload();
-        setOpen((current) => !current);
+        if (next) notifications.reload();
+        setOpen(next);
     };
 
     const openItem = (item) => {
         if (!item.isRead) notifications.markRead(item.id);
-        setOpen(false);
-        if (item.data?.link) router.push(item.data.link);
+        if (item.data?.link) {
+            setOpen(false);
+            router.push(item.data.link);
+        }
     };
 
-    const { unreadCount } = notifications;
-    const badge = unreadCount > 9 ? '9+' : String(unreadCount);
-
     return (
-        <div ref={rootRef} className="relative">
+        <>
             <button
                 type="button"
-                onClick={toggle}
-                aria-expanded={open}
+                onClick={() => onOpenChange(true)}
                 aria-haspopup="dialog"
                 aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
-                className="relative p-2 text-[#c6c6c7] hover:text-[#fbbc0e] bg-[#111111] hover:bg-[#1c1b1b] border border-[#222222] rounded-[4px] transition-colors"
+                title="Notifications"
+                className={`relative ${iconButtonClass}`}
             >
-                <Bell size={16} />
-                {unreadCount > 0 && (
-                    <span
-                        aria-hidden="true"
-                        className="absolute -right-1.5 -top-1.5 h-4 min-w-4 rounded-full bg-primary px-1 text-center font-mono text-[10px] font-bold leading-4 text-primary-foreground"
-                    >
-                        {badge}
+                <Bell className="size-4" aria-hidden />
+                {unreadCount > 0 ? (
+                    <span aria-hidden className="absolute -right-1 -top-1 h-4 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] font-semibold leading-4 text-primary-foreground">
+                        {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
-                )}
+                ) : null}
             </button>
 
-            {open && <NotificationPanel notifications={notifications} onOpenItem={openItem} />}
-        </div>
+            <SidePanel
+                open={open}
+                onOpenChange={onOpenChange}
+                size="sm"
+                title="Notifications"
+                description={unreadCount > 0 ? `${unreadCount} unread` : 'You are all caught up'}
+                headerTrailing={
+                    unreadCount > 0 ? (
+                        <button
+                            type="button"
+                            onClick={markAllRead}
+                            className="rounded-full bg-white/[0.06] px-3 py-1.5 text-xs font-medium text-[var(--ds-on-surface-variant)] transition-colors duration-150 hover:bg-white/[0.12] hover:text-[var(--ds-on-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ds-primary)]"
+                        >
+                            Mark all read
+                        </button>
+                    ) : null
+                }
+            >
+                <NotificationPanel notifications={notifications} onOpenItem={openItem} />
+            </SidePanel>
+        </>
     );
 }

@@ -7,14 +7,6 @@ export const STATUS_TABS = [
     { id: 'draft', label: 'Draft' },
 ];
 
-export const STATUS_LABELS = {
-    draft: 'Draft',
-    pending: 'Pending',
-    approved: 'Approved',
-    rejected: 'Rejected',
-    blocked: 'Blocked',
-};
-
 export const DOCUMENT_TYPE_LABELS = {
     gst: 'GST certificate',
     pan: 'PAN card',

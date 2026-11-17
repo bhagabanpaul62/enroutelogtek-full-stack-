@@ -3,37 +3,42 @@
 import { Check, Loader2, X } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
 import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
+import { BigStat, Inset, Panel, StatusChip, TickBar } from '@/shared/ui/kit';
 import { acceptAwardApi, declineAwardApi } from '../../api/loads.api';
 import { useBidActions } from '../../hooks/useBidActions';
 import { formatCountdown, formatDateTime } from '../../lib/format';
+import { rs } from './money';
 
-const QUIET = 'text-[12px] text-muted-foreground';
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * The customer's award for this load. Pending: accept or decline before the deadline
- * (managers only). Otherwise a quiet line saying how it ended.
- * @param {{ award: object, canManage: boolean, now: number, onChanged: () => void }} props
+ * The customer's award for this load. Pending: a review card with accept or decline before the
+ * deadline (managers only). Otherwise a quiet panel saying how it ended.
+ * @param {{ award: object, amount?: number, canManage: boolean, now: number, onChanged: () => void }} props
  */
-export default function AwardResponse({ award, canManage, now, onChanged }) {
+export default function AwardResponse({ award, amount, canManage, now, onChanged }) {
     const { run, busy } = useBidActions(onChanged);
     const [confirmDialog, confirm] = useConfirm();
 
-    if (award.status === 'accepted') {
-        return <p className={QUIET}>Accepted on {formatDateTime(award.respondedAt)}</p>;
-    }
-    if (award.status === 'declined') {
-        return <p className={QUIET}>You declined this award on {formatDateTime(award.respondedAt)}.</p>;
-    }
-    if (award.status === 'expired') {
+    const ended = {
+        accepted: `Accepted on ${formatDateTime(award.respondedAt)}`,
+        declined: `You declined this award on ${formatDateTime(award.respondedAt)}.`,
+        expired: `This award expired on ${formatDateTime(award.acceptBy)} without an answer.`,
+    }[award.status];
+    if (ended) {
         return (
-            <p className={QUIET}>
-                This award expired on {formatDateTime(award.acceptBy)} without an answer.
-            </p>
+            <Panel title="Award" action={<StatusChip value={award.status} />}>
+                <p className="text-sm text-[var(--ds-on-surface-variant)]">{ended}</p>
+            </Panel>
         );
     }
     if (award.status !== 'pending') return null;
 
     const countdown = formatCountdown(award.acceptBy, now);
+    // The window is the time between the award and its deadline (24 h by default).
+    const window = award.createdAt ? new Date(award.acceptBy) - new Date(award.createdAt) : DAY_MS;
+    const left = Math.max(0, new Date(award.acceptBy).getTime() - now);
+    const pct = window > 0 ? (left / window) * 100 : 0;
 
     const accept = async () => {
         const ok = await confirm({
@@ -57,29 +62,33 @@ export default function AwardResponse({ award, canManage, now, onChanged }) {
     };
 
     return (
-        <section className="rounded-[4px] border border-primary/50 bg-primary/5 p-4" aria-label="Award">
-            <h2 className="text-[14px] font-semibold text-foreground">The customer picked your bid.</h2>
-            <p className="mt-1 text-[13px] text-[#c6c6c7]">
-                Accept before {formatDateTime(award.acceptBy)}{' '}
-                <span className="font-mono text-[#f0955a]">({countdown ? `${countdown} left` : 'time is up'})</span>
-            </p>
+        <Panel title="The customer picked your bid" action={<StatusChip value="pending" />}>
+            <Inset className="grid gap-5 sm:grid-cols-2">
+                {amount !== undefined && <BigStat label="Your awarded amount" value={rs(amount)} />}
+                <BigStat
+                    label={`Accept before ${formatDateTime(award.acceptBy)}`}
+                    value={countdown ? `${countdown} left` : 'Time is up'}
+                    tone={pct < 25 ? 'warning' : 'default'}
+                />
+            </Inset>
+            <TickBar className="mt-4" value={pct} tone={pct < 25 ? 'warning' : 'info'} />
 
             {canManage ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                    <Button size="lg" onClick={accept} disabled={busy}>
+                <div className="mt-5 flex flex-wrap gap-2">
+                    <Button className="h-10 rounded-xl px-4 text-sm" onClick={accept} disabled={busy}>
                         {busy ? <Loader2 className="animate-spin" /> : <Check />} Accept
                     </Button>
-                    <Button size="lg" variant="outline" onClick={decline} disabled={busy}>
+                    <Button variant="secondary" className="h-10 rounded-xl px-4 text-sm" onClick={decline} disabled={busy}>
                         <X /> Decline
                     </Button>
                 </div>
             ) : (
-                <p className="mt-3 text-[12px] text-muted-foreground">
+                <p className="mt-4 text-xs text-[var(--ds-on-surface-muted)]">
                     Only admins, co-admins and bid managers can answer an award.
                 </p>
             )}
 
             {confirmDialog}
-        </section>
+        </Panel>
     );
 }

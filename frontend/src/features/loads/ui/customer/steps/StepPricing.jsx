@@ -6,7 +6,7 @@ import { MAX_ATTEMPTS, PRICE_BASIS_LABELS, QUICK_WINDOWS_HOURS } from '../../../
 import { formatDate, formatDateTime, formatTimeWindow, toLocalInputValue } from '../../../lib/format';
 import { MS_PER_HOUR, isoHoursFromNow, localInputToIso, pickupMoment } from '../loadTime';
 import { useNow } from '../useNow';
-import { CheckboxRow, FormField, TextArea, TextInput } from './FormField';
+import { CheckboxRow, FieldGroup, FormField, TextArea, TextInput } from './FormField';
 
 const BASIS_HELP = {
     per_vehicle: 'One amount for each truck',
@@ -27,10 +27,7 @@ export default function StepPricing({ form, errors, onChange }) {
 
     return (
         <div className="grid gap-4">
-            <fieldset className="grid gap-3 rounded-[4px] border border-border bg-card p-4">
-                <legend className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Price
-                </legend>
+            <FieldGroup title="Price">
                 <div role="radiogroup" aria-label="Price basis" className="grid gap-2 sm:grid-cols-3">
                     {Object.entries(PRICE_BASIS_LABELS).map(([value, label]) => {
                         const selected = form.priceBasis === value;
@@ -42,10 +39,10 @@ export default function StepPricing({ form, errors, onChange }) {
                                 aria-checked={selected}
                                 onClick={() => onChange({ priceBasis: value })}
                                 className={cn(
-                                    'rounded-[4px] border px-3 py-3 text-left transition-colors',
+                                    'rounded-2xl px-4 py-3 text-left transition-colors',
                                     selected
-                                        ? 'border-primary bg-primary/10'
-                                        : 'border-border bg-background hover:border-surface-container-highest',
+                                        ? 'bg-primary/10 ring-1 ring-primary/60'
+                                        : 'bg-white/[0.04] hover:bg-white/[0.07]',
                                 )}
                             >
                                 <span className="block text-[14px] font-medium text-foreground">{label}</span>
@@ -89,12 +86,9 @@ export default function StepPricing({ form, errors, onChange }) {
                         />
                     </FormField>
                 </div>
-            </fieldset>
+            </FieldGroup>
 
-            <fieldset className="grid gap-3 rounded-[4px] border border-border bg-card p-4">
-                <legend className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Bid rules
-                </legend>
+            <FieldGroup title="Bid rules">
                 <FormField label="Bidding closes" htmlFor="closesAt" required error={errors.closesAt}>
                     <div className="flex flex-wrap gap-2">
                         {QUICK_WINDOWS_HOURS.map((hours) => (
@@ -104,10 +98,10 @@ export default function StepPricing({ form, errors, onChange }) {
                                 aria-pressed={activePick === hours}
                                 onClick={() => onChange({ closesAt: isoHoursFromNow(hours, Date.now()) })}
                                 className={cn(
-                                    'rounded-[4px] border px-3 py-1.5 text-[13px] transition-colors',
+                                    'rounded-full px-3.5 py-1.5 text-[13px] transition-colors',
                                     activePick === hours
-                                        ? 'border-primary bg-primary/10 text-primary'
-                                        : 'border-border text-[#c6c6c7] hover:text-foreground',
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'bg-white/[0.05] text-[var(--ds-on-surface-variant)] hover:bg-white/[0.09]',
                                 )}
                             >
                                 in {hours} h
@@ -128,8 +122,8 @@ export default function StepPricing({ form, errors, onChange }) {
                 </FormField>
 
                 {closesAfterPickup && (
-                    <div className="flex gap-2 rounded-[4px] border border-[#f0955a]/40 bg-[#3a2416] px-3 py-2 text-[13px] text-foreground">
-                        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-[#f0955a]" />
+                    <div className="flex gap-2 rounded-2xl bg-amber-400/10 px-4 py-3 text-[13px] text-amber-200">
+                        <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-300" aria-hidden />
                         <p>
                             Bidding must close before the pickup ({formatDate(form.pickupDate)},{' '}
                             {formatTimeWindow(form.pickupTimeFrom, form.pickupTimeTo)}). Publishing will be
@@ -140,7 +134,7 @@ export default function StepPricing({ form, errors, onChange }) {
 
                 <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
                     <div>
-                        <dt className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <dt className="font-mono text-[11px] uppercase tracking-wider text-[var(--ds-on-surface-muted)]">
                             Attempts per transporter
                         </dt>
                         <dd className="mt-0.5 text-[14px] text-foreground">
@@ -157,7 +151,7 @@ export default function StepPricing({ form, errors, onChange }) {
                     checked={form.autoExtendOnce}
                     onChange={(autoExtendOnce) => onChange({ autoExtendOnce })}
                 />
-            </fieldset>
+            </FieldGroup>
         </div>
     );
 }

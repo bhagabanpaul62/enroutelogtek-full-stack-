@@ -20,7 +20,7 @@ export function usePrefersReducedMotion() {
 
 const NUMBER = /-?\d[\d,]*(?:\.\d+)?/;
 const group = (n, decimals, grouped) =>
-    n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals, useGrouping: grouped });
+    n.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals, useGrouping: grouped });
 
 /**
  * Counts the first number in a pre-formatted string ("Rs 1.9L", "16", "45 days") up from zero on first

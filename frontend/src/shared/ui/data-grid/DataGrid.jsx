@@ -2,20 +2,18 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    AlertTriangle,
     ArrowDown,
     ArrowUp,
     ArrowUpDown,
-    Inbox,
     ListFilter,
     Loader2,
-    RefreshCw,
     Search,
     X,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { Button } from '@/shared/ui/primitives/button';
+import { EmptyState, ErrorState, SkeletonRows } from '@/shared/ui/kit/States';
 import { Input } from '@/shared/ui/primitives/input';
 import { Check2, PopoverPanel } from './controls';
 import { defaultAlign, renderCell } from './cells';
@@ -166,24 +164,13 @@ export function DataGrid({
     const showRows = !isLoading && !error && visible.length > 0;
 
     const message = showError ? (
-        <Message
-            icon={AlertTriangle}
-            title="Couldn't load this list"
-            description={error}
-            action={
-                retry && (
-                    <Button variant="secondary" onClick={retry}>
-                        <RefreshCw /> Try again
-                    </Button>
-                )
-            }
-        />
+        <ErrorState title="Couldn't load this list" description={error} onRetry={retry} className="py-16" />
     ) : showEmpty ? (
         hasQuery ? (
-            <Message
-                icon={Search}
+            <EmptyState
                 title="No rows match"
                 description="Try a different search or remove a filter."
+                className="py-16"
                 action={
                     <Button variant="secondary" onClick={clearQuery}>
                         Clear search and filters
@@ -191,7 +178,7 @@ export function DataGrid({
                 }
             />
         ) : (
-            <Message icon={Inbox} title="Nothing here yet" {...empty} />
+            <EmptyState title="Nothing here yet" {...empty} className="py-16" />
         )
     ) : null;
 
@@ -344,22 +331,13 @@ export function DataGrid({
                         </tr>
                     </thead>
                     <tbody>
-                        {showSkeleton &&
-                            Array.from({ length: 8 }, (_, i) => (
-                                <tr key={i} aria-hidden className="h-14">
-                                    {selectable && (
-                                        <td className="border-t border-white/[0.06] pl-4">
-                                            <span className="block size-4 animate-pulse rounded-[5px] bg-white/[0.06]" />
-                                        </td>
-                                    )}
-                                    {columns.map((c) => (
-                                        <td key={c.key} className="border-t border-white/[0.06] px-4">
-                                            <SkeletonCell column={c} index={i} />
-                                        </td>
-                                    ))}
-                                    {actions.length > 0 && <td className="border-t border-white/[0.06]" />}
-                                </tr>
-                            ))}
+                        {showSkeleton && (
+                            <tr aria-hidden>
+                                <td colSpan={colSpan} className="border-t border-white/[0.06] p-4">
+                                    <SkeletonRows rows={7} />
+                                </td>
+                            </tr>
+                        )}
 
                         {showRows &&
                             visible.map((row) => {
@@ -422,29 +400,17 @@ export function DataGrid({
                                     </tr>
                                 );
                             })}
-
-                        {message && (
-                            <tr>
-                                <td colSpan={colSpan} className="border-t border-white/[0.06]">
-                                    {message}
-                                </td>
-                            </tr>
-                        )}
                     </tbody>
                 </table>
             </div>
 
             {/* Stacked cards (below md) */}
             <ul className="md:hidden" aria-busy={showSkeleton || undefined}>
-                {showSkeleton &&
-                    [0, 1, 2, 3].map((i) => (
-                        <li key={i} aria-hidden className="space-y-3 border-t border-white/[0.06] p-4">
-                            <span className="block h-4 w-2/3 animate-pulse rounded bg-white/[0.06]" />
-                            <span className="block h-3 w-1/2 animate-pulse rounded bg-white/[0.06]" />
-                            <span className="block h-3 w-1/3 animate-pulse rounded bg-white/[0.06]" />
-                        </li>
-                    ))}
-                {message && <li className="border-t border-white/[0.06]">{message}</li>}
+                {showSkeleton && (
+                    <li aria-hidden className="border-t border-white/[0.06] p-4">
+                        <SkeletonRows rows={4} />
+                    </li>
+                )}
                 {showRows &&
                     visible.map((row) => {
                         const id = getRowId(row);
@@ -484,6 +450,9 @@ export function DataGrid({
                     })}
             </ul>
 
+            {/* Rendered once (not per layout) so the text exists a single time in the page */}
+            {message && <div className="border-t border-white/[0.06]">{message}</div>}
+
             {/* Footer: pages (client) or Load more (server) */}
             {serverMode
                 ? !isLoading &&
@@ -519,41 +488,6 @@ export function DataGrid({
                   )}
         </section>
     );
-}
-
-function Message({ icon: Icon, title, description, action }) {
-    return (
-        <div role="status" className="flex flex-col items-center px-6 py-16 text-center">
-            <span className="mb-3 flex size-10 items-center justify-center rounded-2xl bg-white/[0.06] text-foreground/60">
-                <Icon className="size-5" />
-            </span>
-            <p className="text-[14px] font-medium text-foreground">{title}</p>
-            {description && <p className="mt-1 max-w-sm text-[13px] text-foreground/50">{description}</p>}
-            {action && <div className="mt-4">{action}</div>}
-        </div>
-    );
-}
-
-/** Skeleton bar shaped like the real cell of that column type, so nothing jumps on load. */
-function SkeletonCell({ column, index }) {
-    const bar = 'block h-3 animate-pulse rounded bg-white/[0.06]';
-    const w = ['w-24', 'w-32', 'w-20', 'w-28'][index % 4];
-    const right = (column.align ?? defaultAlign(column.type)) === 'right';
-    if (column.type === 'person') {
-        return (
-            <span className="flex items-center gap-2.5">
-                <span className="size-8 animate-pulse rounded-full bg-white/[0.06]" />
-                <span className="space-y-1.5">
-                    <span className={cn(bar, w)} />
-                    <span className={cn(bar, 'h-2.5 w-16')} />
-                </span>
-            </span>
-        );
-    }
-    if (column.type === 'status' || column.type === 'chip') {
-        return <span className="block h-6 w-20 animate-pulse rounded-full bg-white/[0.06]" />;
-    }
-    return <span className={cn(bar, w, right && 'ml-auto')} />;
 }
 
 function RowActions({ row, actions, className }) {

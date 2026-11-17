@@ -1,5 +1,6 @@
 'use client';
 
+import { Trophy } from 'lucide-react';
 import { formatRupees } from '../../lib/format';
 import ReasonDialog from './ReasonDialog';
 
@@ -13,14 +14,10 @@ export default function AwardDialog({ open, bid, busy, onCancel, onSubmit }) {
     return (
         <ReasonDialog
             open={open}
+            icon={<Trophy className="size-5" />}
             title={`Pick ${name} as the winner?`}
-            description={
-                <>
-                    Their bid is <span className="font-mono text-foreground">{formatRupees(bid?.currentAmount)}</span>
-                    {bid?.currentRank ? ` (ranked L${bid.currentRank})` : ''}. They get 24 hours to accept; if they
-                    decline or stay silent, you can pick another bid.
-                </>
-            }
+            description="They get 24 hours to accept. If they decline or stay silent, you can pick another bid."
+            summary={`${formatRupees(bid?.currentAmount)}${bid?.currentRank ? ` · ranked L${bid.currentRank}` : ''}`}
             confirmLabel="Pick as winner"
             busy={busy}
             placeholder="For example: best price with a truck available on the day."

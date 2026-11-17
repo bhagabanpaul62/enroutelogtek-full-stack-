@@ -6,6 +6,7 @@ import {
     ArrowButton, BigStat, DeltaChip, EmptyState, EntityHeader, ErrorState, Fact, FactList, HatchedBars, IconChip,
     Inset, Modal, ModalField, ModalFooter, ModalSection, Panel, SegmentedBar, SegmentedControl, SegmentedGauge,
     SidePanel, SkeletonRows, StatCard, StatGroup, StatusChip, SummaryRows, TabBar, TickBar, Timeline, ToneBadge, TrendArea,
+    formatDate, formatINR,
 } from '@/shared/ui/kit';
 
 const TREND = ['Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov'].map((m, i) => ({ m, loads: [12, 18, 15, 26, 31, 38][i], prev: [10, 12, 14, 18, 22, 25][i] }));
@@ -46,7 +47,7 @@ export default function KitPreviewPage() {
                 leading={<IconChip className="size-14 text-lg"><Truck className="size-6" /></IconChip>}
                 title="Kit preview"
                 chips={<><StatusChip value="in_execution" /><ToneBadge label="Dev only" tone="info" /></>}
-                meta={['Every dashboard kit component', 'Sample data', null, 'Nov 17']}
+                meta={['Every dashboard kit component', 'Sample data', null, formatDate('2026-11-17')]}
                 actions={<button type="button" onClick={() => setModal(true)} className="h-10 rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/80">Open modal</button>}
             >
                 <TabBar label="Sections" value={tab} onChange={setTab} tabs={[{ id: 'overview', label: 'Overview' }, { id: 'trips', label: 'Trips', count: 3 }, { id: 'docs', label: 'Documents' }]} />
@@ -54,9 +55,9 @@ export default function KitPreviewPage() {
 
             <Block title="Stat cards">
                 <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                    <StatCard label="Active loads" value="38" icon={<Package className="size-4" />} delta={<DeltaChip direction="up" tone="success">12%</DeltaChip>} meta="vs last month" href="/" />
-                    <StatCard label="Earnings" value="Rs 4,20,000" icon={<Wallet className="size-4" />} delta={<DeltaChip direction="down" tone="danger">3%</DeltaChip>} meta="vs last month" delay={0.04} />
-                    <StatCard label="Utilisation" value="72%" icon={<Gauge className="size-4" />} viz={<TickBar value={72} className="w-20" />} delay={0.08} />
+                    <StatCard label="Active loads in execution" value="38" icon={<Package className="size-4" />} delta={<DeltaChip direction="up" tone="success">12%</DeltaChip>} meta="vs last month" href="/" />
+                    <StatCard label="Earnings" value={formatINR(42000000, { compact: true })} icon={<Wallet className="size-4" />} delta={<DeltaChip direction="down" tone="danger">3%</DeltaChip>} meta="vs last month" delay={0.04} />
+                    <StatCard label="Utilisation" value="72%" icon={<Gauge className="size-4" />} viz={<TickBar value={72} className="w-full" />} delay={0.08} />
                     <StatCard label="On time" value="94%" icon={<Truck className="size-4" />} delta={<DeltaChip direction="flat">flat</DeltaChip>} delay={0.12} />
                 </div>
             </Block>
@@ -69,12 +70,12 @@ export default function KitPreviewPage() {
                 </div>
                 <div className="lg:col-span-4">
                     <Panel title="Fleet utilisation">
-                        <SegmentedGauge value={72} label="utilised" caption="On track for 80%" />
+                        <div className="flex flex-1 items-center justify-center"><SegmentedGauge value={72} label="utilised" caption="On track for 80%" /></div>
                     </Panel>
                 </div>
                 <div className="lg:col-span-6">
                     <Panel title="Loads by stage" action={<ArrowButton href="/" label="Open loads" />}>
-                        <HatchedBars items={STAGES} />
+                        <HatchedBars items={STAGES} height={320} />
                     </Panel>
                 </div>
                 <div className="lg:col-span-6">
@@ -82,13 +83,13 @@ export default function KitPreviewPage() {
                         <StatGroup columns={3}>
                             <BigStat label="Open" value="14" hint="loads" />
                             <BigStat label="Overdue" value="3" tone="danger" hint="need action" />
-                            <BigStat label="Paid" value="Rs 1.9L" tone="success" delta={<DeltaChip tone="success">+8%</DeltaChip>} />
+                            <BigStat label="Paid" value={formatINR(19000000, { compact: true })} tone="success" delta={<DeltaChip tone="success">+8%</DeltaChip>} />
                         </StatGroup>
                         <div className="mt-5"><SegmentedBar layout="list" segments={[{ id: 'a', label: 'Completed', value: 31, tone: 'success' }, { id: 'b', label: 'In execution', value: 22, tone: 'accent' }, { id: 'c', label: 'Delayed', value: 4, tone: 'warning' }, { id: 'd', label: 'Failed', value: 2, tone: 'danger' }]} /></div>
                     </Panel>
                 </div>
                 <div className="lg:col-span-4">
-                    <Panel title="Needs action"><SummaryRows rows={[{ key: 'a', label: 'Bids to review', value: 5, icon: <Package className="size-4" />, href: '/' }, { key: 'b', label: 'Late trips', value: 2, tone: 'danger', icon: <Truck className="size-4" />, href: '/' }, { key: 'c', label: 'Invoices due', value: 1, tone: 'warning', icon: <Wallet className="size-4" /> }]} /></Panel>
+                    <Panel title="Needs action"><SummaryRows rows={[{ key: 'a', label: 'Bids to review', value: 5, icon: <Package className="size-4" />, href: '/' }, { key: 'b', label: 'Late trips', value: 2, tone: 'danger', icon: <Truck className="size-4" />, href: '/' }, { key: 'c', label: 'Invoices due', value: 1, tone: 'warning', icon: <Wallet className="size-4" /> }, { key: 'd', label: 'Documents waiting for review', value: 7, icon: <Gauge className="size-4" />, href: '/' }]} /></Panel>
                 </div>
                 <div className="lg:col-span-4">
                     <Panel title="Details">
@@ -97,13 +98,14 @@ export default function KitPreviewPage() {
                             <Fact label="Email" copy="ops@example.com">ops@example.com</Fact>
                             <Fact label="GSTIN" />
                             <Fact label="Status"><StatusChip value="approved" /></Fact>
+                            <Fact label="Phone" copy="+91 98200 11223">+91 98200 11223</Fact>
                         </FactList>
                     </Panel>
                 </div>
                 <div className="lg:col-span-4">
                     <Panel title="Trip milestones"><Timeline steps={STEPS} /></Panel>
                 </div>
-                <div className="lg:col-span-4"><Panel title="Loading"><SkeletonRows rows={3} /></Panel></div>
+                <div className="lg:col-span-4"><Panel title="Loading"><SkeletonRows rows={5} /></Panel></div>
                 <div className="lg:col-span-4"><Panel title="Empty"><EmptyState title="No trips yet" description="Trips appear here once a bid is awarded." action={<button type="button" className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-xs font-medium">Post a load</button>} /></Panel></div>
                 <div className="lg:col-span-4"><Panel title="Error"><ErrorState onRetry={() => {}} /></Panel></div>
             </div>
@@ -118,7 +120,7 @@ export default function KitPreviewPage() {
             </Block>
 
             <Modal open={modal} onOpenChange={setModal} size="md" icon={<Package className="size-5" />} title="Post a load" description="Truckers see it as soon as it is live."
-                footer={<ModalFooter summary="1 load · Rs 42,000" secondary={{ onClick: () => setModal(false) }} primary={{ label: 'Post load', onClick: () => setModal(false) }} />}>
+                footer={<ModalFooter summary={`1 load · ${formatINR(4200000)}`} secondary={{ onClick: () => setModal(false) }} primary={{ label: 'Post load', onClick: () => setModal(false) }} />}>
                 <ModalSection title="Route">
                     <ModalField label="Pickup city" htmlFor="kp-pick" required><input id="kp-pick" className="h-10 rounded-xl bg-white/[0.05] px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50" placeholder="Nagpur" /></ModalField>
                     <ModalField label="Drop city" htmlFor="kp-drop" error="Drop city is required"><input id="kp-drop" className="h-10 rounded-xl bg-white/[0.05] px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50" /></ModalField>

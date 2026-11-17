@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Truck } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
 import { Input } from '@/shared/ui/primitives/input';
-import { Field, FieldError, FieldLabel } from '@/shared/ui/primitives/field';
+import { Fact, FactList, Modal, ModalField, ModalFooter, Panel } from '@/shared/ui/kit';
 import { assignVehicleApi } from '../../api/loads.api';
 import { useBidActions } from '../../hooks/useBidActions';
 import { formatDateTime } from '../../lib/format';
@@ -30,28 +30,7 @@ const validate = ({ vehicleNumber, driverName, driverPhone }) => {
     return errors;
 };
 
-function SavedAssignment({ award }) {
-    if (!award.assignedAt) {
-        return <p className="text-[13px] text-muted-foreground">No truck assigned yet.</p>;
-    }
-    return (
-        <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-3">
-            {FIELDS.map((field) => (
-                <div key={field.name}>
-                    <dt className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{field.label}</dt>
-                    <dd className="mt-0.5 text-[14px] text-foreground">{award[field.name] || '—'}</dd>
-                </div>
-            ))}
-        </dl>
-    );
-}
-
-/**
- * Which truck and driver will move the load. Managers fill it in (or update it once saved);
- * everyone else sees the saved values. Saving moves the load to "in transit".
- * @param {{ award: object, canManage: boolean, onChanged: () => void }} props
- */
-export default function AssignmentForm({ award, canManage, onChanged }) {
+function AssignModal({ award, open, onOpenChange, onChanged }) {
     const [values, setValues] = useState({
         vehicleNumber: award.vehicleNumber ?? '',
         driverName: award.driverName ?? '',
@@ -71,63 +50,101 @@ export default function AssignmentForm({ award, canManage, onChanged }) {
         if (Object.keys(found).length > 0) return;
 
         const result = await run(() => assignVehicleApi(award.id, trimmed), { quietStatuses: [422] });
-        if (!result.ok && result.status === 422) {
+        if (result.ok) {
+            onOpenChange(false);
+        } else if (result.status === 422) {
             const fields = result.fields && typeof result.fields === 'object' ? result.fields : null;
             setErrors(fields && Object.keys(fields).length > 0 ? fields : { form: result.message });
         }
     };
 
     return (
-        <section className="rounded-[4px] border border-border bg-card p-4" aria-label="Truck and driver">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-[13px] font-semibold text-foreground">Truck and driver</h2>
-                {isUpdate && (
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Assigned {formatDateTime(award.assignedAt)}
-                    </span>
+        <Modal
+            open={open}
+            onOpenChange={onOpenChange}
+            size="md"
+            icon={<Truck className="size-5" aria-hidden />}
+            title={isUpdate ? 'Update truck and driver' : 'Assign truck and driver'}
+            description="The customer sees this once saved. Saving marks the load as in transit."
+            footer={
+                <ModalFooter
+                    secondary={{ label: 'Cancel', onClick: () => onOpenChange(false), disabled: busy }}
+                    primary={{
+                        type: 'submit',
+                        form: 'assign-form',
+                        label: busy ? 'Saving…' : isUpdate ? 'Update' : 'Assign truck',
+                        loading: busy,
+                    }}
+                />
+            }
+        >
+            <form id="assign-form" onSubmit={submit} noValidate className="flex flex-col gap-4">
+                {FIELDS.map((field) => (
+                    <ModalField key={field.name} label={field.label} htmlFor={`assign-${field.name}`} error={errors[field.name]}>
+                        <Input
+                            id={`assign-${field.name}`}
+                            value={values[field.name]}
+                            onChange={setValue(field.name)}
+                            placeholder={field.placeholder}
+                            maxLength={field.maxLength}
+                            inputMode={field.inputMode}
+                            aria-invalid={Boolean(errors[field.name])}
+                            disabled={busy}
+                        />
+                    </ModalField>
+                ))}
+                {errors.form && (
+                    <p role="alert" className="text-xs text-red-300">
+                        {errors.form}
+                    </p>
                 )}
-            </div>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-                The customer sees this once saved. Saving marks the load as in transit.
-            </p>
+            </form>
+        </Modal>
+    );
+}
 
-            {canManage ? (
-                <form onSubmit={submit} noValidate className="mt-4">
-                    <div className="grid gap-4 sm:grid-cols-3">
+/**
+ * Which truck and driver will move the load: the saved values in a panel, with the form in a
+ * Modal for managers (assign, or update once saved). Saving moves the load to "in transit".
+ * @param {{ award: object, canManage: boolean, onChanged: () => void }} props
+ */
+export default function AssignmentForm({ award, canManage, onChanged }) {
+    const [open, setOpen] = useState(false);
+    const assigned = Boolean(award.assignedAt);
+
+    return (
+        <Panel
+            title="Truck and driver"
+            action={
+                canManage ? (
+                    <Button variant="secondary" className="h-8 rounded-xl px-3 text-xs" onClick={() => setOpen(true)}>
+                        {assigned ? 'Update' : 'Assign truck'}
+                    </Button>
+                ) : null
+            }
+        >
+            {assigned ? (
+                <>
+                    <FactList>
                         {FIELDS.map((field) => (
-                            <Field key={field.name} data-invalid={Boolean(errors[field.name])}>
-                                <FieldLabel htmlFor={`assign-${field.name}`}>{field.label}</FieldLabel>
-                                <Input
-                                    id={`assign-${field.name}`}
-                                    value={values[field.name]}
-                                    onChange={setValue(field.name)}
-                                    placeholder={field.placeholder}
-                                    maxLength={field.maxLength}
-                                    inputMode={field.inputMode}
-                                    aria-invalid={Boolean(errors[field.name])}
-                                    disabled={busy}
-                                />
-                                <FieldError>{errors[field.name]}</FieldError>
-                            </Field>
+                            <Fact key={field.name} label={field.label}>
+                                {award[field.name]}
+                            </Fact>
                         ))}
-                    </div>
-                    {errors.form && (
-                        <p role="alert" className="mt-3 text-[12px] text-destructive">
-                            {errors.form}
-                        </p>
-                    )}
-                    <div className="mt-4 flex justify-end">
-                        <Button type="submit" size="lg" disabled={busy}>
-                            {busy && <Loader2 className="animate-spin" />}
-                            {busy ? 'Saving…' : isUpdate ? 'Update' : 'Assign truck'}
-                        </Button>
-                    </div>
-                </form>
+                    </FactList>
+                    <p className="mt-2 px-2 text-xs text-[var(--ds-on-surface-muted)]">
+                        Assigned {formatDateTime(award.assignedAt)}
+                    </p>
+                </>
             ) : (
-                <div className="mt-4">
-                    <SavedAssignment award={award} />
-                </div>
+                <p className="text-sm text-[var(--ds-on-surface-muted)]">
+                    No truck assigned yet.{canManage ? ' The customer sees it once you save.' : ''}
+                </p>
             )}
-        </section>
+            {canManage && (
+                // Keyed on assignedAt so the form refills from the server after a save.
+                <AssignModal key={award.assignedAt ?? 'new'} award={award} open={open} onOpenChange={setOpen} onChanged={onChanged} />
+            )}
+        </Panel>
     );
 }

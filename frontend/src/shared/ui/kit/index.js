@@ -9,3 +9,4 @@ export * from './Charts';
 export * from './Modal';
 export * from './States';
 export * from './Timeline';
+export * from '@/shared/lib/format';

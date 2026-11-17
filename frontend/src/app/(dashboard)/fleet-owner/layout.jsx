@@ -1,12 +1,5 @@
 import CompanyTypeGuard from '@/shared/guards/companyTypeGuard';
-import React from 'react'
 
-function FleetOwnerLayout({children}) {
-  return (
-      <div>
-          <CompanyTypeGuard companyType={'fleet_owner'}> {children}</CompanyTypeGuard>
-      </div>
-  );
+export default function Layout({ children }) {
+    return <CompanyTypeGuard companyType="fleet_owner">{children}</CompanyTypeGuard>;
 }
-
-export default FleetOwnerLayout
