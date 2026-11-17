@@ -2,6 +2,8 @@
 
 > **Project overview.** Start with [the master ticket tracker](tickets/README.md) for completed work, open fixes, product decisions and the ordered build queue. Reviewed on 10 November 2026.
 >
+> **Full project plan.** [plan/ENROUTE-PROJECT-PLAN.md](plan/ENROUTE-PROJECT-PLAN.md) explains the whole product end to end: how the modules connect, how each is used, the data model and the build order.
+>
 > The progress/roadmap notes below include historical information. The tracker records current implementation boundaries and verification limits; older “complete” or “frozen” labels do not close its open tickets.
 
 ---
@@ -335,10 +337,11 @@ pnpm start
 ## For AI Agent — Start Here
 
 1. Read this README for the product overview.
-2. Read [tickets/README.md](tickets/README.md) for current status, evidence and dependencies.
-3. Choose the next unblocked ticket from that ordered queue and discuss its implementation before changing code.
-4. Backend API base URL: `http://localhost:8000/api/v1`.
-5. Use the tracker's verification record; do not assume that older completion notes prove current runtime behavior.
+2. Read [plan/ENROUTE-PROJECT-PLAN.md](plan/ENROUTE-PROJECT-PLAN.md) for how the system fits together and the build order.
+3. Read [tickets/README.md](tickets/README.md) for current status, evidence and dependencies.
+4. Choose the next unblocked ticket from that ordered queue and discuss its implementation before changing code.
+5. Backend API base URL: `http://localhost:8000/api/v1`.
+6. Use the tracker's verification record; do not assume that older completion notes prove current runtime behavior.
 
 **Development philosophy:** Business First → Database → Backend → Frontend → Deploy
 
