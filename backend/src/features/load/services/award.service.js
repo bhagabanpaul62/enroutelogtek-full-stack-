@@ -10,12 +10,14 @@ import { AppError } from '#shared/utils/AppError.js';
 import { companies } from '#features/company/schemas/company.Schema.js';
 import { notifyCompanies } from '#features/notification/services/notification.service.js';
 import { awards, bids, loads } from '../schemas/index.js';
+import { trips } from '#features/trip/schemas/trip.Schema.js';
 import { AWARDABLE_FROM } from '../load.constants.js';
 import { acceptByFrom, loadNumber } from '../load.rules.js';
 import { PERMISSIONS } from '#features/team/team.permissions.js';
 import { publicCompanyFields, requireCustomerManager, requireTransporterManager } from './load.access.js';
 import { CUSTOMER_LINK, TRANSPORTER_LINK, formatWhen, getLoad, logNotifyError } from './load.service.js';
 import { recordLoadEvent } from './loadEvent.service.js';
+import { createTripsForAward, snapshotTerms } from '#features/trip/services/trip.service.js';
 
 const transporterCompany = alias(companies, 'transporter_company');
 
@@ -131,6 +133,13 @@ export const respondToAward = async (user, awardId, decision) => {
             },
             tx,
         );
+        if (accepting) {
+            // Freeze the agreed terms, then one trip per truck (Wave 2). Contacts open up for the transporter from now on.
+            const [bid] = await tx.select().from(bids).where(eq(bids.id, lockedAward.bidId));
+            const termsSnapshot = snapshotTerms(lockedLoad, bid);
+            await tx.update(awards).set({ termsSnapshot, termsAcceptedAt: now }).where(eq(awards.id, awardId));
+            await createTripsForAward(tx, { load: lockedLoad, award: { ...lockedAward, termsSnapshot, termsAcceptedAt: now } });
+        }
         return { award: lockedAward, load: lockedLoad };
     });
 
@@ -177,6 +186,11 @@ export const assignVehicle = async (user, awardId, { vehicleNumber, driverName, 
         .limit(1);
     if (!award) throw new AppError('Award not found', 404);
     if (award.status !== 'accepted') throw new AppError('Accept the award before assigning a truck', 409);
+    const [existingTrip] = await db.select({ id: trips.id }).from(trips).where(eq(trips.awardId, awardId)).limit(1);
+    if (existingTrip) {
+        // Compatibility path (ENR-029): trips exist, so trucks come from the fleet via the Trips API.
+        throw new AppError('This load has trips. Assign a vehicle and driver from your fleet with PATCH /trips/:tripId/assign.', 409);
+    }
 
     const [load] = await db.select().from(loads).where(eq(loads.id, award.loadId)).limit(1);
     if (!['accepted', 'in_execution'].includes(load.status)) {

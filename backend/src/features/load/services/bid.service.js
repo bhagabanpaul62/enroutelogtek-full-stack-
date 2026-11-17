@@ -8,7 +8,7 @@ import { db } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { notifyCompanies } from '#features/notification/services/notification.service.js';
 import { bidAttempts, bids, loadInvitations, loads } from '../schemas/index.js';
-import { canBid, computeFinalAmount, loadNumber, rankBids } from '../load.rules.js';
+import { bidTotal, canBid, computeFinalAmount, loadNumber, rankBids } from '../load.rules.js';
 import { PERMISSIONS } from '#features/team/team.permissions.js';
 import { findInvitedLoad, requireTransporter, requireTransporterManager } from './load.access.js';
 import { CUSTOMER_LINK, logNotifyError } from './load.service.js';
@@ -131,7 +131,7 @@ export const submitAttempt = async (user, loadId, { baseRate, marginType, margin
     }
 
     return {
-        bid: result.bid,
+        bid: { ...result.bid, totalAmount: bidTotal(result.load, result.bid.currentAmount) },
         attempt: result.attempt,
         attemptsLeft: result.attemptsLeft,
         bidderCount: result.bidderCount,

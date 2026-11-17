@@ -1,7 +1,7 @@
-import ComingSoon from '@/shared/ui/layout/ComingSoon';
+import VehiclesPage from '@/features/fleet/ui/VehiclesPage';
 
 export const metadata = { title: 'Fleet' };
 
 export default function Page() {
-    return <ComingSoon companyType="transporter" slug="fleet" />;
+    return <VehiclesPage basePath="/transporter/fleet" />;
 }

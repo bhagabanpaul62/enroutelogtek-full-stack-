@@ -4,6 +4,14 @@
  * view (only what an invited bidder may see: never rivals, never the target price).
  * Controllers pass req.user and validated input; who may do what is decided here and in
  * load.access.js.
+ *
+ * RACE SAFETY (ENR-015). Every status change runs in a transaction that first locks the load
+ * row (SELECT ... FOR UPDATE, the same lock award.service and bid.service take), re-checks the
+ * status on the locked row, then writes. So two requests on one load run one after the other.
+ * Documented outcome of a repeat or a lost race: the second request gets 409 with the load's
+ * current status ("This load is already cancelled"); nothing is written twice and no second
+ * history row or notification is created. Terminal states (cancelled, completed) are never
+ * overwritten: no transition leaves them.
  */
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
@@ -28,10 +36,19 @@ import {
     EDITABLE_FROM,
     EXTENDABLE_FROM,
 } from '../load.constants.js';
-import { extensionProblems, loadNumber, publishProblems } from '../load.rules.js';
+import {
+    bidTotal,
+    bidUnit,
+    derivedShape,
+    extensionProblems,
+    loadNumber,
+    publishProblems,
+    shapeProblems,
+} from '../load.rules.js';
 import { afterCursor, cursorCreatedAt, toPage } from './load.pagination.js';
 import { listLoadEvents, recordLoadEvent } from './loadEvent.service.js';
 import { PERMISSIONS } from '#features/team/team.permissions.js';
+import { trips } from '#features/trip/schemas/trip.Schema.js';
 import {
     findInvitedLoad,
     findOwnLoad,
@@ -92,6 +109,7 @@ const withLookups = (query) =>
 const present = ({ load, vehicleType, commodity, ...extra }) => ({
     ...load,
     loadNumber: loadNumber(load.kind, load.loadSeq, load.createdAt),
+    bidUnit: bidUnit(load),
     vehicleType: vehicleType?.id ? vehicleType : null,
     commodity: commodity?.id ? commodity : null,
     ...extra,
@@ -209,12 +227,24 @@ const prepareInput = async (customerCompanyId, input) => {
     return values;
 };
 
+/** Merges a patch into the stored (or default) load, rejects contradictions, adds derived PTL columns. */
+const withDerivedShape = (existing, values) => {
+    const merged = { loadType: 'FTL', priceBasis: 'per_vehicle', specialRequirements: [], packageDims: [], ...existing, ...values };
+    // Switching a load back to FTL without choosing a basis drops the old per_kg.
+    if (values.loadType && values.loadType !== 'PTL' && values.priceBasis === undefined && merged.priceBasis === 'per_kg') {
+        merged.priceBasis = 'per_vehicle';
+    }
+    const problems = shapeProblems(merged);
+    if (problems.length > 0) throw new AppError(problems.join('. '), 422);
+    return { ...values, ...derivedShape(merged) };
+};
+
 // ---------- customer: create, edit, publish ----------
 
 /** POST /loads: a new Ad Hoc draft, optionally with the first step's fields. */
 export const createDraft = async (user, input = {}) => {
     await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
-    const values = await prepareInput(user.companyId, input);
+    const values = withDerivedShape({}, await prepareInput(user.companyId, input));
     const row = await db.transaction(async (tx) => {
         const [created] = await tx
             .insert(loads)
@@ -239,29 +269,36 @@ export const createDraft = async (user, input = {}) => {
 /** PATCH /loads/:id: save one or more fields of a draft (the wizard autosaves each step). */
 export const updateDraft = async (user, loadId, input) => {
     await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
-    const load = await findOwnLoad(user.companyId, loadId);
-    if (!EDITABLE_FROM.includes(load.status)) {
-        throw new AppError('Only drafts can be edited', 409);
-    }
-    const values = await prepareInput(user.companyId, input);
-    if (Object.keys(values).length > 0) {
-        await db.update(loads).set(values).where(eq(loads.id, loadId));
-    }
+    const prepared = await prepareInput(user.companyId, input);
+    await db.transaction(async (tx) => {
+        const load = await findOwnLoad(user.companyId, loadId, { tx, forUpdate: true });
+        if (!EDITABLE_FROM.includes(load.status)) {
+            throw new AppError(`Only drafts can be edited; this load is ${load.status}`, 409);
+        }
+        const values = withDerivedShape(load, prepared);
+        if (Object.keys(values).length > 0) await tx.update(loads).set(values).where(eq(loads.id, loadId));
+    });
     return getLoad(user, loadId);
 };
 
 /** POST /loads/:id/publish: validates the draft, snapshots the invitations, opens bidding. */
 export const publishLoad = async (user, loadId) => {
     const company = await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
-    const load = await findOwnLoad(user.companyId, loadId);
-    if (load.status !== 'draft') throw new AppError('Only drafts can be published', 409);
-
-    const invitees = await validInviteeIds(user.companyId, load.inviteeCompanyIds);
-    const problems = publishProblems(load, invitees.length);
-    if (problems.length > 0) throw new AppError(problems.join('. '), 422);
-
     const now = new Date();
+    let load;
+    let invitees;
     await db.transaction(async (tx) => {
+        // Lock first so a concurrent edit, cancel or second publish waits and then sees the new status.
+        load = await findOwnLoad(user.companyId, loadId, { tx, forUpdate: true });
+        if (load.status !== 'draft') {
+            throw new AppError(
+                load.status === 'live' ? 'This load was already published' : `Only drafts can be published; this load is ${load.status}`,
+                409,
+            );
+        }
+        invitees = await validInviteeIds(user.companyId, load.inviteeCompanyIds);
+        const problems = publishProblems(load, invitees.length);
+        if (problems.length > 0) throw new AppError(problems.join('. '), 422);
         const [published] = await tx
             .update(loads)
             .set({ status: 'live', publishedAt: now, inviteeCompanyIds: invitees, lastStep: 5 })
@@ -450,7 +487,7 @@ const getCustomerLoad = async (customerCompanyId, loadId) => {
         ...load,
         problems,
         invitations: invitationRows.map((item) => ({ ...item, hasBid: bidderIds.has(item.company.id) })),
-        bids: bidRows.map(({ bid, transporter }) => ({ ...bid, transporter })),
+        bids: bidRows.map(({ bid, transporter }) => ({ ...bid, transporter, totalAmount: bidTotal(load, bid.currentAmount) })),
         bidCount: bidRows.length,
         award: awardList[0] ?? null,
         awardHistory: awardList,
@@ -513,7 +550,7 @@ const getTransporterLoad = async (transporterCompanyId, loadId) => {
         ...load,
         customer,
         invitation: { invitedAt: invitation.createdAt, viewedAt: invitation.viewedAt ?? new Date() },
-        myBid: myBid ? { ...myBid, attempts } : null,
+        myBid: myBid ? { ...myBid, totalAmount: bidTotal(load, myBid.currentAmount), attempts } : null,
         attemptsLeft: Math.max(0, load.maxAttempts - (myBid?.attemptsUsed ?? 0)),
         bidderCount,
         award: award ?? null,
@@ -532,7 +569,7 @@ export const getLoad = async (user, loadId) => {
 /** GET /loads/:id/bids: the customer's bid board with every attempt. */
 export const listBids = async (user, loadId) => {
     await requireCustomer(user);
-    await findOwnLoad(user.companyId, loadId);
+    const load = await findOwnLoad(user.companyId, loadId);
     const rows = await db
         .select({ bid: bids, transporter: publicCompanyFields(transporterCompany) })
         .from(bids)
@@ -549,6 +586,7 @@ export const listBids = async (user, loadId) => {
     return rows.map(({ bid, transporter }) => ({
         ...bid,
         transporter,
+        totalAmount: bidTotal(load, bid.currentAmount),
         attempts: attempts.filter((attempt) => attempt.bidId === bid.id),
     }));
 };
@@ -558,24 +596,24 @@ export const listBids = async (user, loadId) => {
 /** POST /loads/:id/extend: a later close time for a live load, or reopens an expired one. */
 export const extendLoad = async (user, loadId, closesAt) => {
     await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
-    const load = await findOwnLoad(user.companyId, loadId);
-    if (!EXTENDABLE_FROM.includes(load.status)) {
-        throw new AppError('Only live or expired loads can be extended', 409);
-    }
-    const problems = extensionProblems(load, closesAt);
-    if (problems.length > 0) throw new AppError(problems.join('. '), 422);
-    if (load.status === 'live' && new Date(closesAt) <= load.closesAt) {
-        throw new AppError('The new close time must be later than the current one', 422);
-    }
-
-    await db.transaction(async (tx) => {
+    const newClose = new Date(closesAt);
+    const load = await db.transaction(async (tx) => {
+        const locked = await findOwnLoad(user.companyId, loadId, { tx, forUpdate: true });
+        if (!EXTENDABLE_FROM.includes(locked.status)) {
+            throw new AppError(`Only live or expired loads can be extended; this load is ${locked.status}`, 409);
+        }
+        const problems = extensionProblems(locked, closesAt);
+        if (problems.length > 0) throw new AppError(problems.join('. '), 422);
+        if (locked.status === 'live' && newClose <= locked.closesAt) {
+            throw new AppError('The new close time must be later than the current one', 422);
+        }
         await tx
             .update(loads)
             .set({
                 status: 'live',
-                closesAt: new Date(closesAt),
+                closesAt: newClose,
                 closedAt: null,
-                extensionCount: load.extensionCount + 1,
+                extensionCount: sql`${loads.extensionCount} + 1`,
                 closingSoonNotifiedAt: null,
             })
             .where(eq(loads.id, loadId));
@@ -583,13 +621,14 @@ export const extendLoad = async (user, loadId, closesAt) => {
             {
                 loadId,
                 type: 'extended',
-                fromStatus: load.status,
+                fromStatus: locked.status,
                 toStatus: 'live',
                 actor: user,
-                data: { from: load.closesAt, to: new Date(closesAt) },
+                data: { from: locked.closesAt, to: newClose },
             },
             tx,
         );
+        return locked;
     });
 
     const number = loadNumber(load.kind, load.loadSeq, load.createdAt);
@@ -608,11 +647,16 @@ export const extendLoad = async (user, loadId, closesAt) => {
 /** POST /loads/:id/cancel: allowed until a winner is picked. */
 export const cancelLoad = async (user, loadId, reason) => {
     await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
-    const load = await findOwnLoad(user.companyId, loadId);
-    if (!CANCELLABLE_FROM.includes(load.status)) {
-        throw new AppError('A load cannot be cancelled after a winner is picked', 409);
-    }
-    await db.transaction(async (tx) => {
+    const load = await db.transaction(async (tx) => {
+        const locked = await findOwnLoad(user.companyId, loadId, { tx, forUpdate: true });
+        if (!CANCELLABLE_FROM.includes(locked.status)) {
+            throw new AppError(
+                locked.status === 'cancelled'
+                    ? 'This load is already cancelled'
+                    : `A load cannot be cancelled once it is ${locked.status}`,
+                409,
+            );
+        }
         await tx
             .update(loads)
             .set({ status: 'cancelled', cancelledAt: new Date(), cancelReason: reason ?? null })
@@ -621,13 +665,14 @@ export const cancelLoad = async (user, loadId, reason) => {
             {
                 loadId,
                 type: 'cancelled',
-                fromStatus: load.status,
+                fromStatus: locked.status,
                 toStatus: 'cancelled',
                 actor: user,
                 note: reason,
             },
             tx,
         );
+        return locked;
     });
 
     if (load.status !== 'draft') {
@@ -647,17 +692,28 @@ export const cancelLoad = async (user, loadId, reason) => {
 /** POST /loads/:id/complete: the customer confirms delivery. */
 export const completeLoad = async (user, loadId) => {
     await requireCustomerManager(user, PERMISSIONS.LOADS_AWARD);
-    const load = await findOwnLoad(user.companyId, loadId);
-    if (!['accepted', 'in_execution'].includes(load.status)) {
-        throw new AppError('Only an accepted load in progress can be completed', 409);
-    }
     const now = new Date();
-    await db.transaction(async (tx) => {
+    const load = await db.transaction(async (tx) => {
+        const locked = await findOwnLoad(user.companyId, loadId, { tx, forUpdate: true });
+        const [hasTrips] = await tx.select({ id: trips.id }).from(trips).where(eq(trips.loadId, loadId)).limit(1);
+        if (hasTrips) {
+            // Wave 2: completion follows the trucks. The customer confirms each delivered trip (POST /trips/:id/confirm).
+            throw new AppError('Confirm delivery on each truck: the load completes when every truck is done', 409);
+        }
+        if (!['accepted', 'in_execution'].includes(locked.status)) {
+            throw new AppError(
+                locked.status === 'completed'
+                    ? 'This load is already completed'
+                    : `Only an accepted load in progress can be completed; this load is ${locked.status}`,
+                409,
+            );
+        }
         await tx.update(loads).set({ status: 'completed', completedAt: now }).where(eq(loads.id, loadId));
         await recordLoadEvent(
-            { loadId, type: 'completed', fromStatus: load.status, toStatus: 'completed', actor: user },
+            { loadId, type: 'completed', fromStatus: locked.status, toStatus: 'completed', actor: user },
             tx,
         );
+        return locked;
     });
 
     const [award] = await db

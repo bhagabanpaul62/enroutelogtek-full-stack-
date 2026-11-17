@@ -1,4 +1,4 @@
-import { index, pgEnum, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { index, jsonb, pgEnum, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { companies } from '#features/company/schemas/company.Schema.js';
 import { users } from '#features/auth/schemas/users.Schema.js';
 import { timestamps } from '#shared/schemas/column.Helper.js';
@@ -39,6 +39,10 @@ export const awards = pgTable(
         driverName: varchar('driver_name', { length: 100 }),
         driverPhone: varchar('driver_phone', { length: 15 }),
         assignedAt: timestamp('assigned_at'),
+        // Commercial terms of the load frozen at acceptance (free time, detention, labour, toll,
+        // freight payer, price). Later load edits never change what the transporter agreed to.
+        termsSnapshot: jsonb('terms_snapshot'),
+        termsAcceptedAt: timestamp('terms_accepted_at'),
         ...timestamps,
     },
     (table) => [

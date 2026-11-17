@@ -2,9 +2,13 @@ import { body, param, query } from 'express-validator';
 import {
     LOAD_STATUSES,
     LOAD_TYPES,
+    HANDLING_TYPES,
+    HAZMAT_CLASSES,
     MARGIN_TYPES,
     MAX_PAGE_LIMIT,
     PACKAGING_TYPES,
+    PAYABLE_BY,
+    PLACE_KINDS,
     PRICE_BASES,
     SPECIAL_REQUIREMENT_TAGS,
 } from '#features/load/load.constants.js';
@@ -55,9 +59,17 @@ const decimal = (field, min, max) =>
     optionalBody(field).isFloat({ min, max }).withMessage(`${field} must be a number from ${min} to ${max}`).toFloat();
 const integer = (field, min, max) =>
     optionalBody(field).isInt({ min, max }).withMessage(`${field} must be a whole number from ${min} to ${max}`).toInt();
+const bool = (field) =>
+    optionalBody(field).isBoolean().withMessage(`${field} must be true or false`).toBoolean();
 const uuid = (field) => optionalBody(field).isUUID().withMessage(`${field} must be a valid id`);
 const oneOf = (field, values) =>
     optionalBody(field).isIn(values).withMessage(`${field} must be one of: ${values.join(', ')}`);
+
+// NOT NULL columns: a value may be left out, but null is rejected (use the default instead).
+const required = (field, rule) => [
+    body(field).custom((v) => v !== null).withMessage(`${field} cannot be cleared`),
+    rule(field),
+];
 
 export const draftRules = [
     integer('lastStep', 1, 5),
@@ -100,9 +112,37 @@ export const draftRules = [
     optionalBody('closesAt').isISO8601().withMessage('closesAt must be a date and time').toDate(),
     text('paymentTerms', 200),
     optionalBody('autoExtendOnce').isBoolean().withMessage('autoExtendOnce must be true or false').toBoolean(),
+    // Wave 2 (AJ-05..13). Money is paise. Computed weights are never accepted from the client.
+    oneOf('pickupPlaceKind', PLACE_KINDS),
+    oneOf('dropPlaceKind', PLACE_KINDS),
+    required('pickupIsOda', bool),
+    required('dropIsOda', bool),
+    integer('distanceKm', 1, 10000),
+    oneOf('hazmatClass', HAZMAT_CLASSES),
+    optionalBody('unNumber').matches(/^(UN)?\d{4}$/i).withMessage('unNumber must look like UN1203').customSanitizer(
+        (v) => (typeof v === 'string' ? `UN${v.replace(/^UN/i, '')}` : v),
+    ),
+    integer('declaredValuePaise', 0, 100000000000000),
+    text('invoiceNumber', 50),
+    isoDate('invoiceDate'),
+    decimal('actualWeightKg', 0.01, 100000),
+    body('packageDims').optional().isArray({ max: 50 }).withMessage('packageDims must be a list of package lines'),
+    body('packageDims.*.count').isInt({ min: 1, max: 100000 }).withMessage('each package line needs a count').toInt(),
+    body('packageDims.*.lengthCm').isFloat({ gt: 0, max: 100000 }).withMessage('lengthCm must be more than 0').toFloat(),
+    body('packageDims.*.widthCm').isFloat({ gt: 0, max: 100000 }).withMessage('widthCm must be more than 0').toFloat(),
+    body('packageDims.*.heightCm').isFloat({ gt: 0, max: 100000 }).withMessage('heightCm must be more than 0').toFloat(),
+    body('packageDims.*.weightKg').optional({ values: 'null' }).isFloat({ gt: 0, max: 100000 }).withMessage('weightKg must be more than 0').toFloat(),
+    bool('stackable'),
+    oneOf('handling', HANDLING_TYPES),
+    required('freeTimeLoadingHours', (f) => integer(f, 0, 720)),
+    required('freeTimeUnloadingHours', (f) => integer(f, 0, 720)),
+    required('detentionRatePaisePerHour', (f) => integer(f, 0, 100000000)),
+    required('labourPayableBy', (f) => oneOf(f, PAYABLE_BY)),
+    required('freightPayableBy', (f) => oneOf(f, PAYABLE_BY)),
+    required('tollIncluded', bool),
     body('inviteeCompanyIds').optional().isArray({ max: 100 }).withMessage('inviteeCompanyIds must be a list'),
     body('inviteeCompanyIds.*').isUUID().withMessage('each invited company must be a valid id'),
-];
+].flat();
 
 export const bidRules = [
     body('baseRate').isFloat({ min: 1, max: 999999999 }).withMessage('baseRate must be a positive amount').toFloat(),

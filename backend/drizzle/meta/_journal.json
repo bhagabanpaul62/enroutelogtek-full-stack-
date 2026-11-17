@@ -78,6 +78,13 @@
       "when": 1794938920504,
       "tag": "0010_company_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794941874968,
+      "tag": "0011_adhoc_execution",
+      "breakpoints": true
     }
   ]
 }
