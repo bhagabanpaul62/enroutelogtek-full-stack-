@@ -17,8 +17,8 @@ Plan and decisions: [PRD.md](PRD.md). Ticket meaning: [tickets/README.md](../tic
 | Item | Value |
 | --- | --- |
 | Branch | `suman`, pushed to origin after each wave (first push 18 Nov at `ef9fca7`) |
-| Running | Wave 2b in this checkout (`wf_1452201e-dbb`); Wave 3a in worktree `../enroute-wave3`, branch `wave3`, DB `enroute_w3` (`wf_77217fd4-cd9`) |
-| Last commit | `c696ff0` merge of wave2 |
+| Running | browser e2e fixer on suman; next = Wave 5 release check |
+| Last commit | `5a4eb04` merge of int (3b + 4b) |
 
 ### Waves
 
@@ -26,9 +26,9 @@ Plan and decisions: [PRD.md](PRD.md). Ticket meaning: [tickets/README.md](../tic
 | --- | --- | --- |
 | 0 Foundation: kit, data grid, demo seed, API e2e harness, Playwright | done | see log |
 | 1 Secure and settle: ENR-001-004, 007-009, team verify, redesign existing screens | done | see log |
-| 2 Ad Hoc complete: AJ-01-39, ENR-015/016/024/025/029-031 | 2a merged (`c696ff0`); 2b running | — |
-| 3 Contracts and capacity: ENR-018-023, 026-028, 032/033 | 3a merged on `int` (`a53f25a`); 3b running on `int` | — |
-| 4 Money and insight: ENR-010/011/017/034-038 | 4a merged on `int` (`104fb7d`); 4b running on `int` | — |
+| 2 Ad Hoc complete: AJ-01-39, ENR-015/016/024/025/029-031 | done (open partials in log) | `0f2ab24` |
+| 3 Contracts and capacity: ENR-018-023, 026-028, 032/033 | merged on suman | `54a0eca`, `5a4eb04` |
+| 4 Money and insight: ENR-010/011/017/034-038 | merged on suman | `54a0eca`, `5a4eb04` |
 | 5 Release check: full end-to-end as every actor | not started | — |
 
 ## How to run locally
@@ -80,3 +80,5 @@ Merge method (used for wave2, repeat it): `git merge --no-commit --no-ff <branch
 - **2026-11-18 · int · main session**: Suman asked to go faster, so 3a + 4a were merged on a new integration branch `int` (worktree `../enroute-int`, DB `enroute_int`) instead of waiting for 2b. `a53f25a` = wave3 merge (clean). `104fb7d` = wave4 merge: conflicts in index.js/routes (kept both; /rfqs /contracts /indents now behind `subscriptionGate`), team.rules.test.js (combined), migration 0012 clash → kept `0012_contracts`, regenerated wave4 as `0013_subscriptions_notifications` (drizzle-kit prompts for rename ambiguity; avoided by temporarily hiding the dropped tables + `payment_status` enum from the 0012 snapshot, then restoring it, and re-adding the drops + both data steps by hand; statement set diffed IDENTICAL to wave4's). Fresh DB migrate OK, drift none, seed OK, backend unit 262/262, lint 0 errors. Launched Waves 3b + 4b together in `../enroute-int` (`wf_396b8166-815`): alloc-model → alloc-backend, alloc-ui, xlsx-import, insight-backend, insight-ui, docs → checks + review → fixer → recheck. E2E suites are NOT run on `int` (Wave 2b uses the shared e2e ports); they run at tomorrow's merge.
 - **Tomorrow's merge order**: 2b lands on `suman` → merge `int` into `suman` (migration clash: 2b's `0012_*` vs int's 0012/0013/0014 → keep `suman`'s, regenerate int's on top in order, re-add data steps; trip/loads files touched by both 2b and 3b need hand-merge) → mount AllocationPanel on the transporter bid detail + dashboardNav flags → full suites incl. e2e → Wave 5.
 - **2026-11-18 · wave 2b · integration-ui, backend-close, trips-ui-close, journey-e2e, checks, reviewer, fixer (sonnet+haiku)**: FTL/PTL wizard + terms + Trips tab + placement-miss banner + AssignTrucksModal wired; tone/permissions/nav flags; H6 re-award with award status `revoked` (migration `0012_award_revoked`), H7 hold until completed, M10-M13, upload permissions by doc type, seed vehicles/drivers; payment note, vehicle swap, PTL leg, POD-rejected and next-step banners. Journey e2e (API + browser) found 2 real bugs, fixed: re-award accept 500 (trip seq_no collision) and FTL wizard draft 422 (packageDims null). Final: backend unit 210/210, API e2e 48/48, lint 0 errors, browser e2e 40 pass + 5 skip (trip record specs skip on an empty DB). Recheck stage skipped on purpose (main session reruns everything after the int merge). Open (product/size): PTL repricing on chargeable weight, legacy no-trips completion path, re-pick rule, larger-truck rule, AJ-27/28/32/34/36 partials, raw tone classes, some ISO dates in text.
+- **2026-11-18 · merges · main session**: Suman asked to merge `int` and mount the allocation panel today. Stopped Wave 2b after its fixer (skipped the duplicate recheck) and committed it `0f2ab24` (unit 210/210, API e2e 48/48, browser 40 pass + 5 skip). Merged `int` (3a + 4a) → `54a0eca`: upload rule conflict resolved into 2b's per-type table with `paymentProof: [billing.manage, team.manage]` + 4a's 402 read-only check; int's 0012_contracts + 0013_subscriptions regenerated as `0013_contracts_subscriptions` (statement set identical, drops + 3 data steps). Committed 3b + 4b on `int` (`ab7ae2c`), merged again → `5a4eb04`: trip.service (2b rating + 3b executor), BidDetailPage (AllocationPanel mounted above attempts — done by the 3b fixer), dashboardNav (all built pages ready); `0014_allocations` regenerated on suman's schema (identical) + data step. Final: backend unit 331/331, API e2e 99/99, lint 0 errors, no drift; browser e2e 59 pass, 7 fail (first runs of admin-billing, reports, rfq, shell specs), 15 skip → a fixer agent is on them.
+- **Open after the merge** (for tomorrow / Wave 5): load cancel + award revoke must withdraw `offered` allocations; reports have no permission key (reads company-scoped); Overview "recent activity" hidden (no backend feed); 15 browser specs skip on empty data (seed trips/allocations for them); PTL repricing on chargeable weight; AJ-27/28/32/34/36 partials; live allocation create→assign→withdraw not re-run after the merge; no browser walk-through of reports/allocation/RFQ/billing screens yet.
