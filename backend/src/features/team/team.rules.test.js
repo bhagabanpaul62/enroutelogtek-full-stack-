@@ -51,7 +51,15 @@ describe('permission catalogue', () => {
         const keys = permissionKeysFor('transporter');
         assert.deepEqual(
             keys.filter((key) => !key.startsWith('network') && !key.startsWith('team') && !key.startsWith('roles')),
-            [P.BIDS_SUBMIT, P.AWARDS_RESPOND, P.TRIPS_ASSIGN, P.TRIPS_UPDATE, P.FLEET_MANAGE],
+            [
+                P.BIDS_SUBMIT,
+                P.AWARDS_RESPOND,
+                P.QUOTES_SUBMIT,
+                P.CONTRACTS_RESPOND,
+                P.TRIPS_ASSIGN,
+                P.TRIPS_UPDATE,
+                P.FLEET_MANAGE,
+            ],
         );
     });
     it('gives brokers and fleet owners trip updates, fleet owners also fleet, plus administration', () => {
@@ -77,10 +85,12 @@ describe('preset roles', () => {
     });
     it('keep today’s access for a customer: managers run loads, the network only for co-admins', () => {
         const byName = Object.fromEntries(presetRolesFor('customer').map((r) => [r.name, r.permissions]));
-        assert.deepEqual(byName['Bid manager'], [P.LOADS_MANAGE, P.LOADS_AWARD]);
+        assert.deepEqual(byName['Bid manager'], [P.LOADS_MANAGE, P.LOADS_AWARD, P.RFQS_MANAGE, P.CONTRACTS_MANAGE]);
         assert.deepEqual(byName['Co-admin'], [
             P.LOADS_MANAGE,
             P.LOADS_AWARD,
+            P.RFQS_MANAGE,
+            P.CONTRACTS_MANAGE,
             P.NETWORK_MANAGE,
             P.TEAM_MANAGE,
             P.ROLES_MANAGE,
@@ -91,7 +101,13 @@ describe('preset roles', () => {
     });
     it('keep today’s access for a transporter', () => {
         const byName = Object.fromEntries(presetRolesFor('transporter').map((r) => [r.name, r.permissions]));
-        assert.deepEqual(byName['Bid manager'], [P.BIDS_SUBMIT, P.AWARDS_RESPOND, P.TRIPS_ASSIGN]);
+        assert.deepEqual(byName['Bid manager'], [
+            P.BIDS_SUBMIT,
+            P.AWARDS_RESPOND,
+            P.TRIPS_ASSIGN,
+            P.QUOTES_SUBMIT,
+            P.CONTRACTS_RESPOND,
+        ]);
     });
 });
 

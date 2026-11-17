@@ -126,6 +126,12 @@ export const loads = pgTable(
         freightPayableBy: varchar('freight_payable_by', { length: 12 }).notNull().default('consignor'),
         tollIncluded: boolean('toll_included').notNull().default(true),
 
+        // Contract loads (Wave 3): set when an acknowledged indent creates this load. Plain uuids
+        // (no FK) because the contract tables import this file; the contract side holds the FK.
+        contractId: uuid('contract_id'),
+        contractLaneId: uuid('contract_lane_id'),
+        contractIndentId: uuid('contract_indent_id'),
+
         // Lifecycle
         publishedAt: timestamp('published_at'),
         closedAt: timestamp('closed_at'),
@@ -142,6 +148,7 @@ export const loads = pgTable(
         // The customer's Loads list: own company, by status, newest first.
         index('loads_customer_idx').on(table.customerCompanyId, table.status, table.createdAt),
         // The clock job: live loads whose window has ended.
+        index('loads_contract_idx').on(table.contractId, table.contractIndentId),
         index('loads_status_closes_idx').on(table.status, table.closesAt),
         check('loads_vehicle_count_positive', sql`${table.vehicleCount} >= 1`),
         check('loads_max_attempts_positive', sql`${table.maxAttempts} >= 1`),

@@ -1,7 +1,7 @@
-import ComingSoon from '@/shared/ui/layout/ComingSoon';
+import ContractsPage from '@/features/contracts/ui/ContractsPage';
 
 export const metadata = { title: 'Contracts' };
 
 export default function Page() {
-    return <ComingSoon companyType="customer" slug="contracts" />;
+    return <ContractsPage side="customer" />;
 }

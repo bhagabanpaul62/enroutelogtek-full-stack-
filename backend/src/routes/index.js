@@ -9,8 +9,10 @@ import awardRoutes from '#features/load/routes/award.routes.js';
 import masterRoutes from '#features/load/routes/master.routes.js';
 import notificationRoutes from '#features/notification/routes/notification.routes.js';
 import fleetRoutes from '#features/fleet/routes/fleet.routes.js';
+import rfqRoutes from '#features/rfq/routes/rfq.routes.js';
 import teamRoutes from '#features/team/routes/team.routes.js';
 import tripRoutes, { loadRatingRoutes, transporterRoutes } from '#features/trip/routes/trip.routes.js';
+import contractRoutes, { indentRoutes } from '#features/contract/routes/contract.routes.js';
 import { authMiddleware } from '#shared/middleware/auth.middleware.js';
 import { roleMiddleware } from '#shared/middleware/role.middleware.js';
 
@@ -34,5 +36,10 @@ router.use('/notifications', authMiddleware, notificationRoutes);
 router.use('/team', authMiddleware, teamRoutes);
 
 router.use('/fleet', authMiddleware, fleetRoutes);
+// Contract RFQs: lanes, quotes, comparison board, lane awards.
+router.use('/rfqs', authMiddleware, rfqRoutes);
+// Contracts (from accepted RFQ lane awards) and their indents ("Daily" truck requests).
+router.use('/contracts', authMiddleware, contractRoutes);
+router.use('/indents', authMiddleware, indentRoutes);
 
 export default router;

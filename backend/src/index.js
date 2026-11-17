@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { app } from './app.js';
 import { db } from '#shared/db/index.js';
 import { startLoadClock } from '#features/load/services/clock.service.js';
+import { startRfqClock } from '#features/rfq/services/rfq.clock.js';
 import { startFleetExpiryClock } from '#features/fleet/services/expiry.service.js';
 
 const startServer = async () => {
@@ -16,6 +17,7 @@ const startServer = async () => {
             // Closes bidding windows and expires unanswered awards on time.
             startLoadClock();
             startFleetExpiryClock();
+            startRfqClock();
         });
     } catch (error) {
         console.log('fail to stat the server :', error);

@@ -21,9 +21,9 @@ export const awards = pgTable(
         loadId: uuid('load_id')
             .notNull()
             .references(() => loads.id),
-        bidId: uuid('bid_id')
-            .notNull()
-            .references(() => bids.id),
+        // Null for awards made by an acknowledged contract indent (the rate is in termsSnapshot).
+        bidId: uuid('bid_id').references(() => bids.id),
+        contractIndentId: uuid('contract_indent_id'),
         transporterCompanyId: uuid('transporter_company_id')
             .notNull()
             .references(() => companies.id),
