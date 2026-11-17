@@ -99,6 +99,13 @@
       "when": 1794945147260,
       "tag": "0013_subscriptions_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794945335899,
+      "tag": "0014_allocations",
+      "breakpoints": true
     }
   ]
 }

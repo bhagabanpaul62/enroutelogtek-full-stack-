@@ -1,3 +1,5 @@
+> **HISTORICAL (last real update 18 June 2026; marked 18 Nov 2026).** This daily tracker is kept for the reasons behind early decisions only. Its phase list, "frozen" labels, folder paths and run steps are out of date. Current description: [docs/ARCHITECTURE.md](../../ARCHITECTURE.md). Current status: [tickets/README.md](../../../tickets/README.md). Any credentials once written here were removed.
+
 # EnrouteLogTech - Project Context & Progress Tracker
 
 **Last Updated**: June 18, 2026 (Session 2)  

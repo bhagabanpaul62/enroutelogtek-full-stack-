@@ -10,6 +10,8 @@ Internet → Caddy :443 (HTTPS, automatic certificate)
            backend → postgres (internal only)
 ```
 
+App architecture and local setup: [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md). Backups and restore are not set up or rehearsed yet (ticket ENR-040); the database is PostgreSQL, so use `pg_dump`/`pg_restore`.
+
 You do steps 1 to 6 once. After that, a push to `main` deploys by itself.
 
 ## 1. DNS

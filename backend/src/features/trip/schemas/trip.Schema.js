@@ -35,6 +35,11 @@ export const trips = pgTable(
         // Equal until Wave 3 allocation hands a trip to a broker / fleet owner.
         transporterCompanyId: uuid('transporter_company_id').notNull().references(() => companies.id),
         executorCompanyId: uuid('executor_company_id').notNull().references(() => companies.id),
+        // Set when an accepted allocation hands the trip to another company: the allocation that
+        // made this company the executor and the rate per truck it agreed (earnings, ENR-035).
+        // Null while the transporter runs the trip itself. No FK to allocations: avoids a schema cycle.
+        executorAllocationId: uuid('executor_allocation_id'),
+        executorRatePaise: paise('executor_rate_paise'),
         vehicleId: uuid('vehicle_id').references(() => vehicles.id),
         driverId: uuid('driver_id').references(() => drivers.id),
         status: varchar('status', { length: 20 }).notNull().default('planned'),

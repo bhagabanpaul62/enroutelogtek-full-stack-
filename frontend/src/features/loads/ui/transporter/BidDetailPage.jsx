@@ -15,6 +15,7 @@ import MyAttempts from './MyAttempts';
 import AwardResponse from './AwardResponse';
 import AssignmentForm from './AssignmentForm';
 import LoadFacts from './LoadFacts';
+import AllocationPanel from '@/features/allocation/ui/AllocationPanel';
 
 const BACK = { href: '/transporter/bids', label: 'Bids' };
 const SHELL = 'mx-auto w-full max-w-7xl p-4 md:p-8';
@@ -131,6 +132,7 @@ export default function BidDetailPage({ loadId }) {
                     {showAssignment && (
                         <AssignmentForm award={award} canManage={canAssign} onChanged={reload} />
                     )}
+                    {showAssignment && award?.id && <AllocationPanel award={award} load={load} onChanged={reload} />}
                     <MyAttempts attempts={load.myBid?.attempts} maxAttempts={load.maxAttempts} />
                 </div>
                 <div className="flex min-w-0 flex-col gap-4">

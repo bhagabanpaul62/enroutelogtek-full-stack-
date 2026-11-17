@@ -84,13 +84,13 @@ function ImportView() {
     const errorCount = imp?.errorCount ?? rows.filter((r) => (r.errors ?? []).length).length;
     const confirmedRfqId = imp?.status === 'confirmed' ? (imp.rfqId ?? imp.rfq?.id ?? null) : null;
 
-    const downloadTemplate = async () => {
+    const downloadTemplate = async (format = 'xlsx') => {
         try {
-            const { data } = await downloadImportTemplateApi();
+            const { data } = await downloadImportTemplateApi(format);
             const url = URL.createObjectURL(data);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'rfq-lanes-template.csv';
+            a.download = `rfq-lanes-template.${format}`;
             a.click();
             URL.revokeObjectURL(url);
         } catch {
@@ -101,12 +101,12 @@ function ImportView() {
     const upload = async (file) => {
         if (!file) return;
         setError('');
+        if (!/\.(xlsx|csv)$/i.test(file.name)) return setError('Upload an .xlsx or .csv file. Macro files (.xlsm) and old .xls files are not accepted.');
         if (file.size === 0) return setError('That file is empty.');
         if (file.size > MAX_IMPORT_BYTES) return setError(`That file is over ${MAX_IMPORT_BYTES / 1024} KB. Split it into smaller files.`);
         setBusy(true);
         try {
-            const csvText = await file.text();
-            const { data } = await createImportApi({ fileName: file.name, csvText });
+            const { data } = await createImportApi({ fileName: file.name, file });
             setResult({ import: data.data, duplicate: Boolean(data.duplicate ?? data.data?.duplicate) });
         } catch (e) {
             setError(apiMessage(e, 'Could not read that file. Check it against the template.'));
@@ -157,12 +157,17 @@ function ImportView() {
                     <div>
                         <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-[var(--ds-on-surface)]">Import lanes</h1>
                         <p className="mt-1 text-sm text-[var(--ds-on-surface-muted)]">
-                            {draft ? `Add lanes from a CSV file to "${draft.title}".` : `Upload a CSV with up to ${MAX_LANES} lanes. You check every row before a draft is made.`}
+                            {draft ? `Add lanes from an Excel or CSV file to "${draft.title}".` : `Upload an Excel (.xlsx) or CSV file with up to ${MAX_LANES} lanes. You check every row before a draft is made.`}
                         </p>
                     </div>
-                    <Button variant="secondary" size="lg" onClick={downloadTemplate}>
-                        <Download /> Download template
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="secondary" size="lg" onClick={() => downloadTemplate('xlsx')}>
+                            <Download /> Excel template
+                        </Button>
+                        <Button variant="secondary" size="lg" onClick={() => downloadTemplate('csv')}>
+                            <Download /> CSV template
+                        </Button>
+                    </div>
                 </div>
             </header>
 
@@ -198,9 +203,9 @@ function ImportView() {
                         className={cn('flex flex-col items-center gap-3 rounded-2xl bg-white/[0.035] px-6 py-12 text-center transition-colors', dragging && 'bg-primary/10')}
                     >
                         <FileUp className="size-6 text-primary" aria-hidden />
-                        <p className="text-sm font-medium text-[var(--ds-on-surface)]">{busy ? 'Reading your file…' : 'Drop a CSV file here'}</p>
+                        <p className="text-sm font-medium text-[var(--ds-on-surface)]">{busy ? 'Reading your file…' : 'Drop an .xlsx or .csv file here'}</p>
                         <p className="text-xs text-[var(--ds-on-surface-muted)]">Up to {MAX_LANES} lanes and {MAX_IMPORT_BYTES / 1024} KB. Rates are in rupees.</p>
-                        <input ref={fileInput} id="rfq-csv" type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} disabled={busy} />
+                        <input ref={fileInput} id="rfq-csv" type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="sr-only" onChange={(e) => upload(e.target.files?.[0])} disabled={busy} />
                         <Button disabled={busy} onClick={() => fileInput.current?.click()}>
                             Choose file
                         </Button>

@@ -56,6 +56,7 @@ describe('permission catalogue', () => {
                 P.AWARDS_RESPOND,
                 P.QUOTES_SUBMIT,
                 P.CONTRACTS_RESPOND,
+                P.ALLOCATIONS_MANAGE,
                 P.TRIPS_ASSIGN,
                 P.TRIPS_UPDATE,
                 P.FLEET_MANAGE,
@@ -64,8 +65,8 @@ describe('permission catalogue', () => {
     });
     it('gives brokers and fleet owners trip updates, fleet owners also fleet, plus administration', () => {
         const admin = [P.NETWORK_MANAGE, P.TEAM_MANAGE, P.ROLES_MANAGE, P.BILLING_MANAGE];
-        assert.deepEqual(permissionKeysFor('broker'), [P.TRIPS_UPDATE, ...admin]);
-        assert.deepEqual(permissionKeysFor('fleet_owner'), [P.TRIPS_UPDATE, P.FLEET_MANAGE, ...admin]);
+        assert.deepEqual(permissionKeysFor('broker'), [P.ALLOCATIONS_MANAGE, P.OFFERS_RESPOND, P.TRIPS_UPDATE, ...admin]);
+        assert.deepEqual(permissionKeysFor('fleet_owner'), [P.OFFERS_RESPOND, P.TRIPS_UPDATE, P.FLEET_MANAGE, ...admin]);
     });
     it('describes each permission without leaking the type list', () => {
         const entry = catalogueFor('customer')[0];
@@ -108,6 +109,7 @@ describe('preset roles', () => {
             P.TRIPS_ASSIGN,
             P.QUOTES_SUBMIT,
             P.CONTRACTS_RESPOND,
+            P.ALLOCATIONS_MANAGE,
         ]);
     });
 });

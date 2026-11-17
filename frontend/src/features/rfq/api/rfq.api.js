@@ -73,9 +73,14 @@ export const getRfqEventsApi = (rfqId) => api.get(`/rfqs/${rfqId}/events`);
 /** awards: [{ laneId, quoteId, reason? }] */
 export const awardLanesApi = (rfqId, awards) => api.post(`/rfqs/${rfqId}/awards`, { awards });
 
-// ----- CSV import -----
-export const downloadImportTemplateApi = () => api.get('/rfqs/import-template', { responseType: 'blob' });
-export const createImportApi = ({ fileName, csvText }) => api.post('/rfqs/imports', csvText, { params: { fileName }, headers: { 'Content-Type': 'text/csv' } });
+// ----- lane import (.xlsx or .csv) -----
+export const downloadImportTemplateApi = (format = 'xlsx') => api.get('/rfqs/import-template', { params: { format }, responseType: 'blob' });
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+// A .csv goes as text, an .xlsx as raw bytes; the server reads both into the same preview.
+export const createImportApi = ({ fileName, file }) =>
+    /\.xlsx$/i.test(fileName)
+        ? api.post('/rfqs/imports', file, { params: { fileName }, headers: { 'Content-Type': XLSX_MIME } })
+        : api.post('/rfqs/imports', file, { params: { fileName }, headers: { 'Content-Type': 'text/csv' } });
 export const getImportApi = (importId) => api.get(`/rfqs/imports/${importId}`);
 export const confirmImportApi = (importId, body) => api.post(`/rfqs/imports/${importId}/confirm`, body);
 export const discardImportApi = (importId) => api.delete(`/rfqs/imports/${importId}`);

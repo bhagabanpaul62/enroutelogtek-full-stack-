@@ -21,6 +21,8 @@ export const PERMISSIONS = Object.freeze({
     TEAM_MANAGE: 'team.manage',
     ROLES_MANAGE: 'roles.manage',
     BILLING_MANAGE: 'billing.manage',
+    ALLOCATIONS_MANAGE: 'allocations.manage',
+    OFFERS_RESPOND: 'offers.respond',
 });
 
 const ALL_TYPES = ['customer', 'transporter', 'broker', 'fleet_owner'];
@@ -85,6 +87,20 @@ export const PERMISSION_CATALOGUE = Object.freeze([
         label: 'Run contracts',
         description: 'Accept or decline lane awards, answer amendments, cancel contracts and acknowledge indents.',
         companyTypes: ['transporter'],
+    },
+    {
+        key: PERMISSIONS.ALLOCATIONS_MANAGE,
+        area: 'Allocation',
+        label: 'Allocate trucks',
+        description: 'Offer accepted work to connected fleet owners, brokers or transporters, withdraw offers and reallocate.',
+        companyTypes: ['transporter', 'broker'],
+    },
+    {
+        key: PERMISSIONS.OFFERS_RESPOND,
+        area: 'Allocation',
+        label: 'Accept or decline offered work',
+        description: 'Answer when another company offers your company trucks of a load.',
+        companyTypes: ['fleet_owner', 'broker'],
     },
     {
         key: PERMISSIONS.TRIPS_ASSIGN,
@@ -171,6 +187,8 @@ const {
     CONTRACTS_MANAGE,
     QUOTES_SUBMIT,
     CONTRACTS_RESPOND,
+    ALLOCATIONS_MANAGE,
+    OFFERS_RESPOND,
 } = PERMISSIONS;
 
 /**
@@ -210,6 +228,8 @@ export const PRESET_ROLES = Object.freeze([
             CONTRACTS_MANAGE,
             QUOTES_SUBMIT,
             CONTRACTS_RESPOND,
+            ALLOCATIONS_MANAGE,
+            OFFERS_RESPOND,
         ],
     },
     {

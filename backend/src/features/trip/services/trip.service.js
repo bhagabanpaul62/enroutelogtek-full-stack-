@@ -22,6 +22,7 @@ import { PERMISSIONS } from '#features/team/team.permissions.js';
 import { hasPermission } from '#features/team/team.rules.js';
 import { todayIST } from '#features/fleet/fleet.rules.js';
 import { drivers, vehicles } from '#features/fleet/schemas/fleet.Schema.js';
+import { allocationTrips, allocations } from '#features/allocation/schemas/index.js';
 import { discrepancies, placementMisses, ratings, tripCharges, tripEvents, trips } from '../schemas/trip.Schema.js';
 import { DEFAULT_TRIP_PAGE_LIMIT } from '../trip.constants.js';
 import {
@@ -47,6 +48,13 @@ export { snapshotTerms };
 // ---------- small helpers ----------
 
 export const loadLabel = (load) => loadNumber(load.kind, load.loadSeq, load.createdAt);
+/** True for a trip this company placed with another company through a live or accepted allocation (broker, transporter). */
+const placedByCompany = (companyId) =>
+    sql`exists (select 1 from ${allocationTrips} atr join ${allocations} al on al.id = atr.allocation_id where atr.trip_id = ${trips.id} and atr.active and al.status in ('offered','accepted') and al.from_company_id = ${companyId})`;
+
+/** The executor's own rate: only the executor and the company that placed the trip with it may see it (never the customer). */
+const sees = (trip, companyId, placerId) => (trip.executorRatePaise != null && (trip.executorCompanyId === companyId || placerId === companyId) ? trip.executorRatePaise : null);
+
 export const actorOf = (user) => (user ? { userId: user.userId, companyId: user.companyId } : undefined);
 
 /** 403 unless the user's role holds at least one of the permissions. */
@@ -91,6 +99,7 @@ export const findTrip = async (user, tripId, { tx = db, forUpdate = false } = {}
                     eq(trips.executorCompanyId, companyId),
                     eq(trips.transporterCompanyId, companyId),
                     eq(loads.customerCompanyId, companyId),
+                    placedByCompany(companyId),
                 ),
             ),
         );
@@ -387,6 +396,9 @@ export const assignTrip = async (user, tripId, { vehicleId, driverId, expectedPl
         if (!sides.executor) throw new AppError('Only the company moving this truck can assign it', 403);
         if (trip.status !== 'planned') throw new AppError('A truck can be assigned or changed only while the trip is planned', 409);
         if (!['accepted', 'in_execution'].includes(load.status)) throw new AppError('This load is no longer in progress', 409);
+        const [reserved] = await tx.select({ id: allocationTrips.id }).from(allocationTrips).innerJoin(allocations, eq(allocations.id, allocationTrips.allocationId))
+            .where(and(eq(allocationTrips.tripId, trip.id), eq(allocationTrips.active, true), eq(allocations.status, 'offered'))).limit(1);
+        if (reserved) throw new AppError('This truck is reserved by an open offer. Withdraw the offer first', 409);
         if (expectedPlacementAt && load.pickupDate) {
             const latest = new Date(`${load.pickupDate}T23:59:00+05:30`).getTime() + (load.flexibilityDays ?? 0) * 86400000;
             if (expectedPlacementAt.getTime() > latest) throw new AppError('Expected placement cannot be after the pickup date plus flexibility', 422);
@@ -549,8 +561,11 @@ export const getTripDetail = async (user, tripId) => {
         db.select({ status: trips.status, reportedAt: trips.reportedAt }).from(trips).where(eq(trips.loadId, trip.loadId)),
     ]);
     const ownRatings = ratingRows.filter((row) => row.fromCompanyId === user.companyId || row.toCompanyId === user.companyId);
+    const [executorCompany] = await db.select({ id: companies.id, name: companies.companyName }).from(companies).where(eq(companies.id, trip.executorCompanyId));
+    const [allocation] = trip.executorAllocationId ? await db.select({ fromCompanyId: allocations.fromCompanyId }).from(allocations).where(eq(allocations.id, trip.executorAllocationId)) : [];
     return {
-        trip,
+        trip: { ...trip, executorRatePaise: sees(trip, user.companyId, allocation?.fromCompanyId) },
+        executor: executorCompany ?? null,
         load: { ...publicLoad, loadNumber: loadLabel(load), ...(sides.customer && { targetPrice }) },
         side: { customer: sides.customer, executor: sides.executor, transporter: sides.transporter },
         vehicle: vehicle ?? null,
@@ -576,7 +591,7 @@ export const listTrips = async (user, { status, loadId, role, cursor, limit = DE
     const conditions = [
         asCustomer
             ? eq(loads.customerCompanyId, user.companyId)
-            : or(eq(trips.executorCompanyId, user.companyId), eq(trips.transporterCompanyId, user.companyId)),
+            : or(eq(trips.executorCompanyId, user.companyId), eq(trips.transporterCompanyId, user.companyId), placedByCompany(user.companyId)),
     ];
     if (status) conditions.push(eq(trips.status, status));
     if (loadId) conditions.push(eq(trips.loadId, loadId));
@@ -595,16 +610,22 @@ export const listTrips = async (user, { status, loadId, role, cursor, limit = DE
             lastEvent: lastEventSql.mapWith((value) => (typeof value === 'string' ? JSON.parse(value) : value)),
             cursorCreatedAt: cursorCreatedAt(trips.createdAt),
             cursorId: trips.id,
+            executorName: companies.companyName,
+            placerId: allocations.fromCompanyId,
         })
         .from(trips)
         .innerJoin(loads, eq(trips.loadId, loads.id))
+        .innerJoin(companies, eq(trips.executorCompanyId, companies.id))
+        .leftJoin(allocations, eq(allocations.id, trips.executorAllocationId))
         .leftJoin(vehicles, eq(trips.vehicleId, vehicles.id))
         .leftJoin(drivers, eq(trips.driverId, drivers.id))
         .where(and(...conditions))
         .orderBy(desc(trips.createdAt), desc(trips.id))
         .limit(limit + 1);
-    return toPage(rows, limit, ({ trip, loadKind, loadSeq, loadCreatedAt, ...rest }) => ({
+    return toPage(rows, limit, ({ trip, loadKind, loadSeq, loadCreatedAt, placerId, executorName, ...rest }) => ({
         ...trip,
+        executorRatePaise: sees(trip, user.companyId, placerId),
+        executor: { id: trip.executorCompanyId, name: executorName },
         loadNumber: loadNumber(loadKind, loadSeq, loadCreatedAt),
         ...rest,
     }));
@@ -620,7 +641,7 @@ export const loadTripSummary = async (user, loadId) => {
         .where(
             and(
                 eq(trips.loadId, loadId),
-                or(eq(trips.executorCompanyId, user.companyId), eq(trips.transporterCompanyId, user.companyId), eq(loads.customerCompanyId, user.companyId)),
+                or(eq(trips.executorCompanyId, user.companyId), eq(trips.transporterCompanyId, user.companyId), eq(loads.customerCompanyId, user.companyId), placedByCompany(user.companyId)),
             ),
         )
         .orderBy(asc(trips.seqNo));

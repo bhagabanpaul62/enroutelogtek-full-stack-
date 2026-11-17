@@ -14,7 +14,8 @@ import { TERMS_DEFAULTS } from '#features/load/load.constants.js';
 import { PERMISSIONS } from '#features/team/team.permissions.js';
 import { rfqImports, rfqLanes, rfqs } from '../schemas/index.js';
 import { IMPORT_OPTIONAL_COLUMNS, IMPORT_REQUIRED_COLUMNS } from '../rfq.constants.js';
-import { csvCell, lanesProblems, normalizeCsv, parseImportText, validateImportRows } from '../rfq.rules.js';
+import { csvCell, lanesProblems, normalizeCsv, parseImportTable, parseImportText, validateImportRows } from '../rfq.rules.js';
+import { buildTemplateXlsx, parseXlsxTable } from '../rfq.xlsx.js';
 import { findOwnRfq, getRfq, insertLanes, normalizeLane } from './rfq.service.js';
 import { recordRfqEvent } from './rfq.shared.js';
 
@@ -40,23 +41,34 @@ const findOwnImport = async (companyId, importId, { tx = db, forUpdate = false }
     return row;
 };
 
-/** GET /rfqs/import-template: header plus one example row (a real truck code from the master list). */
-export const importTemplate = async (user) => {
+/** GET /rfqs/import-template(.xlsx): header plus one example row (a real truck code from the master list). */
+export const importTemplate = async (user, format = 'csv') => {
     await requireCustomer(user);
-    const [truck] = await db.select({ code: vehicleTypes.code }).from(vehicleTypes).where(eq(vehicleTypes.isActive, true)).orderBy(asc(vehicleTypes.sortOrder)).limit(1);
+    const trucks = await db.select({ code: vehicleTypes.code }).from(vehicleTypes).where(eq(vehicleTypes.isActive, true)).orderBy(asc(vehicleTypes.sortOrder));
     const header = [...IMPORT_REQUIRED_COLUMNS, ...IMPORT_OPTIONAL_COLUMNS];
-    const example = ['110001', 'Delhi', '400001', 'Mumbai', truck?.code ?? '', '20', 'per_vehicle', '62000', 'Delete this example row'];
+    const example = ['110001', 'Delhi', '400001', 'Mumbai', trucks[0]?.code ?? '', '20', 'per_vehicle', '62000', 'Delete this example row'];
+    if (format === 'xlsx') return buildTemplateXlsx({ example, truckCodes: trucks.map((t) => t.code) });
     return `${header.join(',')}\n${example.map(csvCell).join(',')}\n`;
 };
 
-/** POST /rfqs/imports */
-export const createImport = async (user, { fileName, csvText }) => {
+/** POST /rfqs/imports: csvText (CSV) or fileBuffer (.xlsx). Both end in the same table, preview and hash. */
+export const createImport = async (user, { fileName, csvText, fileBuffer }) => {
     await requireCustomerManager(user, PERMISSIONS.RFQS_MANAGE);
-    if (typeof csvText !== 'string') throw new AppError('Send the CSV text', 400);
-    const parsed = parseImportText(csvText);
+    let parsed;
+    let hashSource;
+    if (Buffer.isBuffer(fileBuffer)) {
+        const x = parseXlsxTable(fileBuffer, fileName ?? '');
+        if (x.fileError) throw new AppError(x.fileError, 400);
+        parsed = parseImportTable(x.table);
+        hashSource = x.table.map((r) => r.map(csvCell).join(',')).join('\n');
+    } else {
+        if (typeof csvText !== 'string') throw new AppError('Send the CSV text or an .xlsx file', 400);
+        parsed = parseImportText(csvText);
+        hashSource = csvText;
+    }
     if (parsed.fileError) throw new AppError(parsed.fileError, 400);
 
-    const contentHash = createHash('sha256').update(normalizeCsv(csvText)).digest('hex');
+    const contentHash = createHash('sha256').update(normalizeCsv(hashSource)).digest('hex');
     const [existing] = await db
         .select()
         .from(rfqImports)
