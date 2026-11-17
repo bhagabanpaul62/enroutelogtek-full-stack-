@@ -1,3 +1,5 @@
+> **HISTORICAL diagrams (marked 18 Nov 2026).** Login now has a second step: after the password the server emails a 6-digit code (10 min, 5 wrong tries) and a new login ends the user's other session; passwords use bcrypt 12 rounds; password reset is OTP-based (`/auth/forget-password`), not a link token. Registration is bound to the verified email. Current flow: [docs/ARCHITECTURE.md](../../ARCHITECTURE.md) and `backend/src/features/auth/`.
+
 # EnrouteLogTech - Authentication Flow Diagrams
 
 ---
@@ -106,7 +108,7 @@ POST /auth/register { all fields }
 │  2. Check user email not registered      │
 │  3. Check company email not registered   │
 │  4. Check GST not already registered     │
-│  5. Hash password (bcrypt, 10 rounds)    │
+│  5. Hash password (bcrypt, 12 rounds)    │
 │  6. Generate enrouteCompanyId            │
 │     CUS-1001 / TRN-2001 etc.            │
 │  7. INSERT company                       │

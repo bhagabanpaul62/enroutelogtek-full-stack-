@@ -1,6 +1,7 @@
 import express from 'express';
 import { validate } from '#shared/middleware/validate.middleware.js';
 import { RFQ_LIMITS } from '../rfq.constants.js';
+import { XLSX_MIME } from '../rfq.xlsx.js';
 import {
     awardRules,
     cancelRules,
@@ -31,6 +32,7 @@ router.get('/import-template', c.downloadTemplate);
 router.post(
     '/imports',
     express.text({ type: ['text/csv', 'text/plain'], limit: `${RFQ_LIMITS.maxImportBytes + 2048}b` }),
+    express.raw({ type: [XLSX_MIME, 'application/octet-stream'], limit: `${RFQ_LIMITS.maxImportBytes + 2048}b` }),
     importCreateRules,
     validate,
     c.createImport,

@@ -59,7 +59,7 @@ test('customer imports a CSV and sees the row errors before anything is created'
     await loginAs(page, USERS.customer);
     await page.goto('/customer/rfqs/import');
     await expect(page.getByRole('heading', { name: 'Import lanes', level: 1 })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Download template' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Excel template' })).toBeVisible();
 
     const csv = [
         'origin_pin,origin_city,dest_pin,dest_city,vehicle_type,monthly_volume_trucks,rate_basis,target_rate_inr,notes',
@@ -71,7 +71,25 @@ test('customer imports a CSV and sees the row errors before anything is created'
     await expect(page.getByText('2 rows, 2 errors')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Create draft' })).toBeDisabled();
     await page.getByRole('button', { name: 'Discard file' }).click();
-    await expect(page.getByText('Drop a CSV file here')).toBeVisible();
+    await expect(page.getByText('Drop an .xlsx or .csv file here')).toBeVisible();
+});
+
+test('customer uploads the downloaded Excel template and sees the same preview', async ({ page }) => {
+    await loginAs(page, USERS.customer);
+    await page.goto('/customer/rfqs/import');
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Excel template' }).click()]);
+    expect(download.suggestedFilename()).toBe('rfq-lanes-template.xlsx');
+    await page.locator('#rfq-csv').setInputFiles(await download.path());
+    await expect(page.getByText('1 row, 0 errors')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Discard file' })).toBeVisible();
+    await page.getByRole('button', { name: 'Discard file' }).click();
+});
+
+test('an .xlsm file is refused before upload', async ({ page }) => {
+    await loginAs(page, USERS.customer);
+    await page.goto('/customer/rfqs/import');
+    await page.locator('#rfq-csv').setInputFiles({ name: 'lanes.xlsm', mimeType: 'application/vnd.ms-excel.sheet.macroEnabled.12', buffer: Buffer.from('x') });
+    await expect(page.getByText(/Macro files \(\.xlsm\)/)).toBeVisible();
 });
 
 test('transporter sees the RFQ list for invited customers', async ({ page }) => {

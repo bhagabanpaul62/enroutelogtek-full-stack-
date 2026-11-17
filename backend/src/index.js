@@ -4,6 +4,7 @@ import { db } from '#shared/db/index.js';
 import { startLoadClock } from '#features/load/services/clock.service.js';
 import { startRfqClock } from '#features/rfq/services/rfq.clock.js';
 import { startDeliveryWorker } from '#features/notification/services/delivery.worker.js';
+import { startAllocationClock } from '#features/allocation/services/allocation.service.js';
 import { startFleetExpiryClock } from '#features/fleet/services/expiry.service.js';
 import { startSubscriptionClock } from '#features/subscription/services/expiry.service.js';
 
@@ -20,6 +21,7 @@ const startServer = async () => {
             startLoadClock();
             startFleetExpiryClock();
             startRfqClock();
+            startAllocationClock();
             startSubscriptionClock();
             // Sends queued notification emails and retries failures.
             startDeliveryWorker();

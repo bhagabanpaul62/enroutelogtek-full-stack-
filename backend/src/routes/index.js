@@ -12,7 +12,9 @@ import fleetRoutes from '#features/fleet/routes/fleet.routes.js';
 import rfqRoutes from '#features/rfq/routes/rfq.routes.js';
 import teamRoutes from '#features/team/routes/team.routes.js';
 import tripRoutes, { loadRatingRoutes, transporterRoutes } from '#features/trip/routes/trip.routes.js';
+import { reportRoutes, metricsRoutes } from '#features/report/routes/report.routes.js';
 import contractRoutes, { indentRoutes } from '#features/contract/routes/contract.routes.js';
+import allocationRoutes from '#features/allocation/routes/allocation.routes.js';
 import { authMiddleware } from '#shared/middleware/auth.middleware.js';
 import { roleMiddleware } from '#shared/middleware/role.middleware.js';
 import { subscriptionGate } from '#shared/middleware/subscription.middleware.js';
@@ -49,5 +51,10 @@ router.use('/rfqs', ...companyApi, rfqRoutes);
 // Contracts (from accepted RFQ lane awards) and their indents ("Daily" truck requests).
 router.use('/contracts', ...companyApi, contractRoutes);
 router.use('/indents', ...companyApi, indentRoutes);
+// Allocation: offer trucks of an accepted award to fleet owners and brokers (and brokers re-place them).
+router.use('/allocations', ...companyApi, allocationRoutes);
+// Reports (JSON / CSV / XLSX) and the Overview counts, scoped to the signed-in company.
+router.use('/reports', ...companyApi, reportRoutes);
+router.use('/metrics', ...companyApi, metricsRoutes);
 
 export default router;

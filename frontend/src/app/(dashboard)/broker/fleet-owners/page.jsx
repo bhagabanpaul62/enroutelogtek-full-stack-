@@ -1,7 +1,7 @@
-import ComingSoon from '@/shared/ui/layout/ComingSoon';
+import PartnersPage from '@/features/allocation/ui/PartnersPage';
 
 export const metadata = { title: 'Fleet owners' };
 
 export default function Page() {
-    return <ComingSoon companyType="broker" slug="fleet-owners" />;
+    return <PartnersPage type="fleet_owner" />;
 }

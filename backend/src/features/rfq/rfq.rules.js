@@ -279,7 +279,11 @@ export const parseImportText = (text) => {
     if (Buffer.byteLength(String(text ?? ''), 'utf8') > RFQ_LIMITS.maxImportBytes) {
         return { fileError: `The file is larger than ${RFQ_LIMITS.maxImportBytes / 1024} KB` };
     }
-    const table = parseCsv(text);
+    return parseImportTable(parseCsv(text));
+};
+
+/** Header mapping and row limits for an already-split table (CSV or xlsx). Same errors for both. */
+export const parseImportTable = (table) => {
     if (table.length === 0) return { fileError: 'The file is empty' };
     const header = table[0].map((h) => h.trim().toLowerCase());
     const missing = IMPORT_REQUIRED_COLUMNS.filter((col) => !header.includes(col));

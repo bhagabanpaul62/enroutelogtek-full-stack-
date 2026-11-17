@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSelector } from 'react-redux';
 import { FileText, Gavel, Network, Package } from 'lucide-react';
+import { getOverviewMetricsApi } from '@/features/reports/api/reports.api';
 import { getLoadsApi } from '@/features/loads/api/loads.api';
 import { getIncomingRequestsApi } from '@/features/network/api/network.api';
 import { COMPANY_TYPE_LABELS, ROLE_LABELS, dashboardSections } from '@/shared/lib/dashboardNav';
-import { ArrowButton, ErrorState, IconChip, Panel, StatCard, ToneBadge } from '@/shared/ui/kit';
+import { ArrowButton, EmptyState, ErrorState, IconChip, Panel, StatCard, ToneBadge, formatRelative } from '@/shared/ui/kit';
 import { NAV_ICONS } from './DashboardSidebar';
 
 const COUNT_LIMIT = 100;
@@ -59,6 +60,26 @@ function useTileCounts(tiles) {
     return { status: current ? result.status : 'loading', counts: current ? result.counts : {}, retry: () => setAttempt((n) => n + 1) };
 }
 
+/**
+ * Real metrics from GET /metrics/overview: { cards: [{ key, label, value, meta?, href?, action?: { label, href } }], activity: [{ id, text, at, href? }] }.
+ * hrefs are relative to this dashboard. A 404 means the endpoint is not deployed: the section hides instead of showing zeros.
+ */
+function useOverviewMetrics() {
+    const [state, setState] = useState({ attempt: -1, status: 'loading', data: null });
+    const [attempt, setAttempt] = useState(0);
+    useEffect(() => {
+        let ignore = false;
+        getOverviewMetricsApi()
+            .then((data) => !ignore && setState({ attempt, status: 'ready', data }))
+            .catch((e) => !ignore && setState({ attempt, status: e?.response?.status === 404 ? 'absent' : 'error', data: null }));
+        return () => {
+            ignore = true;
+        };
+    }, [attempt]);
+    const current = state.attempt === attempt;
+    return { status: current ? state.status : 'loading', data: current ? state.data : null, retry: () => setAttempt((n) => n + 1) };
+}
+
 function NavCard({ page }) {
     const Icon = NAV_ICONS[page.icon] ?? FileText;
     return (
@@ -84,9 +105,9 @@ function NavCard({ page }) {
 }
 
 /**
- * The landing page of every dashboard: a greeting, the few real counts that need the user, and
- * a card for every section of this company type's dashboard. No invented metrics; the real
- * numbers arrive with the reports module.
+ * The landing page of every dashboard: a greeting, the real counts that need the user, the
+ * company's metrics and recent activity from /metrics/overview, and a card for every section.
+ * No invented numbers: no data means an empty state, an unreachable endpoint means a retry.
  * @param {{ companyType: string }} props the dashboard owner type
  */
 export default function DashboardOverview({ companyType }) {
@@ -94,6 +115,10 @@ export default function DashboardOverview({ companyType }) {
     const base = dashboardSections(companyType)[0].items[0].link;
     const tiles = [...(TILES[companyType] ?? []), REQUESTS_TILE];
     const { status, counts, retry } = useTileCounts(tiles);
+    const metrics = useOverviewMetrics();
+    const cards = metrics.data?.cards ?? [];
+    const activity = metrics.data?.activity ?? [];
+    const withBase = (href) => (href ? `${base}/${String(href).replace(/^\//, '')}` : undefined);
 
     const pages = dashboardSections(companyType)
         .flatMap((section) => section.items)
@@ -137,6 +162,49 @@ export default function DashboardOverview({ companyType }) {
                     </div>
                 )}
             </section>
+
+            {metrics.status !== 'absent' ? (
+                <section aria-label="Your numbers" className="flex flex-col gap-3">
+                    <h2 className="font-mono text-[11px] uppercase tracking-[0.05em] text-[var(--ds-on-surface-muted)]">Your numbers</h2>
+                    {metrics.status === 'error' ? (
+                        <Panel>
+                            <ErrorState title="Couldn't load your numbers" onRetry={metrics.retry} />
+                        </Panel>
+                    ) : metrics.status === 'loading' ? (
+                        <div aria-busy className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            {[0, 1, 2].map((i) => <div key={i} aria-hidden className="h-[136px] animate-pulse rounded-3xl bg-white/[0.04] motion-reduce:animate-none" />)}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                {cards.map((c) => (
+                                    <StatCard
+                                        key={c.key}
+                                        label={c.label}
+                                        value={c.value}
+                                        href={withBase(c.href)}
+                                        meta={Number(c.value) === 0 && c.action ? <Link href={withBase(c.action.href)} className="underline underline-offset-2 hover:text-[var(--ds-on-surface)]">{c.action.label}</Link> : c.meta}
+                                    />
+                                ))}
+                            </div>
+                            {activity.length > 0 ? <Panel title="Recent activity">
+                                {activity.length === 0 ? (
+                                    <EmptyState title="Nothing has happened yet" description="Trips, bids and approvals show up here as they happen." />
+                                ) : (
+                                    <ul className="flex flex-col divide-y divide-white/[0.06]">
+                                        {activity.map((a) => (
+                                            <li key={a.id} className="flex items-center justify-between gap-4 py-2.5 text-sm">
+                                                {a.href ? <Link href={withBase(a.href)} className="min-w-0 truncate text-[var(--ds-on-surface)] hover:underline">{a.text}</Link> : <span className="min-w-0 truncate text-[var(--ds-on-surface)]">{a.text}</span>}
+                                                <span className="shrink-0 text-xs text-[var(--ds-on-surface-muted)]">{formatRelative(a.at)}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </Panel> : null}
+                        </>
+                    )}
+                </section>
+            ) : null}
 
             <section aria-label="Go to" className="flex flex-col gap-3">
                 <h2 className="font-mono text-[11px] uppercase tracking-[0.05em] text-[var(--ds-on-surface-muted)]">Go to</h2>

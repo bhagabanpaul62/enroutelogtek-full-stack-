@@ -99,6 +99,13 @@
       "when": 1794946322616,
       "tag": "0013_contracts_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794947180814,
+      "tag": "0014_allocations",
+      "breakpoints": true
     }
   ]
 }

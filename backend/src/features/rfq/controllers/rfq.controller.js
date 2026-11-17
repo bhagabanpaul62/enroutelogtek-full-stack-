@@ -8,6 +8,7 @@ import * as quoteService from '../services/rfq.quote.service.js';
 import * as awardService from '../services/rfq.award.service.js';
 import * as importService from '../services/rfq.import.service.js';
 import { listRfqEvents } from '../services/rfq.shared.js';
+import { XLSX_MIME } from '../rfq.xlsx.js';
 
 const bodyOf = (req) => matchedData(req, { locations: ['body'] });
 const paramsOf = (req) => matchedData(req, { locations: ['params'] });
@@ -67,19 +68,24 @@ export const getEvents = asyncHandler(async (req, res) => {
 
 // ---- import ----
 export const downloadTemplate = asyncHandler(async (req, res) => {
-    const csv = await importService.importTemplate(req.user);
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="rfq-lanes-template.csv"');
-    return res.send(csv);
+    const xlsx = req.query.format === 'xlsx';
+    const file = await importService.importTemplate(req.user, xlsx ? 'xlsx' : 'csv');
+    res.setHeader('Content-Type', xlsx ? XLSX_MIME : 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="rfq-lanes-template.${xlsx ? 'xlsx' : 'csv'}"`);
+    return res.send(file);
 });
 export const createImport = asyncHandler(async (req, res) => {
-    // Small files arrive as JSON { fileName, csvText }; the global JSON limit is 16 KB, so a bigger file
-    // is sent raw with Content-Type text/csv and ?fileName=.
-    const raw = typeof req.body === 'string';
-    const csvText = raw ? req.body : req.body?.csvText;
-    if (typeof csvText !== 'string' || csvText.trim() === '') throw new AppError('Send the CSV text', 400);
+    // Small CSVs arrive as JSON { fileName, csvText }; the global JSON limit is 16 KB, so a bigger CSV is sent
+    // raw with Content-Type text/csv and ?fileName=. An .xlsx is sent raw (spreadsheetml or octet-stream) the same way.
     const fileName = matchedData(req, { locations: ['body', 'query'] }).fileName;
-    const { status, body } = await importService.createImport(req.user, { fileName, csvText });
+    let input;
+    if (Buffer.isBuffer(req.body)) input = { fileBuffer: req.body };
+    else {
+        const csvText = typeof req.body === 'string' ? req.body : req.body?.csvText;
+        if (typeof csvText !== 'string' || csvText.trim() === '') throw new AppError('Send the CSV text or an .xlsx file', 400);
+        input = { csvText };
+    }
+    const { status, body } = await importService.createImport(req.user, { fileName, ...input });
     return successResponse(res, body, body.duplicate ? 'This file was uploaded before' : 'Preview ready', status);
 });
 export const getImport = asyncHandler(async (req, res) =>

@@ -1,7 +1,7 @@
-import ComingSoon from '@/shared/ui/layout/ComingSoon';
+import ReportsPage from '@/features/reports/ui/ReportsPage';
 
 export const metadata = { title: 'Reports' };
 
 export default function Page() {
-    return <ComingSoon companyType="customer" slug="reports" />;
+    return <ReportsPage companyType="customer" />;
 }
