@@ -28,10 +28,13 @@ import {
     reactivateAdmin,
     resetAdminPassword,
 } from '#features/platform/controllers/platformUser.controller.js';
+import deliveryRouter from '#features/notification/routes/delivery.routes.js';
 import { platformTeamRouter } from '#features/team/routes/team.routes.js';
 
 // authMiddleware + roleMiddleware(['root_admin']) are applied to all of /platform in routes/index.js.
 const router = express.Router();
+
+router.use('/notifications/deliveries', deliveryRouter);
 
 router.get('/companies', listCompaniesRules, validate, getCompanies);
 router.get('/companies/summary', getCompanySummary);

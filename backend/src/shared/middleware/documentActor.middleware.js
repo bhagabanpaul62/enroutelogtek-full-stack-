@@ -34,10 +34,12 @@ export const documentActor = asyncHandler(async (req, res, next) => {
         const problem = companyUserProblem(req.user);
         if (problem) throw AppError.from(problem);
         // Same bar as the settings screens that show these documents.
-        if (!hasPermission(req.user, PERMISSIONS.TEAM_MANAGE)) {
+        const canTeam = hasPermission(req.user, PERMISSIONS.TEAM_MANAGE);
+        // billing.manage alone may attach payment proof; the controller enforces that type limit.
+        if (!canTeam && !hasPermission(req.user, PERMISSIONS.BILLING_MANAGE)) {
             throw new AppError('You do not have permission to change company documents.', 403);
         }
-        req.documentActor = { userId: req.user.userId, companyId: req.user.companyId, via: 'user' };
+        req.documentActor = { userId: req.user.userId, companyId: req.user.companyId, via: 'user', canTeam };
         return next();
     }
 

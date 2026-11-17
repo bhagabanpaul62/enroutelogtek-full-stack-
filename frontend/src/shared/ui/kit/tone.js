@@ -40,6 +40,11 @@ export const STATUS = {
     // money
     paid: { tone: 'success', label: 'Paid' },
     failed: { tone: 'danger', label: 'Failed' },
+    // subscriptions and payments
+    trial: { tone: 'info', label: 'Trial' },
+    grace: { tone: 'warning', label: 'Grace' },
+    pending_payment: { tone: 'warning', label: 'Pending payment' },
+    submitted: { tone: 'warning', label: 'In review' },
 };
 
 /** Tone for a status; unknown values are neutral and labelled from the raw value. */

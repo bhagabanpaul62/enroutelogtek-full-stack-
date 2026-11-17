@@ -9,6 +9,7 @@ import { documentOwnerProblem } from '#features/document/document.rules.js';
 import { storage } from '#features/document/storage.js';
 import { companies, companyDocumentReviews } from '#features/company/schemas/index.js';
 import { REVIEWED_TYPES } from '#features/company/services/document.service.js';
+import { writeBlockFor } from '#features/subscription/services/subscription.service.js';
 import { and, eq } from 'drizzle-orm';
 
 const REVIEW_TRACKED = ['gst', 'pan', 'rc', 'insurance'];
@@ -18,7 +19,7 @@ const REVIEW_TRACKED = ['gst', 'pan', 'rc', 'insurance'];
  * req.documentActor (see documentActor middleware); any userId/companyId in the body is ignored.
  */
 export const uploadDocument = asyncHandler(async (req, res) => {
-    const { userId, companyId, via } = req.documentActor;
+    const { userId, companyId, via, canTeam } = req.documentActor;
     const { documentType } = req.body;
     const file = req.file;
 
@@ -26,6 +27,16 @@ export const uploadDocument = asyncHandler(async (req, res) => {
         throw new AppError('Invalid document type', 400);
     }
     if (!file) throw new AppError('File is required', 400);
+    if (via === 'user') {
+        if (!canTeam && documentType !== 'paymentProof') {
+            throw new AppError('You do not have permission to change company documents.', 403);
+        }
+        // Paying is how a lapsed company comes back, so proof stays open; everything else is read-only.
+        if (documentType !== 'paymentProof') {
+            const blocked = await writeBlockFor(companyId);
+            if (blocked) throw blocked;
+        }
+    }
     if (via === 'registration') {
         const problem = registrationDocumentProblem('draft', documentType);
         if (problem) throw AppError.from(problem);
@@ -61,8 +72,13 @@ export const uploadDocument = asyncHandler(async (req, res) => {
 
 /** Deletes one of the actor's own company's documents; anything else is "not found". */
 export const deleteDocument = asyncHandler(async (req, res) => {
-    const { companyId } = req.documentActor;
+    const { companyId, via, canTeam } = req.documentActor;
     const { documentId } = req.body ?? {};
+    if (via === 'user') {
+        if (!canTeam) throw new AppError('You do not have permission to change company documents.', 403);
+        const blocked = await writeBlockFor(companyId);
+        if (blocked) throw blocked;
+    }
     if (!isUuid(documentId)) throw new AppError('Document id is required', 400);
 
     const [doc] = await db

@@ -14,6 +14,7 @@ import { REVOKE_REASON, newPasswordProblem } from '#features/auth/login.rules.js
 import { hashPassword } from '#features/auth/services/password.service.js';
 import { endUserSessions } from '#features/auth/services/session.service.js';
 import { companyRoles } from '../schemas/index.js';
+import { seatProblem } from '#features/subscription/services/subscription.service.js';
 import {
     effectivePermissions,
     lastOwnerProblem,
@@ -50,13 +51,6 @@ const duplicateError = (error) => {
     if (constraint === null) return null;
     return constraint.includes('phone') ? phoneTaken() : emailTaken();
 };
-
-/**
- * Whether the company may add one more person. There is no seat limit until subscriptions
- * (ENR-010/011) define one; this is the single place that limit will be checked.
- * @returns {null}
- */
-const seatProblem = () => null;
 
 // Escape LIKE wildcards so searching "50%" looks for the text "50%".
 const containsPattern = (text) => `%${text.replace(/[\\%_]/g, '\\$&')}%`;
@@ -216,7 +210,7 @@ export async function addMember(scope, input) {
             const actor = await freshActor(tx, scope);
             const role = await findRole(tx, company, input.roleId);
             fail(roleAssignProblem(actor, role));
-            fail(seatProblem());
+            fail(await seatProblem(tx, company.companyId));
             if (await emailInUse(tx, email)) throw emailTaken();
             if (phone && (await phoneInUse(tx, phone))) throw phoneTaken();
 
@@ -327,6 +321,8 @@ export async function setMemberStatus(scope, userId, toStatus) {
         const target = await findMember(tx, company, userId);
         fail(memberActionProblem(actor, target));
         fail(statusChangeProblem(target, toStatus));
+        // A person who is back needs a seat again (the team lock is held, so two cannot both pass).
+        if (toStatus === 'active') fail(await seatProblem(tx, company.companyId));
         if (toStatus === 'inactive') {
             fail(
                 lastOwnerProblem({
