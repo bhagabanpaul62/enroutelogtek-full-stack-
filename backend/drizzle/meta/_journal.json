@@ -92,6 +92,13 @@
       "when": 1794942100465,
       "tag": "0012_award_revoked",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794946322616,
+      "tag": "0013_contracts_subscriptions",
+      "breakpoints": true
     }
   ]
 }

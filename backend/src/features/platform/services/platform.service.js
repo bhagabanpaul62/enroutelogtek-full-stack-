@@ -14,6 +14,7 @@ import { rejectedCompany } from '#features/company/schemas/rejectedCompany.Schem
 import { users, userSessions } from '#features/auth/schemas/index.js';
 import { companyRoles } from '#features/team/schemas/index.js';
 import { documents } from '#features/document/schemas/documents.Schema.js';
+import { announceTrial, startTrial } from '#features/subscription/services/subscription.service.js';
 import { sendApprovalEmail, sendRejectionEmail } from '#shared/services/email/email.service.js';
 import {
     APPROVABLE_FROM,
@@ -243,7 +244,9 @@ export const getCompanyDetail = async (companyId) => {
 
 /** Approves a pending or rejected company and emails its admins. */
 export const approveCompany = async (companyId) => {
-    const company = await changeStatus(companyId, APPROVABLE_FROM, 'approved');
+    // The trial starts in the same transaction as the approval (idempotent).
+    const company = await changeStatus(companyId, APPROVABLE_FROM, 'approved', (tx, approved) => startTrial(tx, approved.id));
+    await announceTrial(company.id).catch((error) => console.error('Trial notice failed:', error.message));
     const emails = await contactEmails(company.id, company.companyEmailId);
     const email = await trySend(() =>
         Promise.all(emails.map((to) => sendApprovalEmail(to, company.companyName))),

@@ -12,3 +12,11 @@ export const listNotificationsRules = [
 export const notificationIdRules = [
     param('notificationId').isUUID().withMessage('notificationId must be a valid id'),
 ];
+
+export const listDeliveriesRules = [
+    singleQuery('cursor').isLength({ max: 500 }).withMessage('Invalid cursor'),
+    singleQuery('limit').isInt({ min: 1, max: 100 }).withMessage('limit must be 1 to 100').toInt(),
+    singleQuery('status').isIn(['pending', 'sent', 'failed']).withMessage('status must be pending, sent or failed'),
+];
+
+export const deliveryIdRules = [param('deliveryId').isUUID().withMessage('deliveryId must be a valid id')];

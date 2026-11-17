@@ -13,5 +13,6 @@ export const PERMISSIONS = Object.freeze({
     FLEET_MANAGE: 'fleet.manage',
     NETWORK_MANAGE: 'network.manage',
     TEAM_MANAGE: 'team.manage',
+    BILLING_MANAGE: 'billing.manage',
     ROLES_MANAGE: 'roles.manage',
 });

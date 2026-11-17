@@ -34,8 +34,8 @@ export const TRIP_DOCUMENT_TYPES = ['lr', 'pod', 'eway_bill', 'weighbridge', 'in
 export const FLEET_DOCUMENT_TYPES = ['rc', 'insurance', 'permit', 'fitness', 'puc', 'licence'];
 
 /**
- * Document type -> permission keys, any one is enough. Anything not listed (gst, pan, logo,
- * paymentProof, ...) needs team.manage. rc and insurance also accept team.manage because the
+ * Document type -> permission keys, any one is enough. Anything not listed (gst, pan, logo, ...)
+ * needs team.manage. rc and insurance also accept team.manage because the
  * Settings > Documents screen replaces the company-level copy. A customer raising a shortage
  * may attach photos, so discrepancy photos also accept the customer's loads permissions.
  */
@@ -45,6 +45,8 @@ const UPLOAD_KEYS = {
     rc: [P.FLEET_MANAGE, P.TEAM_MANAGE],
     insurance: [P.FLEET_MANAGE, P.TEAM_MANAGE],
     ...Object.fromEntries(['permit', 'fitness', 'puc', 'licence'].map((type) => [type, [P.FLEET_MANAGE]])),
+    // Paying is how a lapsed company comes back: billing.manage alone may attach payment proof.
+    paymentProof: [P.BILLING_MANAGE, P.TEAM_MANAGE],
 };
 export const uploadKeysFor = (documentType) => UPLOAD_KEYS[documentType] ?? [P.TEAM_MANAGE];
 

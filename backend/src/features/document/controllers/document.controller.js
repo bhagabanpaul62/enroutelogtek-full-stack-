@@ -10,6 +10,7 @@ import { assertEntityOwned } from '#features/document/document.entity.js';
 import { storage } from '#features/document/storage.js';
 import { companies, companyDocumentReviews } from '#features/company/schemas/index.js';
 import { REVIEWED_TYPES } from '#features/company/services/document.service.js';
+import { writeBlockFor } from '#features/subscription/services/subscription.service.js';
 import { and, eq } from 'drizzle-orm';
 
 const REVIEW_TRACKED = ['gst', 'pan', 'rc', 'insurance'];
@@ -27,6 +28,13 @@ export const uploadDocument = asyncHandler(async (req, res) => {
         throw new AppError('Invalid document type', 400);
     }
     if (!file) throw new AppError('File is required', 400);
+    if (via === 'user') {
+        // Paying is how a lapsed company comes back, so proof stays open; everything else is read-only.
+        if (documentType !== 'paymentProof') {
+            const blocked = await writeBlockFor(companyId);
+            if (blocked) throw blocked;
+        }
+    }
     if (via === 'registration') {
         const problem = registrationDocumentProblem('draft', documentType);
         if (problem) throw AppError.from(problem);
@@ -73,6 +81,10 @@ export const uploadDocument = asyncHandler(async (req, res) => {
 export const deleteDocument = asyncHandler(async (req, res) => {
     const { companyId, via } = req.documentActor;
     const { documentId } = req.body ?? {};
+    if (via === 'user') {
+        const blocked = await writeBlockFor(companyId);
+        if (blocked) throw blocked;
+    }
     if (!isUuid(documentId)) throw new AppError('Document id is required', 400);
 
     const [doc] = await db
