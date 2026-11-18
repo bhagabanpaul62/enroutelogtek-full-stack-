@@ -18,7 +18,7 @@ Plan and decisions: [PRD.md](PRD.md). Ticket meaning: [tickets/README.md](../tic
 | --- | --- |
 | Branch | `suman`, pushed to origin after each wave (first push 18 Nov at `ef9fca7`) |
 | Running | nothing |
-| Last commit | `5a4eb04` merge of int (3b + 4b) |
+| Last commit | `61f9db2` Wave 5 (all planned waves done) |
 
 ### Waves
 
