@@ -17,7 +17,7 @@ Plan and decisions: [PRD.md](PRD.md). Ticket meaning: [tickets/README.md](../tic
 | Item | Value |
 | --- | --- |
 | Branch | `suman`, pushed to origin after each wave (first push 18 Nov at `ef9fca7`) |
-| Running | nothing. Next = Wave 5 release check (tomorrow) |
+| Running | Wave 5 release check, workflow `wf_7e36cc2a-f6f` |
 | Last commit | `5a4eb04` merge of int (3b + 4b) |
 
 ### Waves
@@ -29,14 +29,14 @@ Plan and decisions: [PRD.md](PRD.md). Ticket meaning: [tickets/README.md](../tic
 | 2 Ad Hoc complete: AJ-01-39, ENR-015/016/024/025/029-031 | done (open partials in log) | `0f2ab24` |
 | 3 Contracts and capacity: ENR-018-023, 026-028, 032/033 | merged on suman | `54a0eca`, `5a4eb04` |
 | 4 Money and insight: ENR-010/011/017/034-038 | merged on suman | `54a0eca`, `5a4eb04` |
-| 5 Release check: full end-to-end as every actor | not started | — |
+| 5 Release check: full end-to-end as every actor | running | — |
 
 ## How to run locally
 
 | What | How |
 | --- | --- |
 | Database | Local Postgres on 5432: db `enroute`, user `enrouteDb` / `enroute09832`. Migrate: `cd backend && ./node_modules/.bin/drizzle-kit migrate` |
-| Mail | Dev SMTP sink on 127.0.0.1:2525 (login codes also print as `[DEV] Login code for ...` in the backend log) |
+| Mail | `cd backend && pnpm dev:mail` (sink on 127.0.0.1:2525). Login codes also print as `[DEV] Login code for ...` in the backend log (this session writes it to its scratchpad `backend.log`) |
 | Backend | `cd backend && EMAIL_HOST=127.0.0.1 EMAIL_PORT=2525 EMAIL_SECURE=false EMAIL_USER=dev EMAIL_PASSWORD=dev FRONTEND_URL=http://localhost:3001 node src/index.js` → :8000 |
 | Frontend | `cd frontend && pnpm dev --port 3001` (port 3000 is used by another project on this machine) |
 | Demo logins | `admin@enroute.local` / `Admin@12345`; `customer@`, `transporter@`, `transporter2@`, `fleetowner@`, `broker@` `enroute.local` / `Demo@12345` (seed: `cd backend && pnpm seed:demo`, once Wave 0 lands) |
@@ -83,3 +83,4 @@ Merge method (used for wave2, repeat it): `git merge --no-commit --no-ff <branch
 - **2026-11-18 · merges · main session**: Suman asked to merge `int` and mount the allocation panel today. Stopped Wave 2b after its fixer (skipped the duplicate recheck) and committed it `0f2ab24` (unit 210/210, API e2e 48/48, browser 40 pass + 5 skip). Merged `int` (3a + 4a) → `54a0eca`: upload rule conflict resolved into 2b's per-type table with `paymentProof: [billing.manage, team.manage]` + 4a's 402 read-only check; int's 0012_contracts + 0013_subscriptions regenerated as `0013_contracts_subscriptions` (statement set identical, drops + 3 data steps). Committed 3b + 4b on `int` (`ab7ae2c`), merged again → `5a4eb04`: trip.service (2b rating + 3b executor), BidDetailPage (AllocationPanel mounted above attempts — done by the 3b fixer), dashboardNav (all built pages ready); `0014_allocations` regenerated on suman's schema (identical) + data step. Final: backend unit 331/331, API e2e 99/99, lint 0 errors, no drift; browser e2e 59 pass, 7 fail (first runs of admin-billing, reports, rfq, shell specs), 15 skip → a fixer agent is on them.
 - **Open after the merge** (for tomorrow / Wave 5): load cancel + award revoke must withdraw `offered` allocations; reports have no permission key (reads company-scoped); Overview "recent activity" hidden (no backend feed); 15 browser specs skip on empty data (seed trips/allocations for them); PTL repricing on chargeable weight; AJ-27/28/32/34/36 partials; live allocation create→assign→withdraw not re-run after the merge; no browser walk-through of reports/allocation/RFQ/billing screens yet.
 - **2026-11-18 · e2e green-up · e2e-fixer (sonnet) + main session**: 7 first-run browser failures fixed. Real app bugs: `PlansPage.jsx` crashed on load (React Compiler hoisted `dialog.plan` into render while `dialog` is null → `dialog?.plan`; same guard added in `PaymentsPage.jsx`); 4 RFQ/Contract nav items lacked `ready: true` (sidebar said "Soon"); Payments tabs never changed in the production build when the URL already had `?status=` (router.replace issued no navigation; Companies/Network use the same pattern and work — cause not found) → `PaymentsPage` now uses `window.history.replaceState`, which Next syncs into `useSearchParams`. Test bugs: strict-mode matches (Earned text; Export CSV `.or()` empty state), RFQ "New RFQ" is a button, CSV fixture has 3 errors, Excel download needs a `.xlsx` filename, the "not built" placeholder test replaced by "no Soon tags + 404 page". Final: browser e2e 67 pass / 0 fail / 14 skip on two runs, backend unit 331/331, lint 0 errors.
+- **2026-11-19 · wave 5 · main session**: machine had restarted; removed the merged worktrees `../enroute-int`, `../enroute-wave3`, `../enroute-wave4` (branches kept), restarted mail sink / backend / frontend, dev DB migrated. Launched Wave 5 (`wf_7e36cc2a-f6f`): gaps-backend (withdraw offers on cancel/revoke, AJ-16/27/28/32/34/36) + seed-data (full demo dataset, active subscriptions, un-skip the 14 specs) → gaps-ui + 2 browser audits (Playwright screenshots of every page per actor, desktop + phone) → 2 fixers by file area → haiku suites → final fixer.
