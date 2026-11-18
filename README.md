@@ -7,6 +7,7 @@ B2B freight procurement and trip management for customers (shippers), transporte
 | Need | File |
 | --- | --- |
 | How the product is built (stack, modules, roles, lifecycles, run and test) | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| The whole product end to end: how the modules connect, how each is used, the data model and the build order | [plan/ENROUTE-PROJECT-PLAN.md](plan/ENROUTE-PROJECT-PLAN.md) |
 | What is done, open and next (ticket status with evidence) | [tickets/README.md](tickets/README.md) |
 | Product decisions and scope | [docs/PRD.md](docs/PRD.md) |
 | Running build record for agents and sessions | [docs/BUILD-LOG.md](docs/BUILD-LOG.md) |
