@@ -4,8 +4,8 @@
  * role must hold the permission for that action (team.permissions.js). Lookups never reveal
  * another company's loads: anything you may not see is "not found".
  */
-import { and, eq } from 'drizzle-orm';
-import { db } from '#shared/db/index.js';
+import { and, eq, sql } from 'drizzle-orm';
+import { db, outer } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { companies } from '#features/company/schemas/company.Schema.js';
 import { loadInvitations, loads } from '../schemas/index.js';
@@ -18,6 +18,9 @@ export const publicCompanyFields = (table) => ({
     type: table.companyType,
     logoUrl: table.logoUrl,
     enrouteCompanyId: table.enrouteCompanyId,
+    // AJ-34: average stars (1 decimal, null when unrated) and number of ratings the company received.
+    avgStars: sql`(select round(avg(r.stars)::numeric, 1)::float from ratings r where r.to_company_id = ${outer(table.id)})`.mapWith((v) => (v === null ? null : Number(v))),
+    ratingCount: sql`(select count(*)::int from ratings r where r.to_company_id = ${outer(table.id)})`.mapWith(Number),
 });
 
 /** The signed-in user's company, which must be approved. */

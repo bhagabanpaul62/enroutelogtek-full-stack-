@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { EmptyState, EntityHeader, ErrorState, Fact, FactList, IconChip, Modal, ModalField, ModalFooter, Panel, SkeletonRows, TabBar, Timeline, ToneBadge } from '@/shared/ui/kit';
 import { Button } from '@/shared/ui/primitives/button';
 import { addNoteApi, apiMessage, confirmTripApi, placementDecisionApi, rateLoadApi, rejectPodApi } from '../api/trips.api';
-import { MILESTONES, STATUS_ORDER, actionLabel } from '../constants';
+import { MILESTONES, STATUS_ORDER, actionLabel, gstLabel } from '../constants';
 import { useTrip } from '../hooks/useTrip';
 import { useTripSide } from '../hooks/useTripSide';
 import { allowedActions, formatDate, formatDateTime, isDelayed, rowView, routeOf } from '../lib/trip';
@@ -15,6 +15,7 @@ import { nextStep, openPodRejection, paymentNote } from '../lib/guidance';
 import AssignTrucksModal from './AssignTrucksModal';
 import ChargesPanel from './ChargesPanel';
 import DiscrepancyModal from './DiscrepancyModal';
+import GstModal from './GstModal';
 import DocumentsPanel from './DocumentsPanel';
 import LegModal, { LEG_META } from './LegModal';
 import PaymentModal from './PaymentModal';
@@ -215,6 +216,9 @@ export default function TripRecordPage({ tripId }) {
             : [];
     const step = nextStep(trip, side, { canUpdate, canAward: can('loads.award'), hasVehicle: Boolean(trip.vehicleId), rejection });
     const missedWaiting = side === 'executor' && placementMiss && !placementMiss.decision && trip.status === 'planned';
+    const byExecutor = placementMiss?.source === 'executor_cancel';
+    const missWhen = formatDateTime(placementMiss?.missedAt ?? placementMiss?.createdAt);
+    const canGst = canUpdate && !['cancelled'].includes(trip.status) && ['reached_drop', 'delivered', 'completed'].includes(trip.status);
 
     const refresh = () => reload();
     const forward = actions.filter((a) => a !== 'cancelled' && a !== 'confirm');
@@ -271,9 +275,14 @@ export default function TripRecordPage({ tripId }) {
                     <Printer className="mr-2 size-4" aria-hidden /> Closure sheet
                 </Link>
             ) : null}
-            {actions.includes('cancelled') ? (
+            {canGst ? (
+                <Button type="button" variant="secondary" className="h-10 rounded-xl px-4 text-sm" onClick={() => setModal('gst')}>
+                    GST treatment
+                </Button>
+            ) : null}
+            {actions.includes('cancelled') && !(side === 'executor' && placementMiss && !placementMiss.decision) ? (
                 <Button type="button" variant="secondary" className="h-10 rounded-xl px-4 text-sm" onClick={() => openMove('cancelled')}>
-                    Cancel trip
+                    {side === 'executor' && trip.status === 'planned' ? "Can't place the truck" : 'Cancel trip'}
                 </Button>
             ) : null}
         </>
@@ -316,12 +325,14 @@ export default function TripRecordPage({ tripId }) {
             ) : null}
             {missedWaiting ? (
                 <Banner tone="danger" icon={<TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />}>
-                    The truck missed its placement time ({formatDateTime(placementMiss.missedAt)}). This is recorded against you. The customer decides whether to re-award or cancel; if the truck reaches the pickup first, mark it reported now.
+                    {byExecutor
+                        ? `You told the customer on ${missWhen} that you cannot place the truck. Reason: ${placementMiss.reason || 'not given'}. This is recorded against you. The customer decides whether to pick another transporter or cancel the load.`
+                        : `The truck missed its placement time (${missWhen}). This is recorded against you. The customer decides whether to re-award or cancel; if the truck reaches the pickup first, mark it reported now.`}
                 </Banner>
             ) : null}
             {side === 'executor' && placementMiss?.decision ? (
                 <Banner tone="danger" icon={<TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />}>
-                    The truck missed its placement time and the customer chose to {placementMiss.decision === 're_award' ? 'give the load to another transporter' : 'cancel it'}. This trip is closed and the miss stays on your record.
+                    {byExecutor ? 'You could not place the truck' : 'The truck missed its placement time'} and the customer chose to {placementMiss.decision === 're_award' ? 'give the load to another transporter' : 'cancel it'}. This trip is closed and the miss stays on your record.
                 </Banner>
             ) : null}
             {needsDecision ? (
@@ -332,7 +343,9 @@ export default function TripRecordPage({ tripId }) {
                             <Button type="button" variant="secondary" className="h-9 rounded-lg px-3 text-xs" onClick={() => { setChoice('cancel'); setModal('placement'); }}>Cancel the load</Button>
                         </>
                     }>
-                    The truck missed its placement time ({formatDateTime(placementMiss.missedAt)}). You decide what happens next.
+                    {byExecutor
+                        ? `The transporter says they cannot place the truck (${missWhen}). Reason: ${placementMiss.reason || 'not given'}. You decide what happens next.`
+                        : `The truck missed its placement time (${missWhen}). You decide what happens next.`}
                 </Banner>
             ) : null}
             {side === 'customer' && trip.status === 'delivered' && trip.autoCompleteAt ? (
@@ -348,7 +361,7 @@ export default function TripRecordPage({ tripId }) {
 
             <div id="trip-panel" role="tabpanel" aria-label={tabs.find((t) => t.id === tab)?.label} className="flex flex-col gap-6">
                 {tab === 'overview' ? (
-                    <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+                    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
                         <div className="flex flex-col gap-6">
                             <Panel title="Progress">
                                 <Timeline steps={buildSteps(trip, events)} />
@@ -380,7 +393,7 @@ export default function TripRecordPage({ tripId }) {
                                         ))}
                                     </ul>
                                 ) : (
-                                    <EmptyState title="No updates yet" description="Location and delay notes from the transporter show up here." />
+                                    <EmptyState title="No updates yet" description={side === 'executor' ? "Add a note when the truck is delayed or has moved. It shows here." : "Location and delay notes from the transporter show up here."} />
                                 )}
                             </Panel>
                         </div>
@@ -399,6 +412,16 @@ export default function TripRecordPage({ tripId }) {
                                     <Fact label="E-way bill" copy={trip.ewayBillNumber}>{trip.ewayBillNumber}</Fact>
                                 </FactList>
                             </Panel>
+                            {trip.receivedByName || trip.gstTreatment ? (
+                                <Panel title="Delivery and GST">
+                                    <FactList>
+                                        <Fact label="Received by">{trip.receivedByName}</Fact>
+                                        <Fact label="Receiver's mobile" copy={trip.receivedByPhone}>{trip.receivedByPhone}</Fact>
+                                        <Fact label="Received on">{trip.receivedAt ? formatDateTime(trip.receivedAt) : ''}</Fact>
+                                        <Fact label="GST treatment">{gstLabel(trip.gstTreatment)}</Fact>
+                                    </FactList>
+                                </Panel>
+                            ) : null}
                             {payment || ['delivered', 'completed'].includes(trip.status) ? (
                                 <Panel title="Payment">
                                     {payment ? (
@@ -427,7 +450,7 @@ export default function TripRecordPage({ tripId }) {
                 {tab === 'charges' ? <ChargesPanel trip={trip} charges={charges} side={side} can={can} onChanged={refresh} /> : null}
                 {tab === 'issues' ? (
                     <Panel
-                        title="Shortage and damage"
+                        title="Shortage, damage and rejected goods"
                         action={canDiscrepancy ? (
                             <Button type="button" variant="secondary" className="h-9 rounded-xl px-3 text-sm" onClick={() => setModal('discrepancy')}>
                                 Raise a discrepancy
@@ -438,7 +461,7 @@ export default function TripRecordPage({ tripId }) {
                             <ul className="flex flex-col gap-3">
                                 {discrepancies.map((d) => (
                                     <li key={d.id} className="rounded-2xl bg-white/[0.035] px-4 py-3">
-                                        <p className="text-sm font-medium capitalize text-[var(--ds-on-surface)]">{d.kind}: {d.quantity} {d.unit}</p>
+                                        <p className="text-sm font-medium capitalize text-[var(--ds-on-surface)]">{d.kind === 'rejected' ? 'Goods rejected' : d.kind}{d.quantity ? `: ${d.quantity} ${d.unit ?? ''}` : ''}</p>
                                         <p className="mt-1 text-sm text-[var(--ds-on-surface-variant)]">{d.note}</p>
                                         <p className="mt-1 text-xs text-[var(--ds-on-surface-muted)]">{formatDateTime(d.createdAt)}</p>
                                         {(d.photos ?? documents.filter((x) => x.documentType === 'discrepancy_photo' && x.entityId === d.id)).map((p, i) => (
@@ -450,19 +473,20 @@ export default function TripRecordPage({ tripId }) {
                                 ))}
                             </ul>
                         ) : (
-                            <EmptyState title="No discrepancies" description={canDiscrepancy ? 'Raise one if goods arrived short or damaged.' : 'Shortage or damage reported at delivery shows up here.'} />
+                            <EmptyState title="No discrepancies" description={canDiscrepancy ? 'Raise one if goods arrived short or damaged, or the consignee refused them.' : 'Shortage, damage or rejected goods reported at delivery show up here.'} />
                         )}
                     </Panel>
                 ) : null}
             </div>
 
-            {move ? <TransitionModal key={move} open onOpenChange={(o) => !o && setMove(null)} trip={trip} load={load} to={move} hasPod={hasPod} onDone={refresh} /> : null}
-            {modal === 'assign' ? <AssignTrucksModal open onOpenChange={(o) => !o && setModal('')} award={{ id: trip.awardId, loadId: trip.loadId, vehicleTypeId: load.vehicleTypeId }} trips={[trip]} onDone={refresh} /> : null}
+            {move ? <TransitionModal key={move} open onOpenChange={(o) => !o && setMove(null)} trip={trip} load={load} to={move} hasPod={hasPod} side={side} onDone={refresh} /> : null}
+            {modal === 'assign' ? <AssignTrucksModal open onOpenChange={(o) => !o && setModal('')} award={{ id: trip.awardId, loadId: trip.loadId, vehicleTypeId: load.vehicleTypeId, hazmat: Boolean(load.hazmatClass) }} trips={[trip]} onDone={refresh} /> : null}
             {modal === 'swap' ? <SwapVehicleModal open onOpenChange={(o) => !o && setModal('')} trip={trip} load={load} vehicle={vehicle} driver={driver} onDone={refresh} /> : null}
             {modal === 'payment' ? <PaymentModal open onOpenChange={(o) => !o && setModal('')} tripId={trip.id} current={payment} onDone={refresh} /> : null}
             {modal === 'leg' ? <LegModal open onOpenChange={(o) => !o && setModal('')} tripId={trip.id} leg={leg} onDone={refresh} /> : null}
             {modal === 'note' ? <NoteModal open onOpenChange={(o) => !o && setModal('')} tripId={trip.id} onDone={refresh} /> : null}
             {modal === 'discrepancy' ? <DiscrepancyModal open onOpenChange={(o) => !o && setModal('')} tripId={trip.id} onDone={refresh} /> : null}
+            {modal === 'gst' ? <GstModal open onOpenChange={(o) => !o && setModal('')} tripId={trip.id} current={trip.gstTreatment} onDone={refresh} /> : null}
             {modal === 'rejectPod' ? <RejectPodModal open onOpenChange={(o) => !o && setModal('')} tripId={trip.id} onDone={refresh} /> : null}
             {modal === 'placement' ? <PlacementDecisionModal open onOpenChange={(o) => !o && setModal('')} tripId={trip.id} choice={choice} onDone={refresh} /> : null}
             {modal === 'confirm' ? (

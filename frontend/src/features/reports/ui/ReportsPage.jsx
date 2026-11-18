@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { CheckCircle2, IndianRupee, Truck } from 'lucide-react';
+import Link from 'next/link';
+import { dashboardPath } from '@/shared/lib/companyType';
+import { Calculator, IndianRupee, Truck } from 'lucide-react';
 import { DataGrid } from '@/shared/ui/data-grid';
-import { EmptyState, ErrorState, HatchedBars, Panel, SegmentedControl, StatCard, TrendArea, formatINR } from '@/shared/ui/kit';
+import { EmptyState, ErrorState, HatchedBars, Panel, StatCard, TrendArea, formatINR } from '@/shared/ui/kit';
 import { dayLabel, rangeFor, useReportData } from '../lib/report';
 import { getReportApi } from '../api/reports.api';
 import { ExportButtons, RangeControl, deltaFor } from './parts';
@@ -13,12 +15,6 @@ const MONEY = { customer: 'Freight spend', transporter: 'Revenue', broker: 'Plac
 const PARTY = { customer: 'Transporter', transporter: 'Customer', broker: 'Placed with', fleet_owner: 'Transporter' };
 const SPLIT = { customer: 'Spend by lane', transporter: 'Revenue by lane', broker: 'Placed value by lane', fleet_owner: 'Earned by lane' };
 
-const BUCKETS = [
-    { value: 'all', label: 'All trips' },
-    { value: 'active', label: 'Active' },
-    { value: 'completed', label: 'Completed' },
-    { value: 'cancelled', label: 'Cancelled' },
-];
 const STATUS_OPTIONS = ['planned', 'reported', 'loading', 'loaded', 'in_transit', 'delayed', 'reached_drop', 'delivered', 'completed', 'cancelled'].map((value) => ({ value }));
 
 const compact = (p) => formatINR(p, { compact: true });
@@ -30,8 +26,8 @@ const compact = (p) => formatINR(p, { compact: true });
  */
 export default function ReportsPage({ companyType }) {
     const [days, setDays] = useState('30');
-    const [bucket, setBucket] = useState('all');
-    const params = useMemo(() => ({ ...rangeFor(days), bucket }), [days, bucket]);
+    // Reports are by completion date, so every row is a completed trip: no status filter to offer.
+    const params = useMemo(() => rangeFor(days), [days]);
     const fetcher = useCallback((p) => getReportApi(p, companyType), [companyType]);
     const { data, error, isLoading, retry } = useReportData(fetcher, params);
 
@@ -44,7 +40,7 @@ export default function ReportsPage({ companyType }) {
 
     const columns = useMemo(
         () => [
-            { key: 'tripNo', label: 'Trip', type: 'text', width: 150 },
+            { key: 'tripNo', label: 'Trip', type: 'text', width: 210 },
             { key: 'date', label: 'Date', type: 'date', width: 110 },
             { key: 'lane', label: 'Lane', type: 'text' },
             { key: 'party', label: PARTY[companyType] ?? 'Company', type: 'text' },
@@ -55,8 +51,10 @@ export default function ReportsPage({ companyType }) {
         [companyType, money],
     );
 
+    const perTrip = (n, paise) => (Number(n) > 0 ? Math.round(Number(paise) / Number(n)) : null);
+    const derived = { perTrip: { value: perTrip(kpis.trips?.value, kpis.amountPaise?.value) ?? 0, previous: perTrip(kpis.trips?.previous, kpis.amountPaise?.previous) } };
     const card = (key, label, icon, format, good) => {
-        const k = kpis[key] ?? { value: 0, previous: null };
+        const k = kpis[key] ?? derived[key] ?? { value: 0, previous: null };
         const { delta, meta } = deltaFor(k.value, k.previous, good);
         return <StatCard label={label} value={format ? format(k.value) : Number(k.value) || 0} icon={icon} delta={delta} meta={meta} />;
     };
@@ -66,15 +64,13 @@ export default function ReportsPage({ companyType }) {
             <header className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-[var(--ds-on-surface)]">Reports</h1>
-                    <p className="mt-1 text-sm text-[var(--ds-on-surface-muted)]">Trips and {money.toLowerCase()} for the period, against the period before it.</p>
+                    <p className="mt-1 text-sm text-[var(--ds-on-surface-muted)]">Trips completed in the period and their {money.toLowerCase()}, against the period before it.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <RangeControl value={days} onChange={setDays} />
                     <ExportButtons companyType={companyType} params={params} disabled={isLoading || !hasData} />
                 </div>
             </header>
-
-            <SegmentedControl label="Trip status" size="sm" options={BUCKETS} value={bucket} onChange={setBucket} />
 
             {error ? (
                 <Panel>
@@ -86,14 +82,14 @@ export default function ReportsPage({ companyType }) {
                 </div>
             ) : !hasData ? (
                 <Panel>
-                    <EmptyState title="No trips in this period" description="Try a longer range or another status. Trips appear here as soon as they are planned." />
+                    <EmptyState title="No trips completed in this period" description="Try a longer range. A trip shows here once it is completed." action={<Link href={`${dashboardPath(companyType)}/${companyType === 'broker' ? 'loads' : 'trips'}`} className="inline-flex h-9 items-center rounded-xl bg-white/[0.08] px-4 text-sm font-medium hover:bg-white/[0.12]">{companyType === 'broker' ? 'Go to Loads' : 'Go to Trips'}</Link>} />
                 </Panel>
             ) : (
                 <>
                     <div className="grid gap-4 sm:grid-cols-3">
-                        {card('trips', 'Trips', <Truck className="size-4" />, null, null)}
-                        {card('completed', 'Completed trips', <CheckCircle2 className="size-4" />, null, 'up')}
+                        {card('trips', 'Trips completed', <Truck className="size-4" />, null, 'up')}
                         {card('amountPaise', money, <IndianRupee className="size-4" />, compact, null)}
+                        {card('perTrip', 'Average per trip', <Calculator className="size-4" />, compact, null)}
                     </div>
 
                     <div className="grid gap-4 lg:grid-cols-5">

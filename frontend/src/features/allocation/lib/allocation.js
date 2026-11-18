@@ -33,11 +33,14 @@ export function countdown(respondBy, now = Date.now()) {
     return h >= 48 ? `${Math.floor(h / 24)} days` : `${h} h ${m % 60} m`;
 }
 
+/** Why an offer was withdrawn: the reason the API sends (cancel or re-award writes one), else a plain fallback. */
+export const withdrawReason = (a) => a.withdrawNote || a.decisionNote || 'Withdrawn, for example because the load was cancelled or the award was taken back. The trucks are free again.';
+
 /** An offer can still be answered or withdrawn only while `offered` and before respond-by. */
 export const isOpen = (a, now = Date.now()) => a.status === 'offered' && new Date(a.respondBy).getTime() > now;
 
 export const money = (paise) => (paise == null ? '' : formatINR(paise));
-export const lane = (a) => [a.origin ?? a.load?.origin, a.destination ?? a.load?.destination].filter(Boolean).join(' to ') || a.loadNumber || '';
+export const lane = (a) => [a.origin ?? a.load?.origin, a.destination ?? a.load?.destination].filter(Boolean).join(' → ') || a.loadNumber || '';
 export const when = (v) => formatDate(v);
 
 /** Total money a row stands for: trucks x rate (both known). */

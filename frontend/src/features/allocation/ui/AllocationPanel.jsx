@@ -8,7 +8,7 @@ import { useCan } from '@/shared/hooks/useCan';
 import { DataGrid } from '@/shared/ui/data-grid';
 import { BigStat, ErrorState, Inset, Panel, SkeletonRows, StatusChip } from '@/shared/ui/kit';
 import { apiMessage, getAwardAllocationsApi, withdrawAllocationApi } from '../api/allocation.api';
-import { ALLOC_PERMS, ALLOC_STATUS, countdown, money, when } from '../lib/allocation';
+import { ALLOC_PERMS, ALLOC_STATUS, countdown, money, when, withdrawReason } from '../lib/allocation';
 import { useNow } from '../lib/useNow';
 import OfferModal from './OfferModal';
 
@@ -73,6 +73,7 @@ export default function AllocationPanel({ award, load, onChanged }) {
                     <span className="flex flex-col items-start gap-1">
                         <StatusChip value={r.status} options={ALLOC_STATUS} />
                         {['declined', 'expired', 'withdrawn'].includes(r.status) ? <span className="text-xs text-[var(--ds-on-surface-muted)]">Returned to you</span> : null}
+                        {r.status === 'withdrawn' ? <span className="max-w-[220px] text-xs text-[var(--ds-on-surface-variant)]">{withdrawReason(r)}</span> : null}
                     </span>
                 ),
                 width: 160,

@@ -61,6 +61,7 @@ export const updateVehicleRules = [
 const driverFields = [
     text('licenceNumber', 30), date('licenceExpiry'),
     body('yearsExperience').optional({ values: 'null' }).isInt({ min: 0, max: 60 }).withMessage('yearsExperience must be 0 to 60').toInt(),
+    body('hazmatEndorsement').optional().isBoolean().withMessage('hazmatEndorsement must be true or false').toBoolean(),
 ];
 export const createDriverRules = [text('name', 100, { required: true }), text('phone', 20, { required: true }), ...driverFields];
 export const updateDriverRules = [

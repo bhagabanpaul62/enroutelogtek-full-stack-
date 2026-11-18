@@ -23,6 +23,8 @@ export const addTripDocumentApi = (tripId, body) => api.post(`/trips/${tripId}/d
 export const proposeChargeApi = (tripId, body) => api.post(`/trips/${tripId}/charges`, body).then(unwrap);
 export const decideChargeApi = (tripId, chargeId, body) => api.post(`/trips/${tripId}/charges/${chargeId}/decision`, body).then(unwrap);
 export const addDiscrepancyApi = (tripId, body) => api.post(`/trips/${tripId}/discrepancies`, body).then(unwrap);
+export const setGstTreatmentApi = (tripId, treatment) => api.post(`/trips/${tripId}/gst-treatment`, { treatment }).then(unwrap);
+export const getClosureSheetApi = (tripId) => api.get(`/trips/${tripId}/closure-sheet`).then(unwrap);
 export const confirmTripApi = (tripId, body) => api.post(`/trips/${tripId}/confirm`, body).then(unwrap);
 export const rejectPodApi = (tripId, body) => api.post(`/trips/${tripId}/reject-pod`, body).then(unwrap);
 export const cancelTripApi = (tripId, body) => api.post(`/trips/${tripId}/cancel`, body).then(unwrap);

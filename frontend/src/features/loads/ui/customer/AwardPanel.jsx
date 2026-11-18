@@ -34,7 +34,9 @@ function AwardLine({ award, now, load }) {
                         {acceptIn ? ` · ${acceptIn} left` : ''}
                     </Fact>
                 )}
-                {award.respondedAt && award.status !== 'pending' && <Fact label="Answered">{formatDateTime(award.respondedAt)}</Fact>}
+                {award.respondedAt && award.status !== 'pending' && (
+                    <Fact label={award.status === 'accepted' ? 'Accepted on' : 'Answered'}>{formatDateTime(award.respondedAt)}</Fact>
+                )}
                 {award.reason && <Fact label="Reason">{award.reason}</Fact>}
                 {award.assignedAt && (
                     <>

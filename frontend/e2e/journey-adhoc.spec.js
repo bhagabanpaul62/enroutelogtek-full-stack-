@@ -74,19 +74,19 @@ test('customer posts an FTL load through the wizard and sees it live', async ({ 
         await page.goto('/customer/loads/new?type=FTL');
         await expect(page.getByRole('heading', { name: 'Route and schedule' })).toBeVisible();
 
-        const pins = page.getByPlaceholder('700001');
+        const pins = page.getByPlaceholder('6-digit PIN');
         const cities = page.getByRole('textbox', { name: 'City' });
         const addresses = page.getByPlaceholder('Plant, warehouse or street address');
         await pins.nth(0).fill('400001');
         await cities.nth(0).fill('Mumbai');
         await addresses.nth(0).fill('Plot 1 MIDC');
         await page.getByPlaceholder('Name of the person at the gate').nth(0).fill('Ravi');
-        await page.getByPlaceholder('98765 43210').nth(0).fill('9000011111');
+        await page.getByPlaceholder('10-digit mobile').nth(0).fill('9000011111');
         await pins.nth(1).fill('110001');
         await cities.nth(1).fill('Delhi');
         await addresses.nth(1).fill('Warehouse 7 Okhla');
         await page.getByPlaceholder('Name of the person at the gate').nth(1).fill('Sita');
-        await page.getByPlaceholder('98765 43210').nth(1).fill('9000022222');
+        await page.getByPlaceholder('10-digit mobile').nth(1).fill('9000022222');
         await page.getByLabel('Pickup date').fill(new Date(Date.now() + 10 * 86400000).toISOString().slice(0, 10));
         await page.getByLabel('Pickup window from').fill('09:00');
         await page.getByLabel('Pickup window to').fill('12:00');

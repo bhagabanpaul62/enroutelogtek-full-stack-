@@ -20,7 +20,7 @@ test('customer posts a draft and opens it as a record page', async ({ page }) =>
     await expect(page.getByRole('heading', { name: 'Route and schedule' })).toBeVisible();
 
     // Step 1: pickup, drop and schedule.
-    const pins = page.getByPlaceholder('700001');
+    const pins = page.getByPlaceholder('6-digit PIN');
     const cities = page.getByRole('textbox', { name: 'City' });
     const states = page.getByRole('textbox', { name: 'State' });
     const addresses = page.getByPlaceholder('Plant, warehouse or street address');
@@ -68,7 +68,7 @@ test('a part load shows the cargo block with a live chargeable weight', async ({
     await expect(page.getByRole('heading', { name: 'Route and schedule' })).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toContainText('PTL');
 
-    const pins = page.getByPlaceholder('700001');
+    const pins = page.getByPlaceholder('6-digit PIN');
     await pins.nth(0).fill('700001');
     await page.getByRole('textbox', { name: 'City' }).nth(0).fill('Kolkata');
     await page.getByPlaceholder('Plant, warehouse or street address').nth(0).fill('Plot 5 Salt Lake');

@@ -1,7 +1,7 @@
 /** Shared reads for reports and metrics: trips in a company's scope, with charges and allocation legs. */
 import { and, eq, gte, inArray, lt, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { db } from '#shared/db/index.js';
+import { db, outer } from '#shared/db/index.js';
 import { companies } from '#features/company/schemas/company.Schema.js';
 import { loads } from '#features/load/schemas/index.js';
 import { loadNumber } from '#features/load/load.rules.js';
@@ -20,7 +20,7 @@ export const tripScope = (company) => {
     return or(
         eq(trips.executorCompanyId, company.id),
         sql`exists (select 1 from allocation_trips at join allocations a on a.id = at.allocation_id
-            where at.trip_id = ${trips.id} and at.active and a.status = 'accepted' and a.to_company_id = ${company.id})`,
+            where at.trip_id = ${outer(trips.id)} and at.active and a.status = 'accepted' and a.to_company_id = ${company.id})`,
     );
 };
 

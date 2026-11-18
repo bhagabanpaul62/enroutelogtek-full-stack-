@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { IndianRupee, Truck } from 'lucide-react';
 import { DataGrid } from '@/shared/ui/data-grid';
 import { EmptyState, ErrorState, HatchedBars, Panel, StatCard, TrendArea, formatINR } from '@/shared/ui/kit';
@@ -29,7 +30,7 @@ export default function EarningsPage() {
 
     const columns = useMemo(
         () => [
-            { key: 'tripNo', label: 'Trip', type: 'text', width: 150 },
+            { key: 'tripNo', label: 'Trip', type: 'text', width: 210 },
             { key: 'completedAt', label: 'Completed', type: 'date', width: 120 },
             { key: 'lane', label: 'Lane', type: 'text' },
             { key: 'vehicle', label: 'Vehicle', type: 'text', width: 140 },
@@ -64,7 +65,7 @@ export default function EarningsPage() {
                 </div>
             ) : !hasData ? (
                 <Panel>
-                    <EmptyState title="No completed trips in this period" description="Earnings count once a trip is completed. Try a longer range, or finish a trip first." />
+                    <EmptyState title="No completed trips in this period" description="Earnings count once a trip is completed. Try a longer range, or finish a trip first." action={<Link href="/fleet-owner/trips" className="inline-flex h-9 items-center rounded-xl bg-white/[0.08] px-4 text-sm font-medium hover:bg-white/[0.12]">Go to Trips</Link>} />
                 </Panel>
             ) : (
                 <>

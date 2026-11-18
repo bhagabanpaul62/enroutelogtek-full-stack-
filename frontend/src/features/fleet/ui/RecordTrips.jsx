@@ -4,15 +4,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { DataGrid } from '@/shared/ui/data-grid';
 import { listTripsApi } from '../api/fleet.api';
 import { apiError } from '../lib/fleet';
+import { formatRoute } from '@/shared/lib/format.js';
 
 const COLUMNS = [
-    { key: 'loadNumber', label: 'Load', type: 'text', width: 140 },
+    { key: 'loadNumber', label: 'Load', type: 'text', width: 160 },
     { key: 'route', label: 'Route', type: 'text' },
     { key: 'status', label: 'Status', type: 'status', width: 150 },
     { key: 'expectedPlacementAt', label: 'Placement', type: 'date', width: 130 },
 ];
 
-const routeText = (t) => (t.pickupCity || t.dropCity ? `${t.pickupCity ?? ''} to ${t.dropCity ?? ''}` : '');
+const routeText = (t) => formatRoute(t.pickupCity, t.dropCity);
 
 /** Trips tab: GET /trips filtered on the server by this vehicle or driver (pass one of the two ids). */
 export default function RecordTrips({ vehicleId, driverId }) {

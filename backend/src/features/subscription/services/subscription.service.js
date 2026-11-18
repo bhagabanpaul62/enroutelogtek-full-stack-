@@ -4,7 +4,7 @@
  * approval (submission.service), trial start, cancel and the clock; each writes an event.
  */
 import { and, desc, eq, ilike, isNull, ne, sql } from 'drizzle-orm';
-import { db } from '#shared/db/index.js';
+import { db, outer } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { decodeCursor, encodeCursor } from '#shared/utils/cursorHelper.js';
 import { users } from '#features/auth/schemas/index.js';
@@ -257,7 +257,7 @@ export const listSubscriptions = async ({ state, search, cursor, limit = DEFAULT
             companyName: companies.companyName,
             companyType: companies.companyType,
             sub: companySubscriptions,
-            used: sql`(select count(*)::int from users u where u.company_id = ${companies.id} and u.user_status = 'active')`.mapWith(Number),
+            used: sql`(select count(*)::int from users u where u.company_id = ${outer(companies.id)} and u.user_status = 'active')`.mapWith(Number),
             cursorCreatedAt: sql`${companySubscriptions.createdAt}::text`.mapWith(String),
         })
         .from(companySubscriptions)

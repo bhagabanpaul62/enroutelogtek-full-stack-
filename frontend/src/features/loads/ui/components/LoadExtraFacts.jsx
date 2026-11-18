@@ -1,6 +1,17 @@
-import { Fact } from '@/shared/ui/kit';
+import { createContext, useContext, Children } from 'react';
+import { Fact as KitFact } from '@/shared/ui/kit';
 import { formatDate, formatINR, formatNumber, formatWeight } from '@/shared/lib/format';
 import { HANDLING_LABELS, HAZMAT_CLASS_LABELS, PAYABLE_BY_LABELS, PLACE_KIND_LABELS } from '../../constants';
+
+// A record page can ask for empty facts to disappear instead of showing a dash (see LoadSummary hideEmpty).
+export const HideEmptyFacts = createContext(false);
+
+/** Kit Fact; under HideEmptyFacts an empty value renders nothing at all. */
+export function Fact(props) {
+    const hideEmpty = useContext(HideEmptyFacts);
+    if (hideEmpty && !Children.toArray(props.children).some((child) => child !== '')) return null;
+    return <KitFact {...props} />;
+}
 
 const placeText = (kind, isOda) => [PLACE_KIND_LABELS[kind], isOda ? 'Out of delivery area' : null].filter(Boolean).join(', ');
 const hours = (h) => (h === null || h === undefined ? null : `${h} h`);

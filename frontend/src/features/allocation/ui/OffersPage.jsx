@@ -1,7 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Inbox, Send } from 'lucide-react';
+import { Button } from '@/shared/ui/primitives/button';
 import { useCan } from '@/shared/hooks/useCan';
 import { useCursorList } from '@/shared/hooks/useCursorList';
 import { DataGrid } from '@/shared/ui/data-grid';
@@ -24,7 +26,7 @@ export default function OffersPage({ companyType }) {
     const [tab, setTab] = useState('received');
     const home = isBroker ? '/broker' : '/fleet-owner';
     return (
-        <div className="flex flex-col gap-6">
+        <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6 px-4 py-6 lg:px-8">
             <header>
                 <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-[var(--ds-on-surface)]">Loads</h1>
                 <p className="mt-1 text-sm text-[var(--ds-on-surface-muted)]">
@@ -47,10 +49,12 @@ function Received({ isBroker, home }) {
     const [selectedId, setSelectedId] = useState(null);
     const [placing, setPlacing] = useState(null);
     const selected = list.items.find((o) => o.id === selectedId) ?? null;
+    // Withdrawn offers are noise in the default view; they stay one filter away.
+    const rows = useMemo(() => (status ? list.items : list.items.filter((o) => o.status !== 'withdrawn')), [list.items, status]);
 
     const columns = useMemo(
         () => [
-            { key: 'loadNumber', label: 'Load', type: 'text', width: 130 },
+            { key: 'loadNumber', label: 'Load', type: 'text', width: 160 },
             { key: 'lane', label: 'Route', type: 'text', value: lane },
             { key: 'pickupDate', label: 'Pickup', type: 'date', width: 110 },
             { key: 'quantity', label: 'Trucks', type: 'number', width: 90 },
@@ -60,7 +64,7 @@ function Received({ isBroker, home }) {
                 key: 'respondBy',
                 label: 'Respond by',
                 type: 'text',
-                value: (r) => (r.status === 'offered' ? countdown(r.respondBy, now) : when(r.respondedAt ?? r.respondBy)),
+                value: (r) => (r.status === 'offered' ? countdown(r.respondBy, now) : r.status === 'withdrawn' ? 'Closed' : when(r.respondedAt ?? r.respondBy)),
                 width: 130,
             },
             {
@@ -68,11 +72,25 @@ function Received({ isBroker, home }) {
                 label: 'Status',
                 type: 'text',
                 value: (r) => r.status,
-                render: (r) => <StatusChip value={r.status === 'offered' && !isOpen(r, now) ? 'expired' : r.status} options={ALLOC_STATUS} />,
-                width: 130,
+                render: (r) => (
+                    <span className="flex items-center gap-2">
+                        <StatusChip value={r.status === 'offered' && !isOpen(r, now) ? 'expired' : r.status} options={ALLOC_STATUS} />
+                        {canRespond && r.status === 'offered' && isOpen(r, now) ? (
+                            <Button
+                                type="button"
+                                className="h-7 rounded-lg px-2.5 text-xs"
+                                aria-label={`Accept or decline the offer for ${r.loadNumber ?? 'this load'}`}
+                                onClick={(e) => { e.stopPropagation(); setSelectedId(r.id); }}
+                            >
+                                Respond
+                            </Button>
+                        ) : null}
+                    </span>
+                ),
+                width: 210,
             },
         ],
-        [now],
+        [now, canRespond],
     );
 
     return (
@@ -80,12 +98,13 @@ function Received({ isBroker, home }) {
             <DataGrid
                 columns={columns}
                 list={list}
+                rows={rows}
                 onRowClick={(row) => setSelectedId(row.id)}
                 searchPlaceholder="Search load or transporter"
                 toolbar={
                     <select aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)} className="h-9 rounded-xl bg-white/[0.06] px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--ds-primary)]">
-                        <option value="">All offers</option>
-                        {ALLOC_STATUS.filter((s) => s.value !== 'withdrawn').map((s) => (
+                        <option value="">Current offers</option>
+                        {ALLOC_STATUS.map((s) => (
                             <option key={s.value} value={s.value}>{s.label}</option>
                         ))}
                     </select>
@@ -93,7 +112,12 @@ function Received({ isBroker, home }) {
                 empty={{
                     icon: Inbox,
                     title: status ? 'No offers with this status' : 'No offers yet',
-                    description: status ? 'Try another status.' : 'When a transporter you are connected with offers you trucks, it shows up here.',
+                    description: status ? 'Try another status.' : 'When a transporter you are connected with offers trucks to you, it shows up here. Connect with transporters first.',
+                    action: status ? undefined : (
+                        <Link href={`${home}/network`} className="inline-flex h-9 items-center rounded-xl bg-white/[0.08] px-4 text-sm font-medium hover:bg-white/[0.12]">
+                            Go to Network
+                        </Link>
+                    ),
                 }}
             />
             {selected ? (
@@ -144,7 +168,7 @@ function Placed() {
     const list = useCursorList(listPlacedApi, {}, { pageSize: 25 });
     const columns = useMemo(
         () => [
-            { key: 'loadNumber', label: 'Load', type: 'text', width: 130 },
+            { key: 'loadNumber', label: 'Load', type: 'text', width: 160 },
             { key: 'to', label: 'Placed with', type: 'text', value: (r) => `${r.to?.name ?? ''}${r.to?.type ? ` (${TYPE_LABEL[r.to.type] ?? r.to.type})` : ''}` },
             { key: 'quantity', label: 'Trucks', type: 'number', width: 90 },
             { key: 'ratePerTruckPaise', label: 'Rate per truck', type: 'text', value: (r) => money(r.ratePerTruckPaise), width: 140 },

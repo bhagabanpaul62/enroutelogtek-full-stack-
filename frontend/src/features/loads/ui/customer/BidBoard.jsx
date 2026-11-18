@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronDown, Trophy } from 'lucide-react';
+import { ChevronDown, Star, Trophy } from 'lucide-react';
 import { EmptyState, ErrorState, SkeletonRows, ToneBadge, riseStyle } from '@/shared/ui/kit';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/primitives/button';
@@ -140,6 +140,18 @@ export default function BidBoard({ load, canManage, onPick, busy = false }) {
                                 {bid.transporter?.enrouteCompanyId && (
                                     <p className="font-mono text-[11px] text-[var(--ds-on-surface-muted)]">{bid.transporter.enrouteCompanyId}</p>
                                 )}
+                                <p className="flex items-center gap-1 text-xs text-[var(--ds-on-surface-variant)]">
+                                    {bid.transporter?.avgStars != null && bid.transporter?.ratingCount > 0 ? (
+                                        <>
+                                            <Star className="size-3.5 fill-current" aria-hidden />
+                                            <span className="tabular-nums" aria-label={`Rated ${bid.transporter.avgStars} out of 5 by ${bid.transporter.ratingCount} ${bid.transporter.ratingCount === 1 ? 'customer' : 'customers'}`}>
+                                                {Number(bid.transporter.avgStars).toFixed(1)} ({bid.transporter.ratingCount} {bid.transporter.ratingCount === 1 ? 'rating' : 'ratings'})
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <span className="text-[var(--ds-on-surface-muted)]">Not rated yet</span>
+                                    )}
+                                </p>
                                 <p className="text-xs text-[var(--ds-on-surface-muted)]">
                                     {bid.attemptsUsed} of {load.maxAttempts ?? MAX_ATTEMPTS} attempts · last {formatDateTime(bid.lastAttemptAt)}
                                 </p>

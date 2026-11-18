@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Modal, ModalFooter } from '@/shared/ui/kit';
 import { createDriverApi, updateDriverApi } from '../api/fleet.api';
 import { DRIVER_AVAILABILITY, apiError, apiFieldErrors, dateInput, digitsOnly, editableAvailability, validateDriver } from '../lib/fleet';
+import { CheckboxRow } from '@/features/loads/ui/customer/steps/FormField';
 import { SelectField, TextField } from './fields';
 
 const initial = (d) => ({
@@ -15,6 +16,7 @@ const initial = (d) => ({
     licenceExpiry: dateInput(d?.licenceExpiry),
     yearsExperience: d?.yearsExperience ?? '',
     availability: d?.availability ?? 'available',
+    hazmatEndorsement: Boolean(d?.hazmatEndorsement),
 });
 
 /** Add or edit a driver. Drivers have no login (PRD Q-18): the company manages them. */
@@ -38,6 +40,7 @@ export default function DriverModal({ open, onOpenChange, driver, onSaved }) {
             licenceNumber: form.licenceNumber.trim(),
             licenceExpiry: form.licenceExpiry,
             ...(form.yearsExperience !== '' ? { yearsExperience: Number(form.yearsExperience) } : {}),
+            hazmatEndorsement: form.hazmatEndorsement,
         };
         if (isEdit && !onTrip) body.availability = form.availability;
         setBusy(true);
@@ -71,6 +74,14 @@ export default function DriverModal({ open, onOpenChange, driver, onSaved }) {
                 <TextField id="d-exp" label="Years of experience" type="number" min="0" max="60" value={form.yearsExperience} onChange={set('yearsExperience')} error={errors.yearsExperience} />
                 <TextField id="d-lic" label="Licence number" required value={form.licenceNumber} onChange={set('licenceNumber')} error={errors.licenceNumber} maxLength={30} />
                 <TextField id="d-lic-exp" label="Licence expiry" required type="date" value={form.licenceExpiry} onChange={set('licenceExpiry')} error={errors.licenceExpiry} />
+                <CheckboxRow
+                    id="d-hazmat"
+                    label="Hazmat endorsement"
+                    description="The licence allows hazardous goods. Only these drivers can be put on a hazmat load."
+                    checked={form.hazmatEndorsement}
+                    onChange={(checked) => setForm((f) => ({ ...f, hazmatEndorsement: checked }))}
+                    className="sm:col-span-2"
+                />
                 {isEdit ? (
                     <SelectField id="d-avail" label="Availability" value={onTrip ? 'on_trip' : form.availability} onChange={set('availability')} disabled={onTrip} hint={onTrip ? 'On a trip. Changes after the trip ends.' : undefined} options={onTrip ? DRIVER_AVAILABILITY : editableAvailability(DRIVER_AVAILABILITY)} className="sm:col-span-2" />
                 ) : null}

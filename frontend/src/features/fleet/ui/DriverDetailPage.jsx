@@ -40,8 +40,8 @@ export default function DriverDetailPage({ basePath }) {
     }, [id, tick]);
 
     const { driver, loading, error } = state;
-    if (loading && !driver) return <div className="rounded-3xl bg-[var(--ds-surface-container-low)] p-6" aria-busy="true"><SkeletonRows rows={5} /></div>;
-    if (error) return <ErrorState title={error} description="Go back to the list or try again." onRetry={() => { setState((s) => ({ ...s, loading: true, error: '' })); reload(); }} />;
+    if (loading && !driver) return <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8"><div className="rounded-3xl bg-[var(--ds-surface-container-low)] p-6" aria-busy="true"><SkeletonRows rows={5} /></div></div>;
+    if (error) return <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8"><ErrorState title={error} description="Go back to the list or try again." onRetry={() => { setState((s) => ({ ...s, loading: true, error: '' })); reload(); }} /></div>;
 
     const now = new Date();
     const licence = docState(driver.licenceExpiry, now);
@@ -58,7 +58,7 @@ export default function DriverDetailPage({ basePath }) {
     };
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6 px-4 py-6 lg:px-8">
             <EntityHeader
                 back={{ href: basePath, label: 'Drivers' }}
                 title={driver.name}
@@ -100,6 +100,7 @@ export default function DriverDetailPage({ basePath }) {
                                     </span>
                                 ) : ''}
                             </Fact>
+                            <Fact label="Hazmat endorsement">{driver.hazmatEndorsement ? 'Yes' : 'No'}</Fact>
                             <Fact label="Experience">{driver.yearsExperience != null ? `${driver.yearsExperience} years` : ''}</Fact>
                             <Fact label="Status"><StatusChip value={driver.availability} /></Fact>
                         </FactList>

@@ -47,12 +47,12 @@ export default function VehiclesPage({ basePath }) {
     );
 
     return (
-        <div className="flex flex-col gap-6">
+        <div className="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6 px-4 py-6 lg:px-8">
             <header>
                 <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-[var(--ds-on-surface)]">Vehicles</h1>
                 <p className="mt-1 text-sm text-[var(--ds-on-surface-muted)]">Each truck, its papers and whether it can take a trip.</p>
             </header>
-            <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">
                 <DataGrid
                     columns={columns}
                     rows={rows}

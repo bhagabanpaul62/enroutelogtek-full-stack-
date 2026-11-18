@@ -53,6 +53,12 @@ export const trips = pgTable(
         // 'clean' or 'remarks'; remarks text in podRemarks.
         podCondition: varchar('pod_condition', { length: 10 }),
         podRemarks: varchar('pod_remarks', { length: 500 }),
+        // AJ-27: who signed for the goods, and when.
+        receivedByName: varchar('received_by_name', { length: 150 }),
+        receivedByPhone: varchar('received_by_phone', { length: 15 }),
+        receivedAt: timestamp('received_at'),
+        // AJ-32 / Q-15: the transporter's GST declaration for the closure sheet: 'rcm' | 'forward'.
+        gstTreatment: varchar('gst_treatment', { length: 10 }),
         cancelReason: varchar('cancel_reason', { length: 300 }),
         // Milestone timestamps
         reportedAt: timestamp('reported_at'), // truck arrived at pickup
@@ -126,7 +132,7 @@ export const discrepancies = pgTable(
     {
         id: uuid('id').defaultRandom().primaryKey(),
         tripId: uuid('trip_id').notNull().references(() => trips.id),
-        kind: varchar('kind', { length: 10 }).notNull(), // shortage | damage
+        kind: varchar('kind', { length: 10 }).notNull(), // shortage | damage | rejected
         quantity: numeric('quantity', { precision: 10, scale: 2, mode: 'number' }),
         unit: varchar('unit', { length: 20 }), // packages | kg | tons
         note: text('note'),
@@ -169,6 +175,9 @@ export const placementMisses = pgTable(
         transporterCompanyId: uuid('transporter_company_id').notNull().references(() => companies.id),
         missedAt: timestamp('missed_at').defaultNow().notNull(),
         decision: varchar('decision', { length: 12 }), // re_award | cancel
+        // AJ-36: 'late' (the clock found no truck) or 'executor_cancel' (the executor cancelled before placement).
+        source: varchar('source', { length: 16 }).notNull().default('late'),
+        reason: varchar('reason', { length: 300 }),
         decidedByUserId: uuid('decided_by_user_id').references(() => users.id),
         decidedAt: timestamp('decided_at'),
         ...timestamps,

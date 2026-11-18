@@ -17,7 +17,7 @@ const TAB_IDS = TABS.map((t) => t.id);
 
 function buildColumns(now) {
     return [
-        { key: 'number', label: 'RFQ', type: 'text', width: 140 },
+        { key: 'number', label: 'RFQ', type: 'text', width: 170 },
         { key: 'customer', label: 'Customer', type: 'text', value: (r) => r.customer?.name ?? '' },
         { key: 'title', label: 'Title', type: 'text', render: (r) => <span className="block truncate font-medium">{r.title}</span> },
         {
@@ -32,7 +32,6 @@ function buildColumns(now) {
             ),
         },
         { key: 'validity', label: 'Contract period', type: 'text', value: (r) => formatPeriod(r) },
-        { key: 'laneCount', label: 'Lanes', type: 'number', value: (r) => r.laneCount ?? 0 },
         {
             key: 'mine',
             label: 'My quotes',

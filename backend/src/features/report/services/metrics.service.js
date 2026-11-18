@@ -4,7 +4,7 @@
  * earnings rule the reports use. A module with no data source (nothing to count) is not shown.
  */
 import { and, count, eq, inArray, isNull, sql } from 'drizzle-orm';
-import { db } from '#shared/db/index.js';
+import { db, outer } from '#shared/db/index.js';
 import { requireCompany } from '#features/load/services/load.access.js';
 import { awards, loads } from '#features/load/schemas/index.js';
 import { allocations } from '#features/allocation/schemas/index.js';
@@ -117,7 +117,7 @@ const partnerOverview = async (co, b) => {
     // Fleet owner: its own planned trips need a truck. Broker: accepted trips it has not placed yet.
     const unplaced = broker
         ? await tripCount(co, eq(trips.executorCompanyId, co.id), eq(trips.status, 'planned'),
-            sql`not exists (select 1 from allocation_trips at2 where at2.trip_id = ${trips.id} and at2.depth = 2 and at2.active)`)
+            sql`not exists (select 1 from allocation_trips at2 where at2.trip_id = ${outer(trips.id)} and at2.depth = 2 and at2.active)`)
         : await tripCount(co, eq(trips.executorCompanyId, co.id), eq(trips.status, 'planned'), isNull(trips.vehicleId));
     return {
         pending: [item('offers_to_answer', 'Offers to answer', offers), broker ? item('trips_to_place', 'Accepted trucks not placed yet', unplaced) : item('trips_to_assign', 'Trips without a truck', unplaced)],

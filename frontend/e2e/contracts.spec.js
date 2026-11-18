@@ -1,7 +1,7 @@
-import { expect, loginAs, test, USERS } from './fixtures.js';
+import { expect, loginAs, seen, test, USERS } from './fixtures.js';
 
 // Not run in the build wave. Needs the wave 3 backend (RFQs, contracts, indents) on the e2e stack.
-// The seed has no contracts, so record specs open the first row and skip when the grid is empty.
+// The demo seed has an active contract with indents; record specs still open the first row and skip when the grid is empty.
 
 const SIDES = [
     ['customer', '/customer/contracts'],
@@ -31,7 +31,7 @@ test('customer opens a contract: lanes, indents, amendments, terms, activity', a
     await loginAs(page, USERS.customer);
     await page.goto('/customer/contracts');
     const first = page.getByRole('row').nth(1);
-    test.skip(!(await first.isVisible().catch(() => false)), 'no contracts seeded yet');
+    test.skip(!(await seen(first)), 'no contracts seeded yet');
     await first.click();
     await expect(page).toHaveURL(/\/customer\/contracts\/[0-9a-f-]{36}$/);
     await expect(page.getByRole('tab', { name: /Lanes/ })).toHaveAttribute('aria-selected', 'true');
@@ -46,11 +46,11 @@ test('customer places an indent and the over-volume note never blocks it', async
     await loginAs(page, USERS.customer);
     await page.goto('/customer/contracts');
     const row = page.getByRole('row').filter({ hasText: 'Active' }).first();
-    test.skip(!(await row.isVisible().catch(() => false)), 'no active contract');
+    test.skip(!(await seen(row)), 'no active contract');
     await row.click();
     await page.getByRole('tab', { name: /Indents/ }).click();
     const open = page.getByRole('button', { name: 'New indent' }).first();
-    test.skip(!(await open.isVisible().catch(() => false)), 'no permission or contract closed to indents');
+    test.skip(!(await seen(open)), 'no permission or contract closed to indents');
     await open.click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toContainText('New indent');
@@ -72,7 +72,7 @@ test('transporter acknowledges a requested indent and gets a load link', async (
     await loginAs(page, USERS.transporter);
     await page.goto('/transporter/contracts?tab=indents');
     const ack = page.getByRole('button', { name: /^Acknowledge IND-/ }).first();
-    test.skip(!(await ack.isVisible().catch(() => false)), 'no requested indent waiting');
+    test.skip(!(await seen(ack)), 'no requested indent waiting');
     await ack.click();
     await expect(page.getByRole('dialog')).toContainText('Creates a contract load');
     await page.getByRole('dialog').getByRole('button', { name: 'Acknowledge' }).click();
@@ -83,7 +83,7 @@ test('transporter declining an indent needs a reason', async ({ page }) => {
     await loginAs(page, USERS.transporter);
     await page.goto('/transporter/contracts?tab=indents');
     const decline = page.getByRole('button', { name: /^Decline IND-/ }).first();
-    test.skip(!(await decline.isVisible().catch(() => false)), 'no requested indent waiting');
+    test.skip(!(await seen(decline)), 'no requested indent waiting');
     await decline.click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('button', { name: 'Decline indent' })).toBeDisabled();
@@ -95,7 +95,7 @@ test('cancel contract modal shows the effective date and asks for a reason', asy
     await loginAs(page, USERS.customer);
     await page.goto('/customer/contracts');
     const row = page.getByRole('row').filter({ hasText: 'Active' }).first();
-    test.skip(!(await row.isVisible().catch(() => false)), 'no active contract');
+    test.skip(!(await seen(row)), 'no active contract');
     await row.click();
     await page.getByRole('button', { name: 'Cancel contract' }).click();
     const dialog = page.getByRole('dialog');
@@ -111,10 +111,10 @@ test('propose amendment needs a real change', async ({ page }) => {
     await loginAs(page, USERS.transporter);
     await page.goto('/transporter/contracts');
     const row = page.getByRole('row').filter({ hasText: 'Active' }).first();
-    test.skip(!(await row.isVisible().catch(() => false)), 'no active contract');
+    test.skip(!(await seen(row)), 'no active contract');
     await row.click();
     const propose = page.getByRole('button', { name: 'Propose amendment' });
-    test.skip(!(await propose.isVisible().catch(() => false)), 'no permission to propose');
+    test.skip(!(await seen(propose)), 'no permission to propose');
     await propose.click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('button', { name: 'Send proposal' })).toBeDisabled();

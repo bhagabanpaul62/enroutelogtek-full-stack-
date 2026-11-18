@@ -5,7 +5,7 @@ import { Check, ExternalLink, Wallet, X } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
 import { ErrorState, Fact, FactList, SidePanel, SkeletonRows, StatusChip, formatDate, formatDateTime, formatINR } from '@/shared/ui/kit';
 import { getPaymentApi } from '../api/subscriptions.api';
-import { PAYMENT_STATUS_OPTIONS, PURPOSE_LABELS, expectedAmount, periodLabel } from '../constants';
+import { PAYMENT_STATUS_OPTIONS, PURPOSE_LABELS, expectedAmount, paymentPeriod } from '../constants';
 
 const IMAGE = /\.(png|jpe?g|webp|gif)(\?|$)/i;
 
@@ -77,7 +77,7 @@ export default function PaymentPanel({ payment, onClose, onApprove, onReject }) 
                             <StatusChip value={payment.status} options={PAYMENT_STATUS_OPTIONS} />
                         </Fact>
                         <Fact label="Plan">{p.planName}</Fact>
-                        <Fact label="Period">{p.periodMonths ? periodLabel(p.periodMonths) : null}</Fact>
+                        <Fact label="Period">{paymentPeriod(p) || null}</Fact>
                         <Fact label="Extra seats">{p.extraSeats}</Fact>
                         <Fact label="Amount">{formatINR(p.amountPaise)}</Fact>
                         <Fact label="Check">
@@ -133,7 +133,9 @@ export default function PaymentPanel({ payment, onClose, onApprove, onReject }) 
                             {p.effectPreview && reviewable ? (
                                 <p className="rounded-2xl bg-white/[0.05] px-4 py-3 text-sm text-[var(--ds-on-surface)]">
                                     <span className="text-[var(--ds-on-surface-muted)]">If you approve: </span>
-                                    {p.effectPreview}
+                                    {p.effectPreview.ok
+                                        ? `The plan runs from ${formatDate(p.effectPreview.startsAt)} to ${formatDate(p.effectPreview.endsAt)} with ${p.effectPreview.seats} seats.`
+                                        : p.effectPreview.message}
                                 </p>
                             ) : null}
                         </>

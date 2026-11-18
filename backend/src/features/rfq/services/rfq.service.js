@@ -8,7 +8,7 @@
  */
 import { and, asc, desc, eq, ilike, inArray, ne, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { db } from '#shared/db/index.js';
+import { db, outer } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { companies } from '#features/company/schemas/company.Schema.js';
 import { vehicleTypes } from '#features/load/schemas/index.js';
@@ -290,13 +290,13 @@ export const getCustomerRfqOrThrow = async (user, rfqId) => {
 
 // ---------- lists ----------
 
-const laneCountSql = sql`(select count(*)::int from rfq_lanes l where l.rfq_id = ${rfqs.id})`.mapWith(Number);
-const inviteeCountSql = sql`(select count(*)::int from rfq_invitations i where i.rfq_id = ${rfqs.id})`.mapWith(Number);
-const quotedCountSql = sql`(select count(distinct q.transporter_company_id)::int from rfq_quotes q where q.rfq_id = ${rfqs.id})`.mapWith(Number);
+const laneCountSql = sql`(select count(*)::int from rfq_lanes l where l.rfq_id = ${outer(rfqs.id)})`.mapWith(Number);
+const inviteeCountSql = sql`(select count(*)::int from rfq_invitations i where i.rfq_id = ${outer(rfqs.id)})`.mapWith(Number);
+const quotedCountSql = sql`(select count(distinct q.transporter_company_id)::int from rfq_quotes q where q.rfq_id = ${outer(rfqs.id)})`.mapWith(Number);
 const myQuotedLanesSql = (companyId) =>
-    sql`(select count(*)::int from rfq_quotes q where q.rfq_id = ${rfqs.id} and q.transporter_company_id = ${companyId})`.mapWith(Number);
+    sql`(select count(*)::int from rfq_quotes q where q.rfq_id = ${outer(rfqs.id)} and q.transporter_company_id = ${companyId})`.mapWith(Number);
 const awardPendingSql = (companyId) =>
-    sql`exists (select 1 from rfq_lane_awards a where a.rfq_id = ${rfqs.id} and a.transporter_company_id = ${companyId} and a.status = 'pending')`.mapWith(Boolean);
+    sql`exists (select 1 from rfq_lane_awards a where a.rfq_id = ${outer(rfqs.id)} and a.transporter_company_id = ${companyId} and a.status = 'pending')`.mapWith(Boolean);
 
 const rowShape = ({ rfq, ...extra }) => ({
     id: rfq.id,
@@ -419,7 +419,7 @@ const customerView = async (user, rfq) => {
                 companyId: rfqInvitations.transporterCompanyId,
                 name: companies.companyName,
                 viewedAt: rfqInvitations.viewedAt,
-                quotedLanes: sql`(select count(*)::int from rfq_quotes q where q.rfq_id = ${rfqInvitations.rfqId} and q.transporter_company_id = ${rfqInvitations.transporterCompanyId})`.mapWith(Number),
+                quotedLanes: sql`(select count(*)::int from rfq_quotes q where q.rfq_id = ${outer(rfqInvitations.rfqId)} and q.transporter_company_id = ${outer(rfqInvitations.transporterCompanyId)})`.mapWith(Number),
             })
             .from(rfqInvitations)
             .innerJoin(companies, eq(rfqInvitations.transporterCompanyId, companies.id))

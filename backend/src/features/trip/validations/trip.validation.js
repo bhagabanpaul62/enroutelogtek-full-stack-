@@ -3,6 +3,7 @@ import {
     DISCREPANCY_KINDS,
     DISCREPANCY_UNITS,
     EXECUTOR_CHARGE_KINDS,
+    GST_TREATMENTS,
     LEG_NAMES,
     PLACEMENT_DECISIONS,
     POD_CONDITIONS,
@@ -25,7 +26,8 @@ export const loadIdRules = [param('loadId').isUUID().withMessage('loadId must be
 export const companyIdRules = [param('companyId').isUUID().withMessage('companyId must be a valid id')];
 
 export const listTripsRules = [
-    query('status').optional().isIn(TRIP_STATUSES).withMessage(`status must be one of: ${TRIP_STATUSES.join(', ')}`),
+    // 'active' = every status except completed and cancelled.
+    query('status').optional().isIn([...TRIP_STATUSES, 'active']).withMessage(`status must be active or one of: ${TRIP_STATUSES.join(', ')}`),
     query('loadId').optional().isUUID().withMessage('loadId must be a valid id'),
     query('vehicleId').optional().isUUID().withMessage('vehicleId must be a valid id'),
     query('driverId').optional().isUUID().withMessage('driverId must be a valid id'),
@@ -52,6 +54,8 @@ export const transitionRules = [
     optionalText('podRemarks', 500),
     optionalText('cancelReason', 300),
     optionalText('receivedBy', 150),
+    body('receivedByPhone').optional({ values: 'null' }).isString().trim().matches(/^\d{10}$/).withMessage('receivedByPhone must be 10 digits'),
+    optionalDate('receivedAt'),
     body('packagesDelivered').optional({ values: 'null' }).isInt({ min: 0 }).withMessage('packagesDelivered must be a whole number').toInt(),
 ];
 
@@ -93,6 +97,7 @@ export const confirmRules = [
     body('rating.stars').if(body('rating').exists({ values: 'null' })).isInt({ min: 1, max: 5 }).withMessage('rating.stars must be 1 to 5').toInt(),
     body('rating.comment').optional({ values: 'null' }).isString().trim().isLength({ max: 500 }).withMessage('rating.comment can be at most 500 characters'),
 ];
+export const gstRules = [body('treatment').isIn(Object.keys(GST_TREATMENTS)).withMessage(`treatment must be one of: ${Object.keys(GST_TREATMENTS).join(', ')}`)];
 export const rejectPodRules = [requiredText('reason', 300)];
 export const paymentRules = [
     body('status').isIn(['paid', 'unpaid']).withMessage('status must be paid or unpaid'),

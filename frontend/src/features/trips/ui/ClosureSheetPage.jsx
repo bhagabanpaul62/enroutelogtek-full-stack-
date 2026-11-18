@@ -1,10 +1,13 @@
 'use client';
 
 import { Printer } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { ErrorState, SkeletonRows } from '@/shared/ui/kit';
 import { Button } from '@/shared/ui/primitives/button';
 import Link from 'next/link';
 import { CHARGE_LABELS, DOC_LABELS } from '../constants';
+import { getClosureSheetApi } from '../api/trips.api';
+import GstModal from './GstModal';
 import { useTrip } from '../hooks/useTrip';
 import { useTripSide } from '../hooks/useTripSide';
 import { formatDateTime, money, rowView, routeOf } from '../lib/trip';
@@ -29,7 +32,15 @@ function Row({ label, children }) {
 /** Print-ready closure sheet for a delivered or completed trip: window.print(), no PDF library. */
 export default function ClosureSheetPage({ tripId }) {
     const { data, error, loading, reload } = useTrip(tripId);
-    const { base } = useTripSide();
+    const { base, side, can } = useTripSide();
+    const [sheet, setSheet] = useState(null); // the server's closure sheet: GST, receiver, rejected goods
+    const [gstOpen, setGstOpen] = useState(false);
+    const [tick, setTick] = useState(0);
+    useEffect(() => {
+        let ignore = false;
+        getClosureSheetApi(tripId).then((s) => !ignore && setSheet(s)).catch(() => !ignore && setSheet(null));
+        return () => { ignore = true; };
+    }, [tripId, tick]);
 
     if (loading && !data) return <div className="mx-auto max-w-3xl p-4 sm:p-6"><SkeletonRows rows={6} /></div>;
     if (!data) return <div className="mx-auto max-w-3xl p-4 sm:p-6"><ErrorState title="Couldn't load the closure sheet" description={error} onRetry={reload} /></div>;
@@ -72,6 +83,22 @@ export default function ClosureSheetPage({ tripId }) {
                     <Row label="Loaded weight">{trip.loadedWeightKg ? `${trip.loadedWeightKg} kg` : ''}</Row>
                     <Row label="Vehicle">{vehicle?.registrationNumber}</Row>
                     <Row label="Driver">{driver ? `${driver.name}${driver.phone ? `, ${driver.phone}` : ''}` : ''}</Row>
+                    <Row label="Received by">
+                        {sheet?.delivery?.receivedByName ? `${sheet.delivery.receivedByName}${sheet.delivery.receivedByPhone ? `, ${sheet.delivery.receivedByPhone}` : ''}${sheet.delivery.receivedAt ? `, ${formatDateTime(sheet.delivery.receivedAt)}` : ''}` : ''}
+                    </Row>
+                    <Row label="Goods rejected">{sheet ? (sheet.goodsRejected ? 'Yes, see discrepancies below' : 'No') : ''}</Row>
+                    <Row label="GST treatment">
+                        {sheet?.gst ? (
+                            `${sheet.gst.label}, ${sheet.gst.ratePct}% GST, ${sheet.gst.customerItc ? 'customer can claim input tax credit' : 'no input tax credit for the customer'}`
+                        ) : (
+                            <span>
+                                Not declared yet.{' '}
+                                {side === 'executor' && can('trips.update') ? (
+                                    <button type="button" className="closure-hide text-primary underline" onClick={() => setGstOpen(true)}>Declare it now</button>
+                                ) : 'The transporter declares it on the trip.'}
+                            </span>
+                        )}
+                    </Row>
                     <Row label="POD">
                         {trip.podCondition === 'clean' ? 'Clean, no remarks' : trip.podCondition ? `Remarks: ${trip.podRemarks ?? ''}` : ''}
                         {documents.some((d) => d.documentType === 'pod') ? ' (photo on file)' : ''}
@@ -104,7 +131,7 @@ export default function ClosureSheetPage({ tripId }) {
                         <ul className="mt-2 text-sm">
                             {discrepancies.map((d) => (
                                 <li key={d.id} className="border-b border-neutral-200 py-1.5">
-                                    <span className="font-medium capitalize">{d.kind}</span>: {d.quantity} {d.unit}. {d.note}
+                                    <span className="font-medium">{d.kind === 'rejected' ? 'Goods rejected' : d.kind === 'shortage' ? 'Shortage' : 'Damage'}</span>{d.quantity ? `: ${d.quantity} ${d.unit ?? ''}` : ''}. {d.note}
                                 </li>
                             ))}
                         </ul>
@@ -122,6 +149,7 @@ export default function ClosureSheetPage({ tripId }) {
                     <div className="border-t border-neutral-400 pt-2">Transporter signature and date</div>
                 </div>
             </article>
+            {gstOpen ? <GstModal open onOpenChange={setGstOpen} tripId={tripId} current={sheet?.gst?.treatment} onDone={() => setTick((n) => n + 1)} /> : null}
         </div>
     );
 }

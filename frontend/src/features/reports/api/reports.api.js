@@ -35,7 +35,7 @@ const previousRange = ({ from, to }) => {
 
 const BUCKET = { active: (s) => s !== 'completed' && s !== 'cancelled', completed: (s) => s === 'completed', cancelled: (s) => s === 'cancelled' };
 const money = (r) => r.spendPaise ?? r.netPaise ?? 0;
-const sum = (rows) => rows.reduce((t, r) => t + money(r), 0);
+const sum = (rows) => rows.reduce((t, r) => t + (r.amountPaise ?? money(r)), 0);
 
 /** Reads the dataset for this and the previous period, shapes it for ReportsPage and EarningsPage. params: { from, to, bucket? }. */
 export async function getReportApi(params, companyType) {

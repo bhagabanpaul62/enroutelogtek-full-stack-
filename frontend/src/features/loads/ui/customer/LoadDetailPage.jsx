@@ -229,6 +229,15 @@ function LoadDetailView({ loadId }) {
                 </p>
             )}
 
+            {TRIP_STATUSES.includes(load.status) && (
+                <p role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/[0.05] px-4 py-3 text-sm text-[var(--ds-on-surface-variant)]">
+                    <span>{load.status === 'completed' ? 'This load is complete. Each truck’s trip and papers are on Trips.' : 'The truck is booked. Follow each trip from pickup to delivery on Trips.'}</span>
+                    <Link href="/customer/trips" className="text-primary hover:underline">
+                        Open trips
+                    </Link>
+                </p>
+            )}
+
             <PlacementMissBanner
                 loadId={load.id}
                 status={load.status}
@@ -245,7 +254,7 @@ function LoadDetailView({ loadId }) {
                     <>
                         <KpiRow load={load} now={now} />
                         {load.award && <AwardPanel award={load.award} history={load.awardHistory ?? []} now={now} load={load} />}
-                        <LoadSummary load={load} showTarget className="items-stretch lg:grid-cols-2" />
+                        <LoadSummary load={load} showTarget hideEmpty className="items-stretch lg:grid-cols-2" />
                     </>
                 )}
 

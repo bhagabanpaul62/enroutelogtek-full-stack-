@@ -94,7 +94,15 @@ export const POD_CONDITIONS = [
 export const DISCREPANCY_KINDS = [
     { value: 'shortage', label: 'Shortage' },
     { value: 'damage', label: 'Damage' },
+    { value: 'rejected', label: 'Goods rejected by the consignee' },
 ];
+
+/** GST treatment the transporter declares for the freight. Rates and credit as the API reports them on the closure sheet. */
+export const GST_TREATMENTS = [
+    { value: 'rcm', label: 'Reverse charge (RCM)', detail: 'The customer pays the 5% GST to the government. No input tax credit for the customer.' },
+    { value: 'forward', label: 'Forward charge', detail: 'You charge 12% GST on the invoice. The customer can claim input tax credit.' },
+];
+export const gstLabel = (value) => GST_TREATMENTS.find((g) => g.value === value)?.label ?? '';
 export const DISCREPANCY_UNITS = [
     { value: 'packages', label: 'Packages' },
     { value: 'kg', label: 'kg' },

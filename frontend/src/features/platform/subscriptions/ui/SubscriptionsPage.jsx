@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Ban } from 'lucide-react';
+import { Ban, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { DataGrid } from '@/shared/ui/data-grid';
-import { Modal, ModalField, ModalFooter } from '@/shared/ui/kit';
+import { Button } from '@/shared/ui/primitives/button';
+import { Fact, FactList, Modal, ModalField, ModalFooter, SidePanel, StatusChip, formatDate } from '@/shared/ui/kit';
 import { useCursorList } from '@/shared/hooks/useCursorList';
 import { COMPANY_TYPE_LABELS } from '@/shared/lib/dashboardNav';
 import { cancelSubscriptionApi, listSubscriptionsApi } from '../api/subscriptions.api';
@@ -17,6 +18,54 @@ const COLUMNS = [
     { key: 'endsAt', label: 'Ends', type: 'date', width: 130 },
     { key: 'seats', label: 'Seats', type: 'text', width: 100, value: (s) => `${s.seats?.used ?? 0} / ${s.seats?.total ?? 0}` },
 ];
+
+// Whole days until the period ends (negative once it has ended). Null when the row has no end date.
+const daysLeft = (endsAt) => (endsAt ? Math.ceil((new Date(endsAt).getTime() - Date.now()) / 86400000) : null);
+
+function daysLeftLabel(endsAt) {
+    const days = daysLeft(endsAt);
+    if (days === null) return null;
+    if (days < 0) return `Ended ${-days} ${-days === 1 ? 'day' : 'days'} ago`;
+    if (days === 0) return 'Ends today';
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+}
+
+function SubscriptionPanel({ subscription, onClose, onCancel }) {
+    const s = subscription;
+    return (
+        <SidePanel
+            open={Boolean(s)}
+            onOpenChange={(next) => {
+                if (!next) onClose();
+            }}
+            icon={<CreditCard className="size-5" />}
+            title={s ? s.companyName : 'Subscription'}
+            description={s ? s.planName || undefined : undefined}
+            footer={
+                s && s.state !== 'cancelled' ? (
+                    <div className="flex items-center justify-end gap-2 bg-white/[0.03] px-6 py-4">
+                        <Button variant="destructive" className="h-10 rounded-xl px-4 text-sm" onClick={() => onCancel(s)}>
+                            <Ban /> Cancel subscription
+                        </Button>
+                    </div>
+                ) : null
+            }
+        >
+            {s ? (
+                <FactList>
+                    <Fact label="Company">{s.companyName}</Fact>
+                    <Fact label="Plan">{s.planName}</Fact>
+                    <Fact label="State">
+                        <StatusChip value={s.state} />
+                    </Fact>
+                    <Fact label="Seats">{s.seats ? `${s.seats.used} of ${s.seats.total} used` : null}</Fact>
+                    <Fact label="Ends">{s.endsAt ? formatDate(s.endsAt) : null}</Fact>
+                    <Fact label="Days left">{daysLeftLabel(s.endsAt)}</Fact>
+                </FactList>
+            ) : null}
+        </SidePanel>
+    );
+}
 
 function CancelModal({ subscription, busy, onCancel, onSubmit }) {
     const [reason, setReason] = useState('');
@@ -58,8 +107,15 @@ function CancelModal({ subscription, busy, onCancel, onSubmit }) {
 /** Platform admin: every company's plan, state and seats, with an immediate cancel. */
 export default function SubscriptionsPage() {
     const list = useCursorList(listSubscriptionsApi, {});
+    const [selected, setSelected] = useState(null);
     const [target, setTarget] = useState(null);
     const [busy, setBusy] = useState(false);
+
+    // The panel closes before the confirm modal opens, so only one overlay is up at a time.
+    const askCancel = (subscription) => {
+        setSelected(null);
+        setTarget(subscription);
+    };
 
     const cancel = async (reason) => {
         setBusy(true);
@@ -85,11 +141,12 @@ export default function SubscriptionsPage() {
                 columns={COLUMNS}
                 list={list}
                 getRowId={(s) => s.id}
-                rowActions={[{ label: 'Cancel', icon: Ban, danger: true, hidden: (s) => s.state === 'cancelled', onClick: setTarget }]}
+                onRowClick={setSelected}
                 empty={{ title: 'No subscriptions yet' }}
                 searchPlaceholder="Search by company"
                 maxHeight="calc(100vh - 16rem)"
             />
+            <SubscriptionPanel subscription={selected} onClose={() => setSelected(null)} onCancel={askCancel} />
             {target ? <CancelModal subscription={target} busy={busy} onCancel={() => setTarget(null)} onSubmit={cancel} /> : null}
         </div>
     );

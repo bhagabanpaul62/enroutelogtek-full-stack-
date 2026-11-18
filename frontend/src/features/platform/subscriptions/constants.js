@@ -20,6 +20,9 @@ export const PAYMENT_STATUS_OPTIONS = [
 
 export const periodLabel = (months) => (months === 12 ? '1 year' : `${months} month${months === 1 ? '' : 's'}`);
 
+/** A payment's period. Extra seats run to the end of the current term; their stored months only drive the pro-rating. */
+export const paymentPeriod = (p) => (p.purpose === 'extra_seats' ? 'Rest of term' : p.periodMonths ? periodLabel(p.periodMonths) : '');
+
 // Rupees typed in a field to integer paise ('' or junk gives null).
 export function rupeesToPaise(text) {
     const value = String(text).trim();

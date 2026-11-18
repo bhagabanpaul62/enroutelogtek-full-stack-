@@ -206,16 +206,18 @@ export default function DashboardOverview({ companyType }) {
                 </section>
             ) : null}
 
-            <section aria-label="Go to" className="flex flex-col gap-3">
-                <h2 className="font-mono text-[11px] uppercase tracking-[0.05em] text-[var(--ds-on-surface-muted)]">Go to</h2>
-                <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <details aria-label="All pages" className="group flex flex-col gap-3">
+                <summary className="cursor-pointer list-none font-mono text-[11px] uppercase tracking-[0.05em] text-[var(--ds-on-surface-muted)] hover:text-[var(--ds-on-surface)]">
+                    All pages <span className="normal-case tracking-normal">(same as the menu)</span>
+                </summary>
+                <ul className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {pages.map((page) => (
                         <li key={page.slug}>
                             <NavCard page={page} />
                         </li>
                     ))}
                 </ul>
-            </section>
+            </details>
         </div>
     );
 }

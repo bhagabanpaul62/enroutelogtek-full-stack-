@@ -1,6 +1,6 @@
 /** Vehicles: company-scoped CRUD, documents with expiry, and the picker list for trip assignment. */
 import { and, desc, eq, ilike, inArray, isNull, sql, getTableColumns } from 'drizzle-orm';
-import { db } from '#shared/db/index.js';
+import { db, outer } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { vehicleTypes } from '#features/load/schemas/master.Schema.js';
 import { linkDocument } from '#features/document/document.link.js';
@@ -48,7 +48,7 @@ const baseSelect = () => ({
     ...getTableColumns(vehicles),
     busy: busyVehicleSql(vehicles),
     cursorCreatedAt: cursorTextColumn(vehicles),
-    vehicleTypeName: sql`(select name from vehicle_types vt where vt.id = ${vehicles.vehicleTypeId})`.mapWith(String),
+    vehicleTypeName: sql`(select name from vehicle_types vt where vt.id = ${outer(vehicles.vehicleTypeId)})`.mapWith(String),
 });
 
 const mine = (companyId) => and(eq(vehicles.ownerCompanyId, companyId), isNull(vehicles.deletedAt));

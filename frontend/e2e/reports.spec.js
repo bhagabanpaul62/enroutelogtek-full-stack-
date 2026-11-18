@@ -9,7 +9,7 @@ for (const role of ['customer', 'transporter', 'broker', 'fleetowner']) {
         await expect(page.getByRole('radio', { name: '7 days' })).toHaveAttribute('aria-checked', 'true');
         // Either real numbers with export, or an honest empty state; never a blank page.
         // With no data both show (a disabled export + the empty line), so take the first match.
-        await expect(page.getByRole('button', { name: 'Export CSV' }).or(page.getByText('No trips in this period')).first()).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Export CSV' }).or(page.getByText('No trips completed in this period')).first()).toBeVisible();
     });
 }
 

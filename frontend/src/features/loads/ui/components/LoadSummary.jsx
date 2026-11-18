@@ -1,4 +1,4 @@
-import { Fact, FactList, Panel } from '@/shared/ui/kit';
+import { FactList, Panel } from '@/shared/ui/kit';
 import {
     LOAD_TYPE_LABELS,
     PACKAGING_LABELS,
@@ -8,7 +8,7 @@ import {
 import { formatWeight } from '@/shared/lib/format';
 import { formatDate, formatDateTime, formatRupees, formatTimeWindow } from '../../lib/format';
 import LoadTypeBadge from './LoadTypeBadge';
-import { CargoFacts, ContactFacts, PackageLines, PlaceFacts, TermsFacts } from './LoadExtraFacts';
+import { CargoFacts, ContactFacts, Fact, HideEmptyFacts, PackageLines, PlaceFacts, TermsFacts } from './LoadExtraFacts';
 
 function Block({ title, action, children }) {
     return (
@@ -22,9 +22,10 @@ function Block({ title, action, children }) {
  * The load's facts as both sides see them: route and schedule, material and truck, price and
  * bid rules. The customer view adds the hidden target price. `renderAction(step)` can return an
  * Edit link per block (the customer's review step).
- * @param {{ load: object, showTarget?: boolean, renderAction?: (step: number) => import('react').ReactNode }} props
+ * hideEmpty drops the facts with no value instead of showing a dash.
+ * @param {{ load: object, showTarget?: boolean, hideEmpty?: boolean, renderAction?: (step: number) => import('react').ReactNode }} props
  */
-export default function LoadSummary({ load, showTarget = false, renderAction, className = '' }) {
+export default function LoadSummary({ load, showTarget = false, hideEmpty = false, renderAction, className = '' }) {
     const action = (step) => (renderAction ? renderAction(step) : null);
     const material = load.commodity?.name
         ? load.commodity.name === 'Other' && load.commodityOther
@@ -34,6 +35,7 @@ export default function LoadSummary({ load, showTarget = false, renderAction, cl
     const tags = (load.specialRequirements ?? []).map((tag) => SPECIAL_REQUIREMENT_LABELS[tag] ?? tag);
 
     return (
+        <HideEmptyFacts.Provider value={hideEmpty}>
         <div className={`grid gap-3 ${className}`}>
             <Block title="Route and schedule" action={action(1)}>
                 <Fact label="Pickup">
@@ -97,5 +99,6 @@ export default function LoadSummary({ load, showTarget = false, renderAction, cl
                 <TermsFacts terms={load} />
             </Block>
         </div>
+        </HideEmptyFacts.Provider>
     );
 }

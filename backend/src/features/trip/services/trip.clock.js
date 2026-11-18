@@ -5,7 +5,7 @@
  * second instance) finds nothing left to do: every job re-checks the row under a lock.
  */
 import { and, eq, inArray, isNotNull, lte, sql } from 'drizzle-orm';
-import { db } from '#shared/db/index.js';
+import { db, outer } from '#shared/db/index.js';
 import { loads } from '#features/load/schemas/index.js';
 import { recordLoadEvent } from '#features/load/services/loadEvent.service.js';
 import { CUSTOMER_LINK, TRANSPORTER_LINK } from '#features/load/services/load.service.js';
@@ -101,7 +101,7 @@ export const detectPlacementMisses = async (now = new Date(), { tripIds } = {}) 
                 lte(trips.expectedPlacementAt, cutoff),
                 inArray(loads.status, ['accepted', 'in_execution']),
                 onlyIds(tripIds),
-                sql`not exists (select 1 from placement_misses m where m.trip_id = ${trips.id})`,
+                sql`not exists (select 1 from placement_misses m where m.trip_id = ${outer(trips.id)})`,
             ),
         );
     return each(due, 'placement', ({ id }) =>
@@ -134,7 +134,7 @@ export const warnEwayBills = async (now = new Date(), { tripIds } = {}) => {
                 isNotNull(trips.ewayBillValidUntil),
                 lte(trips.ewayBillValidUntil, until),
                 onlyIds(tripIds),
-                sql`not exists (select 1 from trip_events e where e.trip_id = ${trips.id} and e.type = 'eway_warning')`,
+                sql`not exists (select 1 from trip_events e where e.trip_id = ${outer(trips.id)} and e.type = 'eway_warning')`,
             ),
         );
     return each(due, 'eway', ({ id }) =>

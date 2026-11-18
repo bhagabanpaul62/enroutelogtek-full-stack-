@@ -1,5 +1,5 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
-import { db } from '#shared/db/index.js';
+import { db, outer } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { documents } from '#features/document/schemas/documents.Schema.js';
 import { decodeCursor, encodeCursor } from '#shared/utils/cursorHelper.js';
@@ -9,9 +9,9 @@ export const FLEET_COMPANY_TYPES = ['transporter', 'fleet_owner'];
 
 /** A vehicle / driver is busy while any trip that is not completed or cancelled points at it. */
 export const busyVehicleSql = (vehicles) =>
-    sql`exists (select 1 from trips t where t.vehicle_id = ${vehicles.id} and t.status not in ('completed','cancelled'))`;
+    sql`exists (select 1 from trips t where t.vehicle_id = ${outer(vehicles.id)} and t.status not in ('completed','cancelled'))`;
 export const busyDriverSql = (drivers) =>
-    sql`exists (select 1 from trips t where t.driver_id = ${drivers.id} and t.status not in ('completed','cancelled'))`;
+    sql`exists (select 1 from trips t where t.driver_id = ${outer(drivers.id)} and t.status not in ('completed','cancelled'))`;
 
 /** Stored availability, corrected by what the trips table says right now. */
 export const effectiveAvailability = (row) => {

@@ -57,7 +57,8 @@ export function NavList({ onNavigate, sections: given }) {
                     <h3 className="px-3 pb-1 font-mono text-[11px] uppercase tracking-[0.05em] text-[var(--ds-on-surface-muted)]">{section.name}</h3>
                     <ul className="flex flex-col gap-0.5">
                         {section.items.map((item) => {
-                            const Icon = typeof item.icon === 'function' ? item.icon : (NAV_ICONS[item.icon] ?? FileText);
+                            // lucide icons are forwardRef objects, not functions: anything but a string key is the component itself.
+                            const Icon = typeof item.icon === 'string' || !item.icon ? (NAV_ICONS[item.icon] ?? FileText) : item.icon;
                             const active = item.match ? item.match.test(pathname) : item.slug === '' ? pathname === item.link : pathname === item.link || pathname.startsWith(`${item.link}/`);
                             return (
                                 <li key={item.link}>

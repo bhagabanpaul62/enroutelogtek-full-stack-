@@ -3,7 +3,7 @@
  * and load.constants.js; the services call these and only add the database work.
  */
 import { snapshotTerms as loadSnapshotTerms } from '#features/load/load.rules.js';
-import { POD_CONDITIONS, POD_REJECTION, TRIP_ACTORS, TRIP_DEFAULTS, TRIP_TRANSITIONS } from './trip.constants.js';
+import { DELIVERY_REQUIRES_RECEIVER, GST_TREATMENTS, POD_CONDITIONS, POD_REJECTION, TRIP_ACTORS, TRIP_DEFAULTS, TRIP_TRANSITIONS } from './trip.constants.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
@@ -178,7 +178,7 @@ export const transitionProblems = (trip, to, input = {}, ctx = {}) => {
                 return unprocessable('Write the remarks that were on the signed LR');
             }
             if (!ctx.hasPod) return unprocessable('Upload the POD (photo of the signed LR) first');
-            return null;
+            return receiverProblem(trip, input, now);
         case 'cancelled':
             if (!input.cancelReason) return unprocessable('A reason is required to cancel');
             return null;
@@ -186,6 +186,36 @@ export const transitionProblems = (trip, to, input = {}, ctx = {}) => {
             return null;
     }
 };
+
+/**
+ * AJ-27: who signed for the goods. Name and phone are optional until DELIVERY_REQUIRES_RECEIVER is on;
+ * a phone, when given, is 10 digits; the receive time cannot be before the truck reached the drop or in the future.
+ */
+export const receiverProblem = (trip, input = {}, now = new Date()) => {
+    const name = input.receivedBy?.trim();
+    const phone = input.receivedByPhone?.trim();
+    if (DELIVERY_REQUIRES_RECEIVER && (!name || !phone)) return unprocessable('Enter who received the goods (name and phone)');
+    if (phone && !/^\d{10}$/.test(phone)) return unprocessable('The receiver phone must be 10 digits');
+    if (input.receivedAt) {
+        const at = new Date(input.receivedAt).getTime();
+        if (at > now.getTime() + 5 * 60 * 1000) return unprocessable('The received time cannot be in the future');
+        if (trip.reachedDropAt && at < Math.floor(new Date(trip.reachedDropAt).getTime() / 60000) * 60000) return unprocessable('The received time cannot be before the truck reached the drop');
+    }
+    return null;
+};
+
+/** AJ-16: a hazmat load needs a driver with a hazmat endorsement. Returns the message or null. */
+export const hazmatProblem = (load, driver) =>
+    load.hazmatClass && !driver.hazmatEndorsement
+        ? `Load is hazmat (class ${load.hazmatClass}): driver ${driver.name} needs a hazmat endorsement`
+        : null;
+
+/** AJ-32 / Q-15: what the closure sheet shows for the declared GST treatment (null until declared). */
+export const gstSheet = (treatment) =>
+    GST_TREATMENTS[treatment] ? { treatment, ...GST_TREATMENTS[treatment] } : null;
+
+/** AJ-36: an executor may step back only while the truck is still `planned` (before it reports at pickup). */
+export const executorCancelsBeforePlacement = (trip, sides) => trip.status === 'planned' && Boolean(sides.executor) && !sides.customer;
 
 /** Whether the customer may send this trip's POD back. null = fine. */
 export const podRejectionProblem = (trip) =>

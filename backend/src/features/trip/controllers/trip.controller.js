@@ -38,6 +38,7 @@ export const addDiscrepancy = tripAction('Discrepancy recorded', support.addDisc
 export const confirmTrip = tripAction('Delivery confirmed', support.confirmTrip);
 export const rejectPod = tripAction('POD sent back', support.rejectPod);
 export const setPayment = tripAction('Payment status noted', support.setPayment);
+export const setGstTreatment = tripAction('GST treatment saved', support.setGstTreatment);
 export const decidePlacement = tripAction('Decision recorded', support.decidePlacement);
 
 // POST /loads/:loadId/ratings

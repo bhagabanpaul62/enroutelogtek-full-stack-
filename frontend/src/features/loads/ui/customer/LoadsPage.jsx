@@ -1,24 +1,19 @@
 'use client';
 
 import { Suspense, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Eye, Plus } from 'lucide-react';
 import { useCursorList } from '@/shared/hooks/useCursorList';
 import { DataGrid, EmptyCell, applyFilters, sortRows } from '@/shared/ui/data-grid';
+import { TabBar } from '@/shared/ui/kit';
 import { Button } from '@/shared/ui/primitives/button';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/shared/ui/primitives/select';
-import { formatWeight } from '@/shared/lib/format';
+import { formatWeight, formatRoute } from '@/shared/lib/format';
 import { getLoadsApi } from '../../api/loads.api';
 import { LOAD_STATUS_LABELS } from '../../constants';
 import { useCan } from '@/shared/hooks/useCan';
 import { PERMISSIONS } from '@/shared/lib/permissions';
-import { formatCountdown, formatRoute } from '../../lib/format';
+import { formatCountdown } from '../../lib/format';
 import { useNow } from './useNow';
 import LoadTypeBadge from '../components/LoadTypeBadge';
 import ModePickerModal from './ModePickerModal';
@@ -29,26 +24,28 @@ const STATUS_OPTIONS = [
     { value: 'in_execution', label: 'In transit' },
 ];
 const NEW_PATH = '/customer/loads/new'; // used by loadHref to resume a draft
-const STATUS_ITEMS = [
-    { value: ALL, label: 'All statuses' },
-    ...Object.entries(LOAD_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+const STATUS_TABS = [
+    { id: ALL, label: 'All' },
+    ...Object.entries(LOAD_STATUS_LABELS).map(([id, label]) => ({ id, label })),
 ];
+const TAB_IDS = STATUS_TABS.map((t) => t.id);
 
 // Drafts open in the wizard where they were left; everything else opens its page.
 const loadHref = (load) => (load.status === 'draft' ? `${NEW_PATH}?id=${load.id}` : `/customer/loads/${load.id}`);
 const hasRoute = (load) => Boolean(load.pickupCity || load.pickupPinCode || load.dropCity || load.dropPinCode);
+const routeOf = (load) => formatRoute(load.pickupCity || load.pickupPinCode || '?', load.dropCity || load.dropPinCode || '?');
 const toPaise = (rupees) => (rupees === null || rupees === undefined || rupees === '' ? null : Math.round(Number(rupees) * 100));
 
 function buildColumns(now) {
     return [
-        { key: 'loadNumber', label: 'Load', type: 'text', width: 120 },
+        { key: 'loadNumber', label: 'Load', type: 'text', width: 160 },
         { key: 'status', label: 'Status', type: 'status', options: STATUS_OPTIONS },
         {
             key: 'route',
             label: 'Route',
             type: 'text',
-            value: (load) => (hasRoute(load) ? formatRoute(load) : ''),
-            render: (load) => (hasRoute(load) ? <span className="block truncate font-medium">{formatRoute(load)}</span> : <span className="text-foreground/40">Not entered yet</span>),
+            value: (load) => (hasRoute(load) ? routeOf(load) : ''),
+            render: (load) => (hasRoute(load) ? <span className="block truncate font-medium">{routeOf(load)}</span> : <span className="text-foreground/40">Not entered yet</span>),
         },
         { key: 'loadType', label: 'Type', type: 'text', width: 80, value: (load) => load.loadType ?? '', render: (load) => (load.loadType ? <LoadTypeBadge type={load.loadType} /> : <EmptyCell />) },
         {
@@ -67,7 +64,7 @@ function buildColumns(now) {
             type: 'datetime',
             value: (load) => (load.status === 'live' ? load.closesAt : null),
             render: (load) => {
-                if (load.status !== 'live') return <EmptyCell />;
+                if (load.status !== 'live') return null;
                 const left = formatCountdown(load.closesAt, now);
                 return <span className="whitespace-nowrap tabular-nums text-primary">{left || 'Closing…'}</span>;
             },
@@ -79,9 +76,10 @@ function LoadsView() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    // The status filter lives in the URL (?status=live) so refresh and the back button keep it.
-    const statusParam = searchParams.get('status') ?? '';
-    const status = Object.hasOwn(LOAD_STATUS_LABELS, statusParam) ? statusParam : '';
+    // The status tab lives in the URL (?status=live) so refresh and the back button keep it.
+    const statusParam = searchParams.get('status');
+    const tab = TAB_IDS.includes(statusParam) ? statusParam : ALL;
+    const status = tab === ALL ? '' : tab;
 
     const [query, setQuery] = useState({ search: '', filters: [], sort: null });
     const canManage = useCan(PERMISSIONS.LOADS_MANAGE);
@@ -98,8 +96,7 @@ function LoadsView() {
         return out;
     }, [list.items, columns, query]);
 
-    const setStatus = (value) =>
-        router.replace(!value || value === ALL ? pathname : `${pathname}?status=${value}`, { scroll: false });
+    const setTab = (next) => router.replace(next === ALL ? pathname : `${pathname}?status=${next}`, { scroll: false });
 
     const isFiltered = Boolean(status || query.search.trim());
     const newButton = canManage ? (
@@ -127,39 +124,29 @@ function LoadsView() {
                 </p>
             )}
 
-            <DataGrid
-                columns={columns}
-                rows={rows}
-                list={list}
-                onQueryChange={setQuery}
-                onRowClick={(load) => router.push(loadHref(load))}
-                searchPlaceholder="Search by city or load number"
-                toolbar={
-                    <Select items={STATUS_ITEMS} value={status || ALL} onValueChange={setStatus}>
-                        <SelectTrigger className="h-8 w-44 rounded-xl border-0 bg-white/[0.05]" aria-label="Filter by status">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {STATUS_ITEMS.map((item) => (
-                                <SelectItem key={item.value} value={item.value}>
-                                    {item.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                }
-                empty={
-                    isFiltered
-                        ? { title: 'No loads match', description: 'Try another status or search term.' }
-                        : {
-                              title: 'No loads yet',
-                              description: canManage
-                                  ? 'Post your first load: choose Ad Hoc, then enter the route, the material and the trucks.'
-                                  : 'Loads your company posts will show up here.',
-                              action: newButton,
-                          }
-                }
-            />
+            <TabBar label="Filter loads by status" tabs={STATUS_TABS} value={tab} onChange={setTab} panelId="loads-grid" />
+
+            <div id="loads-grid">
+                <DataGrid
+                    columns={columns}
+                    rows={rows}
+                    list={list}
+                    onQueryChange={setQuery}
+                    onRowClick={(load) => router.push(loadHref(load))}
+                    searchPlaceholder="Search by city or load number"
+                    empty={
+                        isFiltered
+                            ? { title: 'No loads match', description: 'Try another status or search term.' }
+                            : {
+                                  title: 'No loads yet',
+                                  description: canManage
+                                      ? 'Post your first load: choose Ad Hoc, then enter the route, the material and the trucks.'
+                                      : 'Loads your company posts will show up here.',
+                                  action: newButton,
+                              }
+                    }
+                />
+            </div>
 
             <ModePickerModal open={modeOpen} onClose={() => setModeOpen(false)} />
         </div>

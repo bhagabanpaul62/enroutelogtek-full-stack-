@@ -47,7 +47,7 @@ export const POD_REJECTION = { from: 'delivered', to: 'reached_drop', who: 'cust
 
 export const CHARGE_KINDS = ['freight', 'detention', 'labour', 'toll', 'other'];
 export const CHARGE_STATUSES = ['proposed', 'approved', 'rejected'];
-export const DISCREPANCY_KINDS = ['shortage', 'damage'];
+export const DISCREPANCY_KINDS = ['shortage', 'damage', 'rejected'];
 export const POD_CONDITIONS = ['clean', 'remarks'];
 
 export const TRIP_DEFAULTS = {
@@ -62,3 +62,12 @@ export const EXECUTOR_CHARGE_KINDS = ['detention', 'labour', 'toll', 'other'];
 export const DISCREPANCY_UNITS = ['packages', 'kg', 'tons'];
 export const PLACEMENT_DECISIONS = ['re_award', 'cancel'];
 export const LEG_NAMES = ['at_hub', 'out_for_delivery', 'unloading'];
+
+/** AJ-32 / Q-15: the transporter declares how GST applies; the sheet shows the rate and whether the customer gets ITC. */
+export const GST_TREATMENTS = {
+    rcm: { label: 'Reverse charge (RCM)', ratePct: 5, customerItc: false },
+    forward: { label: 'Forward charge', ratePct: 12, customerItc: true },
+};
+/** AJ-27: set true to make the receiver's name and phone mandatory at delivery (the UI must send them first). */
+export const DELIVERY_REQUIRES_RECEIVER = false;
+export const PLACEMENT_SOURCES = ['late', 'executor_cancel'];

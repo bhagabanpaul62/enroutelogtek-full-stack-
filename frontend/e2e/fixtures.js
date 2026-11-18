@@ -29,3 +29,6 @@ export async function loginAs(page, user) {
 export const test = base;
 
 export { expect };
+
+/** True when the locator shows up within a few seconds; skip guards use it so they wait for the grid to load instead of peeking once. */
+export const seen = (locator, timeout = 10_000) => locator.waitFor({ state: 'visible', timeout }).then(() => true, () => false);

@@ -78,7 +78,7 @@ describe('allocation: transporter -> fleet owner and broker', { timeout: 400000 
         assert.equal((await offer(transporter2, { awardId, toCompanyId: ids.fleetowner, quantity: 1, ratePerTruckPaise: 1 })).status, 404, 'not the award owner');
         assert.equal((await api(customer, 'GET', '/allocations/offers')).status, 403, 'customer has no offers');
         assert.equal((await api(transporter2, 'GET', `/allocations/awards/${awardId}`)).status, 404);
-        const mine = ok(await api(fleetowner, 'GET', '/allocations/offers?status=offered'));
+        const mine = ok(await api(fleetowner, 'GET', `/allocations/offers?status=offered&awardId=${awardId}`));
         assert.equal(mine.length, 1);
         assert.equal((await api(transporter2, 'GET', `/allocations/${mine[0].id}`)).status, 404);
         assert.equal((await api(broker, 'GET', `/allocations/${mine[0].id}`)).status, 404, 'a broker cannot read another offer');
@@ -86,7 +86,7 @@ describe('allocation: transporter -> fleet owner and broker', { timeout: 400000 
     });
 
     test('fleet owner accepts, assigns its own truck; double answers are refused', async () => {
-        const [offered] = ok(await api(fleetowner, 'GET', '/allocations/offers?status=offered'));
+        const [offered] = ok(await api(fleetowner, 'GET', `/allocations/offers?status=offered&awardId=${awardId}`));
         const accepted = ok(await api(fleetowner, 'POST', `/allocations/${offered.id}/accept`));
         assert.equal(accepted.status, 'accepted');
         assert.equal(accepted.acceptedCount, 2);

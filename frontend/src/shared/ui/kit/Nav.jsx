@@ -65,7 +65,7 @@ export function TabBar({ tabs, value, onChange, label, panelId, className }) {
     };
 
     return (
-        <div className={cn('-mx-1 overflow-x-auto px-1', className)}>
+        <div className={cn('-mx-1 min-w-0 max-w-full overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', className)}>
             <div role="tablist" aria-label={label} className="inline-flex min-w-full items-center gap-1 rounded-full bg-white/[0.05] p-1 sm:min-w-0">
                 {tabs.map((tab, i) => {
                     const active = tab.id === value;

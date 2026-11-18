@@ -6,6 +6,7 @@ import {
     ArrowUp,
     ArrowUpDown,
     ListFilter,
+    ChevronRight,
     Loader2,
     Search,
     X,
@@ -16,7 +17,7 @@ import { Button } from '@/shared/ui/primitives/button';
 import { EmptyState, ErrorState, SkeletonRows } from '@/shared/ui/kit/States';
 import { Input } from '@/shared/ui/primitives/input';
 import { Check2, PopoverPanel } from './controls';
-import { defaultAlign, renderCell } from './cells';
+import { EmptyCell, cellText, defaultAlign, renderCell } from './cells';
 import { FilterPanel } from './filters';
 import { GridPagination } from './GridPagination';
 import { PAGE_SIZES, applyFilters, applySearch, sortRows } from './filter-logic';
@@ -433,16 +434,21 @@ export function DataGrid({
                                         </span>
                                     )}
                                     <div className="min-w-0 flex-1 text-[14px] font-medium text-foreground">{renderCell(title, row)}</div>
+                                    {onRowClick && <ChevronRight className="mt-0.5 size-4 shrink-0 text-foreground/40" aria-hidden />}
                                 </div>
                                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5">
-                                    {rest.map((c) => (
-                                        <div key={c.key} className="min-w-0">
-                                            <dt className="text-[11px] text-foreground/45">{c.label}</dt>
-                                            <dd className="mt-0.5 min-w-0 text-[13px]">
-                                                <div className="flex min-w-0">{renderCell(c, row)}</div>
-                                            </dd>
-                                        </div>
-                                    ))}
+                                    {/* Phone cards drop empty cells: a custom render that returns nothing, or no value. */}
+                                    {rest
+                                        .map((c) => [c, c.render || cellText(c, row) !== '' ? renderCell(c, row) : null])
+                                        .filter(([, node]) => node != null && node !== false && node !== '' && node.type !== EmptyCell)
+                                        .map(([c, node]) => (
+                                            <div key={c.key} className="min-w-0">
+                                                <dt className="text-[11px] text-foreground/45">{c.label}</dt>
+                                                <dd className="mt-0.5 min-w-0 text-[13px]">
+                                                    <div className="flex min-w-0">{node}</div>
+                                                </dd>
+                                            </div>
+                                        ))}
                                 </dl>
                                 {actions.length > 0 && <RowActions row={row} actions={actions} className="justify-end" />}
                             </li>

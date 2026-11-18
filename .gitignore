@@ -28,3 +28,4 @@ deploy/history.log
 frontend/test-results/
 frontend/playwright-report/
 .next-e2e/
+frontend/e2e/audit/shots/

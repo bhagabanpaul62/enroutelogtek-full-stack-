@@ -5,8 +5,8 @@
  * Notifications go out after the commit and never fail the action.
  * Rules live in trip.rules.js (pure, tested); this file adds the database work.
  */
-import { and, asc, desc, eq, gt, inArray, isNull, ne, or, sql } from 'drizzle-orm';
-import { db } from '#shared/db/index.js';
+import { and, asc, desc, eq, gt, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm';
+import { db, outer } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { users } from '#features/auth/schemas/index.js';
 import { companies } from '#features/company/schemas/company.Schema.js';
@@ -33,6 +33,8 @@ import {
     assignmentProblems,
     autoCompleteAt,
     customerMayCancel,
+    executorCancelsBeforePlacement,
+    hazmatProblem,
     ewayBillState,
     freightPaise,
     loadStatusFromTrips,
@@ -50,7 +52,7 @@ export { snapshotTerms };
 export const loadLabel = (load) => loadNumber(load.kind, load.loadSeq, load.createdAt);
 /** True for a trip this company placed with another company through a live or accepted allocation (broker, transporter). */
 const placedByCompany = (companyId) =>
-    sql`exists (select 1 from ${allocationTrips} atr join ${allocations} al on al.id = atr.allocation_id where atr.trip_id = ${trips.id} and atr.active and al.status in ('offered','accepted') and al.from_company_id = ${companyId})`;
+    sql`exists (select 1 from ${allocationTrips} atr join ${allocations} al on al.id = atr.allocation_id where atr.trip_id = ${outer(trips.id)} and atr.active and al.status in ('offered','accepted') and al.from_company_id = ${companyId})`;
 
 /** The executor's own rate: only the executor and the company that placed the trip with it may see it (never the customer). */
 const sees = (trip, companyId, placerId) => (trip.executorRatePaise != null && (trip.executorCompanyId === companyId || placerId === companyId) ? trip.executorRatePaise : null);
@@ -254,6 +256,10 @@ export const applyTransition = async (tx, { trip, load, to, input = {}, actor, s
     if (to === 'delayed') copy('delayReason', 'etaAt');
     if (to === 'delivered') {
         copy('podCondition');
+        // AJ-27: who signed for the goods and when.
+        patch.receivedByName = input.receivedBy?.trim() || null;
+        patch.receivedByPhone = input.receivedByPhone?.trim() || null;
+        patch.receivedAt = input.receivedAt ?? now;
         patch.podRemarks = input.podCondition === 'remarks' ? input.podRemarks : null;
         patch.autoCompleteAt = autoCompleteAt(now);
     }
@@ -323,6 +329,22 @@ export const applyTransition = async (tx, { trip, load, to, input = {}, actor, s
     return { trip: updated, loadChange, notices };
 };
 
+/** AJ-36: the executor cancels a planned truck. The trip stays planned; a placement miss is opened for the customer. */
+const recordExecutorCancel = async (tx, { trip, load, user, reason }) => {
+    if (!reason) throw new AppError('A reason is required to cancel', 422);
+    const [open] = await tx.select({ id: placementMisses.id }).from(placementMisses).where(and(eq(placementMisses.tripId, trip.id), isNull(placementMisses.decision))).limit(1);
+    if (open) throw new AppError('This truck was already given up. Waiting for the customer to decide.', 409);
+    await tx.insert(placementMisses).values({ tripId: trip.id, loadId: load.id, transporterCompanyId: trip.transporterCompanyId, source: 'executor_cancel', reason });
+    await recordTripEvent(tx, { tripId: trip.id, type: 'placement_missed', actor: actorOf(user), note: `Cancelled before placement: ${reason}`, data: { source: 'executor_cancel' } });
+    await recordLoadEvent({ loadId: load.id, type: 'placement_missed', fromStatus: load.status, toStatus: load.status, actor: actorOf(user), note: `Truck ${trip.seqNo} cancelled before placement: ${reason}`, data: { tripId: trip.id } }, tx);
+    const number = loadLabel(load);
+    const data = { loadId: load.id, tripId: trip.id, loadNumber: number };
+    return [
+        { companyIds: [load.customerCompanyId], actorUserId: user.userId, type: 'trip.placement_missed', title: `Truck ${trip.seqNo} cancelled on ${number}`, message: `The transporter cannot place this truck: ${reason}. Pick the next bid or cancel the truck.`, data: { ...data, link: CUSTOMER_LINK(load.id) } },
+        { companyIds: [trip.transporterCompanyId], actorUserId: user.userId, type: 'trip.placement_missed', title: `Truck ${trip.seqNo} on ${number} counts as a missed placement`, message: 'The customer will decide next.', data: { ...data, link: TRANSPORTER_LINK(load.id) } },
+    ];
+};
+
 /** POST /trips/:id/transition */
 export const transitionTrip = async (user, tripId, input) => {
     await requireCompany(user);
@@ -341,6 +363,10 @@ export const transitionTrip = async (user, tripId, input) => {
         } else {
             needAny(user, PERMISSIONS.TRIPS_UPDATE);
             if (!sides.executor) throw new AppError('Only the company moving this truck can update it', 403);
+        }
+        if (to === 'cancelled' && executorCancelsBeforePlacement(trip, sides)) {
+            // AJ-36: stepping back before placement is a placement miss; the customer decides (re-award or cancel).
+            return recordExecutorCancel(tx, { trip, load, user, reason: input.cancelReason });
         }
         const result = await applyTransition(tx, { trip, load, to, input, actor: actorOf(user), side });
         // A customer cancelling a truck that missed its placement settles the open miss (M11).
@@ -375,6 +401,8 @@ const lockAndCheck = async (tx, { companyId, vehicleId, driverId, trip, load, cu
 
     const problem = assignmentProblems(vehicle, driver, load, todayIso(), current);
     if (problem) throw new AppError(problem, 409);
+    const hazmat = hazmatProblem(load, driver);
+    if (hazmat) throw new AppError(hazmat, 422);
 
     // Belt and braces next to the availability flag: no other live trip may hold either one.
     const [busy] = await tx
@@ -597,7 +625,7 @@ export const getTripDetail = async (user, tripId) => {
     };
 };
 
-const lastEventSql = sql`(select json_build_object('type', e.type, 'note', e.note, 'at', e.created_at) from trip_events e where e.trip_id = ${trips.id} order by e.created_at desc, e.id desc limit 1)`;
+const lastEventSql = sql`(select json_build_object('type', e.type, 'note', e.note, 'at', e.created_at) from trip_events e where e.trip_id = ${outer(trips.id)} order by e.created_at desc, e.id desc limit 1)`;
 
 /** GET /trips: the company's trips (customer: its loads' trucks; others: trucks it moves or is paid for). */
 export const listTrips = async (user, { status, loadId, vehicleId, driverId, role, cursor, limit = DEFAULT_TRIP_PAGE_LIMIT }) => {
@@ -608,7 +636,8 @@ export const listTrips = async (user, { status, loadId, vehicleId, driverId, rol
             ? eq(loads.customerCompanyId, user.companyId)
             : or(eq(trips.executorCompanyId, user.companyId), eq(trips.transporterCompanyId, user.companyId), placedByCompany(user.companyId)),
     ];
-    if (status) conditions.push(eq(trips.status, status));
+    if (status === 'active') conditions.push(notInArray(trips.status, ['completed', 'cancelled']));
+    else if (status) conditions.push(eq(trips.status, status));
     if (loadId) conditions.push(eq(trips.loadId, loadId));
     if (vehicleId) conditions.push(eq(trips.vehicleId, vehicleId));
     if (driverId) conditions.push(eq(trips.driverId, driverId));

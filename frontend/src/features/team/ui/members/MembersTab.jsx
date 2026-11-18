@@ -41,7 +41,7 @@ const COLUMNS = [
         render: (member) => (
             <span className="flex flex-wrap items-center gap-1.5">
                 <StatusChip value={member.status} options={STATUS_OPTIONS} />
-                {member.status === 'active' && member.mustChangePassword && <Chip>Temporary password</Chip>}
+                {member.status === 'active' && member.mustChangePassword && <span title="Must choose a new password on first sign-in"><Chip>Temporary password</Chip></span>}
             </span>
         ),
     },

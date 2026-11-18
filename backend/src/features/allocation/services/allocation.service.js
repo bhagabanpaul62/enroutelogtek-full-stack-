@@ -6,11 +6,11 @@
  */
 import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { db } from '#shared/db/index.js';
+import { db, outer } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { companies } from '#features/company/schemas/company.Schema.js';
 import { companyConnections } from '#features/network/schemas/companyConnection.Schema.js';
-import { awards, loads } from '#features/load/schemas/index.js';
+import { awards, commodities, loads } from '#features/load/schemas/index.js';
 import { trips, tripEvents } from '#features/trip/schemas/trip.Schema.js';
 import { vehicles } from '#features/fleet/schemas/fleet.Schema.js';
 import { loadNumber } from '#features/load/load.rules.js';
@@ -68,6 +68,8 @@ const baseSelect = () =>
             loadPickupCity: loads.pickupCity,
             loadDropCity: loads.dropCity,
             loadPickupDate: loads.pickupDate,
+            loadMaterial: sql`coalesce(${commodities.name}, ${loads.commodityOther})`,
+            loadWeightTons: loads.weightTons,
             fromName: fromCo.companyName,
             toName: toCo.companyName,
             cursorCreatedAt: cursorCreatedAt(allocations.createdAt),
@@ -76,6 +78,7 @@ const baseSelect = () =>
         .from(allocations)
         .innerJoin(awards, eq(allocations.awardId, awards.id))
         .innerJoin(loads, eq(allocations.loadId, loads.id))
+        .leftJoin(commodities, eq(commodities.id, loads.commodityId))
         .innerJoin(fromCo, eq(allocations.fromCompanyId, fromCo.id))
         .innerJoin(toCo, eq(allocations.toCompanyId, toCo.id));
 
@@ -110,6 +113,7 @@ const present = async (rows, companyId) => {
             id: a.id, awardId: a.awardId, loadId: a.loadId,
             loadNumber: loadNumber(r.loadKind, r.loadSeq, r.loadCreatedAt),
             origin: r.loadPickupCity, destination: r.loadDropCity, pickupDate: r.loadPickupDate,
+            material: r.loadMaterial ?? null, weightKg: r.loadWeightTons ? Math.round(Number(r.loadWeightTons) * 1000) : null,
             depth: a.depth, parentAllocationId: a.parentAllocationId,
             from: { id: a.fromCompanyId, name: r.fromName },
             to: { id: a.toCompanyId, name: r.toName, type: a.toCompanyType },
@@ -219,7 +223,7 @@ export const listPartners = async (user, { type } = {}) => {
         .where(and(
             inArray(companies.companyType, types),
             eq(companies.companyStatus, 'approved'),
-            sql`exists (select 1 from ${companyConnections} c where c.connection_status = 'accepted' and ((c.source_company_id = ${id} and c.target_company_id = ${companies.id}) or (c.target_company_id = ${id} and c.source_company_id = ${companies.id})))`,
+            sql`exists (select 1 from ${companyConnections} c where c.connection_status = 'accepted' and ((c.source_company_id = ${id} and c.target_company_id = ${outer(companies.id)}) or (c.target_company_id = ${id} and c.source_company_id = ${outer(companies.id)})))`,
         ))
         .orderBy(asc(companies.companyName));
 };
@@ -308,7 +312,7 @@ export const createAllocation = async (user, input) => {
 const release = async (tx, a, to, { actor, note, load }) => {
     if (!canTransition(a.status, to)) throw new AppError('This offer was already answered', 409);
     const now = new Date();
-    await tx.update(allocations).set({ status: to, respondedAt: now, respondedByUserId: actor?.userId ?? null, ...(to === 'declined' && { decisionNote: note ?? null }) }).where(eq(allocations.id, a.id));
+    await tx.update(allocations).set({ status: to, respondedAt: now, respondedByUserId: actor?.userId ?? null, ...((to === 'declined' || to === 'withdrawn') && { decisionNote: note ?? null }) }).where(eq(allocations.id, a.id));
     const freed = await tx.update(allocationTrips).set({ active: false, releasedAt: now }).where(and(eq(allocationTrips.allocationId, a.id), eq(allocationTrips.active, true))).returning({ tripId: allocationTrips.tripId });
     await recordAllocationEvent(tx, { allocationId: a.id, type: to, from: a.status, to, actor, note });
     await tripEventRows(tx, freed.map((f) => f.tripId), { type: 'allocation_released', actorUserId: actor?.userId ?? null, actorCompanyId: actor?.companyId ?? null, note: `Offer ${to}`, data: { allocationId: a.id } });
@@ -368,6 +372,31 @@ export const respond = async (user, id, decision, { reason } = {}) => {
 
 export const acceptAllocation = (user, id) => respond(user, id, 'accepted');
 export const declineAllocation = (user, id, { reason }) => respond(user, id, 'declined', { reason });
+
+/**
+ * Withdraws every 'offered' allocation of a load (or one award) inside the caller's transaction:
+ * trucks released, allocation_events + trip events + load event written. Returns the notices for
+ * sendAfter (to the recipients). Used when a load is cancelled or an award is revoked.
+ */
+export const withdrawOpenOffers = async (tx, { loadId, awardId, actor, note }) => {
+    const rows = await tx
+        .select({ id: allocations.id })
+        .from(allocations)
+        .where(and(eq(allocations.loadId, loadId), eq(allocations.status, 'offered'), awardId ? eq(allocations.awardId, awardId) : undefined));
+    const notices = [];
+    for (const { id } of rows) {
+        const a = await lockAllocation(tx, id);
+        if (!a || a.status !== 'offered') continue;
+        const [award] = await tx.select().from(awards).where(eq(awards.id, a.awardId));
+        const [load] = await tx.select().from(loads).where(eq(loads.id, a.loadId));
+        await release(tx, a, 'withdrawn', { actor, note, load });
+        notices.push(outcomeNotice(a, award, load, 'withdrawn', note, actor?.userId));
+    }
+    return notices;
+};
+
+/** Runs the notices collected by withdrawOpenOffers after the commit. */
+export const sendWithdrawNotices = sendAfter;
 
 export const withdrawAllocation = async (user, id, { note } = {}) => {
     await requireCompany(user);

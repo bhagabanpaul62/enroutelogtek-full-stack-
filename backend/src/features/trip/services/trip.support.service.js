@@ -14,10 +14,11 @@ import { awards, loads } from '#features/load/schemas/index.js';
 import { recordLoadEvent } from '#features/load/services/loadEvent.service.js';
 import { requireCompany } from '#features/load/services/load.access.js';
 import { CUSTOMER_LINK, TRANSPORTER_LINK } from '#features/load/services/load.service.js';
+import { withdrawOpenOffers } from '#features/allocation/services/allocation.service.js';
 import { PERMISSIONS } from '#features/team/team.permissions.js';
 import { drivers, vehicles } from '#features/fleet/schemas/fleet.Schema.js';
 import { discrepancies, placementMisses, ratings, tripCharges, tripEvents, trips } from '../schemas/trip.Schema.js';
-import { detentionCharge, podRejectionProblem, reAwardProblem } from '../trip.rules.js';
+import { detentionCharge, gstSheet, podRejectionProblem, reAwardProblem } from '../trip.rules.js';
 import { POD_REJECTION } from '../trip.constants.js';
 import {
     actorOf,
@@ -170,6 +171,7 @@ export const addDiscrepancy = async (user, tripId, { kind, quantity, unit, note,
         if (!['reached_drop', 'delivered', 'completed'].includes(trip.status)) {
             throw new AppError('Shortage or damage can be recorded once the truck reaches the drop point', 409);
         }
+        if (kind === 'rejected' && !note) throw new AppError('Say why the goods were rejected', 422);
         const [found] = await tx
             .insert(discrepancies)
             .values({ tripId, kind, quantity: quantity ?? null, unit: unit ?? null, note: note ?? null, raisedByUserId: user.userId, raisedByCompanyId: user.companyId })
@@ -180,7 +182,7 @@ export const addDiscrepancy = async (user, tripId, { kind, quantity, unit, note,
             }
         }
         await recordTripEvent(tx, { tripId, type: 'discrepancy', actor: actorOf(user), note: `${kind}${quantity ? ` ${quantity} ${unit ?? ''}` : ''}`.trim(), data: { discrepancyId: found.id, kind, quantity, unit } });
-        const title = `${kind === 'damage' ? 'Damage' : 'Shortage'} recorded on ${loadLabel(load)}`;
+        const title = `${{ damage: 'Damage', rejected: 'Rejected goods', shortage: 'Shortage' }[kind]} recorded on ${loadLabel(load)}`;
         return sides.executor ? notifyCustomer(load, trip, user, 'trip.discrepancy', title, note ?? '') : notifyExecutor(load, trip, user, 'trip.discrepancy', title, note ?? '');
     });
     sendAfter([notice]);
@@ -232,6 +234,20 @@ export const rejectPod = async (user, tripId, { reason }) => {
     return getTripDetail(user, tripId);
 };
 
+/** POST /trips/:id/gst-treatment: the transporter declares RCM or forward charge for the closure sheet (AJ-32, Q-15). */
+export const setGstTreatment = async (user, tripId, { treatment }) => {
+    await requireCompany(user);
+    needAny(user, PERMISSIONS.TRIPS_UPDATE);
+    await db.transaction(async (tx) => {
+        const { trip, sides } = await findTrip(user, tripId, { tx, forUpdate: true });
+        if (!sides.transporter) throw new AppError('Only the transporter who won this load declares its GST treatment', 403);
+        if (trip.status === 'cancelled') throw new AppError('This trip was cancelled', 409);
+        await tx.update(trips).set({ gstTreatment: treatment }).where(eq(trips.id, tripId));
+        await recordTripEvent(tx, { tripId, type: 'gst_treatment', actor: actorOf(user), note: treatment, data: { treatment, from: trip.gstTreatment } });
+    });
+    return getTripDetail(user, tripId);
+};
+
 /** POST /trips/:id/payment: informational only (AJ-33). The customer marks paid or unpaid with a reference. */
 export const setPayment = async (user, tripId, { status, reference, paidOn }) => {
     await db.transaction(async (tx) => {
@@ -259,7 +275,7 @@ export const decidePlacement = async (user, tripId, { decision, reason }) => {
         if (trip.status !== 'planned') throw new AppError('The truck has reported since, so there is nothing to decide', 409);
         const actor = actorOf(user);
         const now = new Date();
-        const why = reason ?? 'Truck was not placed on time';
+        const why = reason ?? miss.reason ?? 'Truck was not placed on time';
         const out = [];
 
         if (decision === 'cancel') {
@@ -283,6 +299,7 @@ export const decidePlacement = async (user, tripId, { decision, reason }) => {
                     await tx.update(drivers).set({ availability: 'available' }).where(and(eq(drivers.id, sibling.driverId ?? '00000000-0000-0000-0000-000000000000'), eq(drivers.availability, 'on_trip')));
                 }
             }
+            out.push(...await withdrawOpenOffers(tx, { loadId: load.id, awardId: trip.awardId, actor, note: 'The award was taken back' }));
             // Revoked (not declined): this transporter's bid cannot be awarded again on this load (awardLoad checks).
             await tx.update(awards).set({ status: 'revoked', respondedAt: now }).where(eq(awards.id, trip.awardId));
             await tx.update(loads).set({ status: 'closed' }).where(eq(loads.id, load.id));
@@ -402,6 +419,9 @@ export const getClosureSheet = async (user, tripId) => {
             reportedAt: trip.reportedAt, loadedAt: trip.loadedAt, departedAt: trip.departedAt,
             reachedDropAt: trip.reachedDropAt, deliveredAt: trip.deliveredAt, completedAt: trip.completedAt,
         },
+        gst: gstSheet(trip.gstTreatment),
+        delivery: { receivedByName: trip.receivedByName, receivedByPhone: trip.receivedByPhone, receivedAt: trip.receivedAt },
+        goodsRejected: found.some((d) => d.kind === 'rejected'),
         pod: { condition: trip.podCondition, remarks: trip.podRemarks, files: docs.filter((d) => d.documentType === 'pod').map((d) => d.fileUrl) },
         discrepancies: found,
         terms: row?.awardTerms ?? null,

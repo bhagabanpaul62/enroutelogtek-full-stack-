@@ -32,7 +32,7 @@ export const listPlansForAdmin = async ({ includeInactive = false } = {}) => {
     const rows = await db
         .select({
             plan: subscriptionPlans,
-            companies: sql`(select count(*)::int from ${companySubscriptions} s where s.plan_id = ${subscriptionPlans.id})`.mapWith(Number),
+            companies: sql`(select count(*)::int from ${companySubscriptions} s where s.plan_id = subscription_plans.id)`.mapWith(Number),
         })
         .from(subscriptionPlans)
         .where(includeInactive ? undefined : eq(subscriptionPlans.isActive, true))

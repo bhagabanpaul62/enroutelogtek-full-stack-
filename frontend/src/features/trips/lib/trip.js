@@ -1,5 +1,6 @@
 import { STATUS } from '@/shared/ui/kit';
 import { formatDate, formatDateTime, formatMoney } from '@/shared/ui/data-grid';
+import { formatRoute } from '@/shared/lib/format.js';
 import { TRIP_TONES, TRANSITIONS, TRIP_PERMISSIONS } from '../constants';
 
 export { formatDate, formatDateTime, formatMoney };
@@ -8,13 +9,13 @@ export { formatDate, formatDateTime, formatMoney };
 export const tripStatusMeta = (status) =>
     !status ? null : STATUS[status] ?? TRIP_TONES[status] ?? { tone: 'neutral', label: String(status).replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase()) };
 
-/** "Pune to Chennai" from a load's public fields (or a row that already carries `route`). */
+/** "Pune → Chennai" from a load's public fields (or a row that already carries `route`). */
 export const routeOf = (load) => {
     if (!load) return '';
     if (load.route) return load.route;
     const from = load.pickupCity || load.pickupPinCode;
     const to = load.dropCity || load.dropPinCode;
-    return from && to ? `${from} to ${to}` : '';
+    return formatRoute(from, to);
 };
 
 export const registrationOf = (v) => v?.registrationNumber ?? '';
@@ -32,7 +33,7 @@ export function rowView(row) {
         tripNo: trip.tripNumber ?? row.tripNumber ?? (loadNumber ? `${loadNumber}-${seq ?? 1}` : `Trip ${seq ?? ''}`.trim()),
         loadId: trip.loadId ?? row.loadId ?? load.id,
         loadNumber,
-        route: row.route ?? routeOf(load),
+        route: row.route ?? routeOf(row.load ?? row),
         status: trip.status,
         vehicle: row.vehicleRegistration ?? registrationOf(vehicle),
         driverName: row.driverName ?? driver?.name ?? '',

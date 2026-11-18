@@ -1,8 +1,8 @@
-import { expect, loginAs, test, USERS } from './fixtures.js';
+import { expect, loginAs, seen, test, USERS } from './fixtures.js';
 
 // Not run in the build wave. Needs the wave 2 backend (trips, fleet) on the e2e stack.
 // Pages: the list renders for every company type; the record page works when a trip exists
-// (the seed gives none, so record specs open the first row and skip when the grid is empty).
+// (the demo seed gives trips in every state; record specs still skip when the grid is empty).
 
 const LISTS = [
     ['customer', '/customer/trips'],
@@ -17,7 +17,7 @@ for (const [role, path] of LISTS) {
         await page.goto(path);
         await expect(page.getByRole('heading', { level: 1, name: 'Trips' })).toBeVisible();
         // Either rows or the honest empty state, never a blank page or a stuck skeleton.
-        await expect(page.getByText('No trips yet').or(page.getByRole('row').nth(1)).first()).toBeVisible();
+        await expect(page.getByText(/^No (active )?trips/).or(page.getByRole('row').nth(1)).first()).toBeVisible();
     });
 }
 
@@ -25,7 +25,7 @@ test('transporter opens a trip and sees progress, documents and charges', async 
     await loginAs(page, USERS.transporter);
     await page.goto('/transporter/trips');
     const first = page.getByRole('row').nth(1);
-    test.skip(!(await first.isVisible().catch(() => false)), 'no trips seeded yet');
+    test.skip(!(await seen(first)), 'no trips seeded yet');
     await first.click();
     await expect(page).toHaveURL(/\/transporter\/trips\/[0-9a-f-]{36}$/);
     await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
@@ -38,8 +38,9 @@ test('transporter opens a trip and sees progress, documents and charges', async 
 test('transporter moves a planned trip to reported through the modal', async ({ page }) => {
     await loginAs(page, USERS.transporter);
     await page.goto('/transporter/trips');
-    const row = page.getByRole('row').filter({ hasText: 'Planned' }).first();
-    test.skip(!(await row.isVisible().catch(() => false)), 'no planned trip with a truck');
+    // The seed has planned trucks without a vehicle (offered or waiting for assignment); take one with a registration number.
+    const row = page.getByRole('row').filter({ hasText: 'Planned' }).filter({ hasText: /[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}/ }).first();
+    test.skip(!(await seen(row)), 'no planned trip with a truck');
     await row.click();
     const button = page.getByRole('button', { name: 'Mark reported at pickup' });
     test.skip(!(await button.isEnabled().catch(() => false)), 'trip has no vehicle assigned yet');
@@ -52,7 +53,7 @@ test('loaded needs weight and LR number before it submits', async ({ page }) => 
     await loginAs(page, USERS.transporter);
     await page.goto('/transporter/trips');
     const row = page.getByRole('row').filter({ hasText: 'Loading' }).first();
-    test.skip(!(await row.isVisible().catch(() => false)), 'no trip in loading');
+    test.skip(!(await seen(row)), 'no trip in loading');
     await row.click();
     await page.getByRole('button', { name: 'Mark loaded' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Mark loaded' }).click();
@@ -64,7 +65,7 @@ test('customer sees read-only progress and no transporter actions', async ({ pag
     await loginAs(page, USERS.customer);
     await page.goto('/customer/trips');
     const first = page.getByRole('row').nth(1);
-    test.skip(!(await first.isVisible().catch(() => false)), 'no trips seeded yet');
+    test.skip(!(await seen(first)), 'no trips seeded yet');
     await first.click();
     await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Mark loaded' })).toHaveCount(0);
@@ -75,7 +76,7 @@ test('delivered trip: closure sheet prints from its own page', async ({ page }) 
     await loginAs(page, USERS.customer);
     await page.goto('/customer/trips');
     const row = page.getByRole('row').filter({ hasText: /Delivered|Completed/ }).first();
-    test.skip(!(await row.isVisible().catch(() => false)), 'no delivered trip');
+    test.skip(!(await seen(row)), 'no delivered trip');
     await row.click();
     await page.getByRole('link', { name: 'Closure sheet' }).click();
     await expect(page.getByLabel('Trip closure sheet')).toBeVisible();
@@ -86,7 +87,7 @@ test('a trip always says what happens next', async ({ page }) => {
     await loginAs(page, USERS.transporter);
     await page.goto('/transporter/trips');
     const first = page.getByRole('row').nth(1);
-    test.skip(!(await first.isVisible().catch(() => false)), 'no trips seeded yet');
+    test.skip(!(await seen(first)), 'no trips seeded yet');
     await first.click();
     await expect(page.getByRole('heading', { name: 'Progress' })).toBeVisible();
     // The guidance banner is the first status region on the page.

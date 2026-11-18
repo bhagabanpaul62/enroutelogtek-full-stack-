@@ -1,12 +1,16 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { TRIP_STATUSES } from './trip.constants.js';
+import { DISCREPANCY_KINDS, TRIP_STATUSES } from './trip.constants.js';
 import {
     assignmentProblems,
     autoCompleteAt,
     canTransition,
     detentionCharge,
     ewayBillState,
+    executorCancelsBeforePlacement,
+    gstSheet,
+    hazmatProblem,
+    receiverProblem,
     freightPaise,
     HOLDING_STATUSES,
     isAutoCompleteDue,
@@ -250,5 +254,43 @@ describe('H6: re-award after a missed placement', () => {
     it('is refused once trucks are moving or the award is not the accepted one', () => {
         for (const status of ['in_execution', 'closed', 'awarded', 'completed']) assert.equal(reAwardProblem({ load: { status }, award, miss }).status, 409, status);
         for (const status of ['pending', 'declined', 'revoked']) assert.equal(reAwardProblem({ load, award: { status }, miss }).status, 409, status);
+    });
+});
+
+describe('wave 5 gaps', () => {
+    const atDrop = { status: 'reached_drop', reachedDropAt: new Date(NOW.getTime() - 2 * H), vehicleId: 'v', driverId: 'd' };
+    const deliver = (input) => transitionProblems(atDrop, 'delivered', { podCondition: 'clean', ...input }, { hasPod: true, now: NOW });
+
+    it('AJ-27: receiver fields are optional but validated', () => {
+        assert.equal(deliver({}), null);
+        assert.equal(deliver({ receivedBy: 'R Kumar', receivedByPhone: '9876543210', receivedAt: new Date(NOW.getTime() - H) }), null);
+        assert.equal(deliver({ receivedByPhone: '12345' }).status, 422);
+        assert.equal(deliver({ receivedAt: new Date(NOW.getTime() + 2 * H) }).status, 422);
+        assert.equal(deliver({ receivedAt: new Date(NOW.getTime() - 5 * H) }).status, 422);
+        assert.equal(receiverProblem(atDrop, {}, NOW), null);
+    });
+
+    it('AJ-28: rejected is a discrepancy kind', () => {
+        assert.ok(DISCREPANCY_KINDS.includes('rejected'));
+    });
+
+    it('AJ-32: GST treatment shows rate and ITC', () => {
+        assert.deepEqual(gstSheet('rcm'), { treatment: 'rcm', label: 'Reverse charge (RCM)', ratePct: 5, customerItc: false });
+        assert.equal(gstSheet('forward').ratePct, 12);
+        assert.equal(gstSheet('forward').customerItc, true);
+        assert.equal(gstSheet(null), null);
+        assert.equal(gstSheet('bogus'), null);
+    });
+
+    it('AJ-36: only a planned truck can be given up by the executor', () => {
+        assert.equal(executorCancelsBeforePlacement({ status: 'planned' }, { executor: true, customer: false }), true);
+        assert.equal(executorCancelsBeforePlacement({ status: 'reported' }, { executor: true, customer: false }), false);
+        assert.equal(executorCancelsBeforePlacement({ status: 'planned' }, { executor: false, customer: true }), false);
+    });
+
+    it('AJ-16: a hazmat load needs a hazmat driver', () => {
+        assert.match(hazmatProblem({ hazmatClass: '3' }, { name: 'Ravi', hazmatEndorsement: false }), /hazmat endorsement/);
+        assert.equal(hazmatProblem({ hazmatClass: '3' }, { name: 'Ravi', hazmatEndorsement: true }), null);
+        assert.equal(hazmatProblem({ hazmatClass: null }, { name: 'Ravi', hazmatEndorsement: false }), null);
     });
 });

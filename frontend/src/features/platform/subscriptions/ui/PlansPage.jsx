@@ -39,15 +39,15 @@ const COLUMNS = [
         key: 'billingPeriods',
         label: 'Periods',
         type: 'text',
-        width: 170,
+        width: 220,
         value: (p) => (p.billingPeriods ?? []).map(periodLabel).join(', '),
     },
-    { key: 'companies', label: 'Companies', type: 'number', width: 110 },
+    { key: 'companies', label: 'Companies', type: 'number', width: 120 },
     {
         key: 'isActive',
         label: 'Status',
         type: 'status',
-        width: 110,
+        width: 130,
         value: (p) => (p.isActive ? 'active' : 'inactive'),
     },
 ];

@@ -16,7 +16,7 @@ import {
     pageOf,
 } from './fleet.common.js';
 
-const FIELDS = ['name', 'licenceNumber', 'licenceExpiry', 'yearsExperience'];
+const FIELDS = ['name', 'licenceNumber', 'licenceExpiry', 'yearsExperience', 'hazmatEndorsement'];
 const pick = (input) => Object.fromEntries(FIELDS.filter((f) => input[f] !== undefined).map((f) => [f, input[f]]));
 const DUPLICATE_PHONE = 'A driver with this phone number already exists in your company';
 

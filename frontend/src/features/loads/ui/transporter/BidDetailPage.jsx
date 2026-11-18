@@ -119,7 +119,7 @@ export default function BidDetailPage({ loadId }) {
                 ]}
             />
 
-            <div className="mt-6 grid gap-4 lg:grid-cols-3">
+            <div className="mt-6 grid items-start gap-4 lg:grid-cols-3">
                 <div className="flex min-w-0 flex-col gap-4 lg:col-span-2">
                     <Outcome load={load} />
                     {load.status === 'live' && (

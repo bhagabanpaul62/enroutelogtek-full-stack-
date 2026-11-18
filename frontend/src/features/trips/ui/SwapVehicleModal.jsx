@@ -14,6 +14,7 @@ export default function SwapVehicleModal({ open, onOpenChange, trip, load, vehic
     const [driverId, setDriverId] = useState('');
     const [reason, setReason] = useState('');
     const [busy, setBusy] = useState(false);
+    const [problem, setProblem] = useState('');
     const [tick, setTick] = useState(0);
 
     useEffect(() => {
@@ -30,13 +31,14 @@ export default function SwapVehicleModal({ open, onOpenChange, trip, load, vehic
         event.preventDefault();
         if (!vehicleId || !reason.trim()) return;
         setBusy(true);
+        setProblem('');
         try {
             await swapVehicleApi(trip.id, { vehicleId, driverId: driverId || undefined, reason: reason.trim() });
             toast.success('Vehicle changed. The customer has been told.');
             onOpenChange(false);
             onDone?.();
         } catch (error) {
-            toast.error(apiMessage(error));
+            setProblem(apiMessage(error));
         } finally {
             setBusy(false);
         }
@@ -64,11 +66,12 @@ export default function SwapVehicleModal({ open, onOpenChange, trip, load, vehic
                     </ModalField>
                     <ModalField label="Driver" htmlFor="sw-driver" hint="Leave as is to keep the same driver.">
                         <SelectField id="sw-driver" value={driverId} onChange={(e) => setDriverId(e.target.value)} placeholder={`Keep ${driver?.name ?? 'current driver'}`}
-                            options={state.drivers.filter((d) => d.id !== trip.driverId).map((d) => ({ value: d.id, label: d.name }))} />
+                            options={state.drivers.filter((d) => d.id !== trip.driverId).map((d) => ({ value: d.id, label: load?.hazmatClass && d.hazmatEndorsement === false ? `${d.name} (no hazmat endorsement)` : d.name }))} />
                     </ModalField>
                     <ModalField label="Reason" htmlFor="sw-reason" required>
                         <TextArea id="sw-reason" maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
                     </ModalField>
+                    {problem ? <p role="alert" className="text-sm text-red-300">{problem}</p> : null}
                 </form>
             )}
         </Modal>

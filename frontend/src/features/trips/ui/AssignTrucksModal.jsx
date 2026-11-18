@@ -119,7 +119,7 @@ export default function AssignTrucksModal({ award, trips: given, open, onOpenCha
                                         value={r.driverId ?? ''}
                                         onChange={(e) => set(trip.id, 'driverId', e.target.value)}
                                         placeholder="Pick a driver"
-                                        options={state.drivers.filter((d) => d.id === r.driverId || !usedD.has(d.id)).map((d) => ({ value: d.id, label: d.name }))}
+                                        options={state.drivers.filter((d) => d.id === r.driverId || !usedD.has(d.id)).map((d) => ({ value: d.id, label: award.hazmat && d.hazmatEndorsement === false ? `${d.name} (no hazmat endorsement)` : d.name }))}
                                     />
                                     <TextField
                                         type="datetime-local"
@@ -129,6 +129,9 @@ export default function AssignTrucksModal({ award, trips: given, open, onOpenCha
                                         className="sm:col-span-2"
                                     />
                                 </div>
+                                {award.hazmat && state.drivers.find((d) => d.id === r.driverId)?.hazmatEndorsement === false ? (
+                                    <p role="alert" className="mt-2 text-xs text-red-300">This load carries hazardous goods. Pick a driver with a hazmat endorsement, or add the endorsement to this driver under Drivers.</p>
+                                ) : null}
                                 {expiringNote(vehicle) ? <p className="mt-2 text-xs text-amber-300">{expiringNote(vehicle)}</p> : null}
                                 {errors[trip.id] ? (
                                     <p role="alert" className="mt-2 text-xs text-red-300">

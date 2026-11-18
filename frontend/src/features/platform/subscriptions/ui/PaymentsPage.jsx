@@ -6,9 +6,8 @@ import { toast } from 'sonner';
 import { DataGrid } from '@/shared/ui/data-grid';
 import { TabBar } from '@/shared/ui/kit';
 import { useCursorList } from '@/shared/hooks/useCursorList';
-import { COMPANY_TYPE_LABELS } from '@/shared/lib/dashboardNav';
 import { approvePaymentApi, listPaymentsApi, rejectPaymentApi } from '../api/subscriptions.api';
-import { PAYMENT_STATUS_OPTIONS, PAYMENT_TABS, PURPOSE_LABELS, errorCode, errorMessage, periodLabel } from '../constants';
+import { PAYMENT_STATUS_OPTIONS, PAYMENT_TABS, PURPOSE_LABELS, errorCode, errorMessage, paymentPeriod } from '../constants';
 import DeliveryStrip from './DeliveryStrip';
 import PaymentPanel from './PaymentPanel';
 import { ApproveModal, RejectPaymentModal } from './ReviewModals';
@@ -20,17 +19,14 @@ const EMPTY = {
 };
 
 const PURPOSE_OPTIONS = Object.entries(PURPOSE_LABELS).map(([value, label]) => ({ value, label }));
-const TYPE_OPTIONS = Object.entries(COMPANY_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 
 const COLUMNS = [
     { key: 'companyName', label: 'Company', type: 'text' },
-    { key: 'companyType', label: 'Type', type: 'chip', options: TYPE_OPTIONS, width: 130 },
     { key: 'purpose', label: 'Purpose', type: 'chip', options: PURPOSE_OPTIONS, width: 120 },
-    { key: 'planName', label: 'Plan', type: 'text', width: 130 },
-    { key: 'periodMonths', label: 'Period', type: 'text', width: 90, value: (p) => (p.periodMonths ? periodLabel(p.periodMonths) : '') },
-    { key: 'extraSeats', label: 'Seats', type: 'number', width: 80 },
+    { key: 'planName', label: 'Plan', type: 'text', width: 110 },
+    { key: 'periodMonths', label: 'Period', type: 'text', width: 110, value: paymentPeriod },
     { key: 'amountPaise', label: 'Amount', type: 'money', width: 120 },
-    { key: 'referenceNo', label: 'Reference', type: 'text', width: 140 },
+    { key: 'referenceNo', label: 'Reference', type: 'text', width: 120 },
     { key: 'createdAt', label: 'Submitted', type: 'date', width: 110 },
     { key: 'status', label: 'Status', type: 'status', options: PAYMENT_STATUS_OPTIONS, width: 120 },
 ];

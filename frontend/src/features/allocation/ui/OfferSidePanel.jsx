@@ -4,10 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Inbox } from 'lucide-react';
+import { formatWeight } from '@/shared/lib/format';
 import { Button } from '@/shared/ui/primitives/button';
 import { Fact, FactList, ModalField, ModalFooter, SidePanel, StatusChip } from '@/shared/ui/kit';
 import { acceptAllocationApi, apiMessage, declineAllocationApi } from '../api/allocation.api';
-import { ALLOC_STATUS, countdown, isOpen, lane, money, total, when } from '../lib/allocation';
+import { ALLOC_STATUS, countdown, isOpen, lane, money, total, when, withdrawReason } from '../lib/allocation';
 
 /**
  * Review card for one received offer. Accept (one click, final) or Decline (reason required).
@@ -76,11 +77,12 @@ export default function OfferSidePanel({ offer, now, canRespond, tripsHref, onPl
                     <Fact label="Rate per truck">{money(offer.ratePerTruckPaise)}</Fact>
                     <Fact label="Total">{money(total(offer))}</Fact>
                     <Fact label="Material">{offer.material ?? offer.load?.material}</Fact>
-                    <Fact label="Weight">{offer.weightKg ? `${offer.weightKg} kg` : undefined}</Fact>
+                    <Fact label="Weight">{offer.weightKg ? formatWeight(offer.weightKg) : undefined}</Fact>
                     <Fact label="Pickup">{when(offer.pickupDate ?? offer.load?.pickupDate)}</Fact>
                     <Fact label="Respond by">{when(offer.respondBy)}</Fact>
                     <Fact label="Note">{offer.note}</Fact>
-                    {offer.decisionNote ? <Fact label="Your reason">{offer.decisionNote}</Fact> : null}
+                    {offer.status === 'declined' && offer.decisionNote ? <Fact label="Your reason">{offer.decisionNote}</Fact> : null}
+                    {offer.status === 'withdrawn' ? <Fact label="Why it was withdrawn">{withdrawReason(offer)}</Fact> : null}
                 </FactList>
                 {declining ? (
                     <ModalField label="Reason for declining" htmlFor="decline-reason" required error={error}>

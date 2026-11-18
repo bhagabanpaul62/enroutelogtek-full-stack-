@@ -85,3 +85,6 @@ export function formatWeight(kg) {
 
 /** Plain count with Indian grouping: 1,23,456. */
 export const formatNumber = (n) => (n === null || n === undefined || n === '' || Number.isNaN(Number(n)) ? '' : plain.format(Number(n)));
+
+/** "Mumbai → Delhi": the one way a lane is written. Missing ends are skipped. */
+export const formatRoute = (from, to) => [from, to].filter(Boolean).join(' → ');

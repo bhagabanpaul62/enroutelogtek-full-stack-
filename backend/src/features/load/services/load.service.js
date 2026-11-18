@@ -15,7 +15,7 @@
  */
 import { and, asc, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { db } from '#shared/db/index.js';
+import { db, outer } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { companies } from '#features/company/schemas/company.Schema.js';
 import { companyConnections } from '#features/network/schemas/companyConnection.Schema.js';
@@ -49,6 +49,7 @@ import { afterCursor, cursorCreatedAt, toPage } from './load.pagination.js';
 import { listLoadEvents, recordLoadEvent } from './loadEvent.service.js';
 import { PERMISSIONS } from '#features/team/team.permissions.js';
 import { ratings, trips } from '#features/trip/schemas/trip.Schema.js';
+import { sendWithdrawNotices, withdrawOpenOffers } from '#features/allocation/services/allocation.service.js';
 import {
     findInvitedLoad,
     findOwnLoad,
@@ -127,7 +128,7 @@ const presentForTransporter = (row, { shareContacts = false } = {}) => {
     return rest;
 };
 
-const bidCountSql = sql`(select count(*)::int from bids b where b.load_id = ${loads.id})`.mapWith(
+const bidCountSql = sql`(select count(*)::int from bids b where b.load_id = ${outer(loads.id)})`.mapWith(
     Number,
 );
 
@@ -668,6 +669,7 @@ export const extendLoad = async (user, loadId, closesAt) => {
 /** POST /loads/:id/cancel: allowed until a winner is picked. */
 export const cancelLoad = async (user, loadId, reason) => {
     await requireCustomerManager(user, PERMISSIONS.LOADS_MANAGE);
+    let withdrawNotices = [];
     const load = await db.transaction(async (tx) => {
         const locked = await findOwnLoad(user.companyId, loadId, { tx, forUpdate: true });
         if (!CANCELLABLE_FROM.includes(locked.status)) {
@@ -693,8 +695,11 @@ export const cancelLoad = async (user, loadId, reason) => {
             },
             tx,
         );
+        // Offers still waiting on a revoked award would otherwise hold trucks of a dead load.
+        withdrawNotices = await withdrawOpenOffers(tx, { loadId, actor: { userId: user.userId, companyId: user.companyId }, note: 'The load was cancelled' });
         return locked;
     });
+    sendWithdrawNotices(withdrawNotices);
 
     if (load.status !== 'draft') {
         const number = loadNumber(load.kind, load.loadSeq, load.createdAt);

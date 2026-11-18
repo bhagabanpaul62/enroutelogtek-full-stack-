@@ -67,7 +67,7 @@ const earningsDataset = async (co, f) => {
 const spendDataset = async (co, f) => {
     const raw = guard(await fetchTrips(co, { ...tripFilter(f, 'completedAt'), status: 'completed' }, REPORT_ROW_LIMIT + 1));
     const rows = raw.map((r) => ({
-        id: r.id, tripNo: r.tripNo, lane: r.lane, transporter: r.transporter, completedOn: ist(r.completedAt),
+        id: r.id, tripNo: r.tripNo, lane: r.lane, vehicle: r.vehicle ?? '', transporter: r.transporter, completedOn: ist(r.completedAt),
         spendPaise: r.charges.reduce((t, c) => t + c.amountPaise, 0),
     }));
     return {

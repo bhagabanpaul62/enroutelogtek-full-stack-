@@ -40,6 +40,13 @@ export function validateTransition(to, f, { trip, load, hasPod }) {
         if (!f.podCondition) e.podCondition = 'Pick the condition on the LR.';
         if (f.podCondition === 'remarks' && !f.podRemarks.trim()) e.podRemarks = 'Write what the consignee noted.';
         if (!f.podUrl && !hasPod) e.podUrl = 'Add the photo of the signed LR.';
+        if (f.receivedByPhone.trim() && !/^\d{10}$/.test(f.receivedByPhone.trim())) e.receivedByPhone = 'Enter a 10 digit mobile number.';
+        if (f.receivedByPhone.trim() && !f.receivedBy.trim()) e.receivedBy = 'Enter the name of the person who received the goods.';
+        if (f.receivedAt) {
+            const at = new Date(f.receivedAt).getTime();
+            if (at > Date.now() + 60_000) e.receivedAt = 'The time received cannot be in the future.';
+            else if (trip.reachedDropAt && at < Math.floor(new Date(trip.reachedDropAt).getTime() / 60_000) * 60_000) e.receivedAt = 'The time received cannot be before the truck reached the drop.';
+        }
     }
     if (to === 'cancelled' && !f.cancelReason.trim()) e.cancelReason = 'Say why the trip is cancelled.';
     return e;
@@ -54,7 +61,9 @@ function Field({ id, label, hint, required, errors, children }) {
 }
 
 /** One modal for every move on the trip, with only the fields that move needs. */
-export default function TransitionModal({ open, onOpenChange, trip, load, to, hasPod, onDone }) {
+export default function TransitionModal({ open, onOpenChange, trip, load, to, hasPod, side, onDone }) {
+    // The executor cancelling a planned trip does not cancel it: it tells the customer the truck cannot be placed.
+    const placementCancel = to === 'cancelled' && trip.status === 'planned' && side === 'executor';
     const [f, setF] = useState(() => ({
         note: '',
         locationText: '',
@@ -67,6 +76,9 @@ export default function TransitionModal({ open, onOpenChange, trip, load, to, ha
         podCondition: '',
         podRemarks: '',
         podUrl: '',
+        receivedBy: '',
+        receivedByPhone: '',
+        receivedAt: toLocalInput(new Date().toISOString()),
         cancelReason: '',
     }));
     const [errors, setErrors] = useState({});
@@ -89,7 +101,12 @@ export default function TransitionModal({ open, onOpenChange, trip, load, to, ha
             if (f.ewayBillValidUntil) body.ewayBillValidUntil = fromLocalInput(f.ewayBillValidUntil);
         }
         if (to === 'delayed') body.delayReason = f.delayReason;
-        if (to === 'delivered') Object.assign(body, { podCondition: f.podCondition, podRemarks: f.podRemarks.trim() || undefined });
+        if (to === 'delivered') {
+            Object.assign(body, { podCondition: f.podCondition, podRemarks: f.podRemarks.trim() || undefined });
+            if (f.receivedBy.trim()) body.receivedBy = f.receivedBy.trim();
+            if (f.receivedByPhone.trim()) body.receivedByPhone = f.receivedByPhone.trim();
+            if (f.receivedAt) body.receivedAt = fromLocalInput(f.receivedAt);
+        }
         if (to === 'cancelled') body.cancelReason = f.cancelReason.trim();
 
         setBusy(true);
@@ -97,7 +114,7 @@ export default function TransitionModal({ open, onOpenChange, trip, load, to, ha
             // The signed LR photo is the POD document; it must exist before the trip can be delivered.
             if (to === 'delivered' && f.podUrl) await addTripDocumentApi(trip.id, { documentType: 'pod', fileUrl: f.podUrl });
             await transitionTripApi(trip.id, body);
-            toast.success(`${TITLES[to] ?? 'Trip updated'}: done`);
+            toast.success(placementCancel ? 'The customer has been told. They decide whether to pick another transporter or cancel the load.' : `${TITLES[to] ?? 'Trip updated'}: done`);
             onOpenChange(false);
             onDone?.();
         } catch (error) {
@@ -108,14 +125,18 @@ export default function TransitionModal({ open, onOpenChange, trip, load, to, ha
     };
 
     const danger = to === 'cancelled';
-    const label = actionLabel(trip.status, to);
+    const label = placementCancel ? 'Tell the customer' : actionLabel(trip.status, to);
     return (
         <Modal
             open={open}
             onOpenChange={onOpenChange}
             size="md"
-            title={TITLES[to] ?? label}
-            description={trip.status === 'delayed' && to === 'in_transit' ? 'The delay reason stays in the trip history.' : undefined}
+            title={placementCancel ? "Can't place the truck" : TITLES[to] ?? label}
+            description={
+                placementCancel
+                    ? 'The trip stays planned. The customer is told and chooses to pick another transporter or cancel the load. This counts as a missed placement on your record.'
+                    : trip.status === 'delayed' && to === 'in_transit' ? 'The delay reason stays in the trip history.' : undefined
+            }
             tone={danger ? 'danger' : undefined}
             footer={<ModalFooter danger={danger} secondary={{ onClick: () => onOpenChange(false), disabled: busy }} primary={{ label, type: 'submit', form: 'trip-transition', loading: busy }} />}
         >
@@ -164,6 +185,15 @@ export default function TransitionModal({ open, onOpenChange, trip, load, to, ha
                         <Field errors={errors} id="podCondition" label="Condition on the LR" required>
                             <SelectField id="podCondition" value={f.podCondition} onChange={set('podCondition')} placeholder="Pick one" options={POD_CONDITIONS} />
                         </Field>
+                        <Field errors={errors} id="receivedBy" label="Received by" hint="Name of the person who signed for the goods.">
+                            <TextField id="receivedBy" maxLength={100} value={f.receivedBy} onChange={set('receivedBy')} autoComplete="off" />
+                        </Field>
+                        <Field errors={errors} id="receivedByPhone" label="Receiver's mobile number" hint="10 digits.">
+                            <TextField id="receivedByPhone" type="tel" inputMode="numeric" maxLength={10} value={f.receivedByPhone} onChange={set('receivedByPhone')} autoComplete="off" />
+                        </Field>
+                        <Field errors={errors} id="receivedAt" label="Received on" hint="When the goods were handed over. Defaults to now.">
+                            <TextField id="receivedAt" type="datetime-local" value={f.receivedAt} onChange={set('receivedAt')} />
+                        </Field>
                         {f.podCondition === 'remarks' ? (
                             <Field errors={errors} id="podRemarks" label="What the consignee noted" required>
                                 <TextArea id="podRemarks" maxLength={500} value={f.podRemarks} onChange={set('podRemarks')} />
@@ -173,7 +203,7 @@ export default function TransitionModal({ open, onOpenChange, trip, load, to, ha
                 ) : null}
 
                 {to === 'cancelled' ? (
-                    <Field errors={errors} id="cancelReason" label="Reason" required hint="Shared with the other side.">
+                    <Field errors={errors} id="cancelReason" label="Reason" required hint={placementCancel ? 'The customer sees this when deciding.' : 'Shared with the other side.'}>
                         <TextArea id="cancelReason" maxLength={300} value={f.cancelReason} onChange={set('cancelReason')} />
                     </Field>
                 ) : null}

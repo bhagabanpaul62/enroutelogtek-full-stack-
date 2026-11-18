@@ -24,6 +24,7 @@ router.post('/:tripId/charges/:chargeId/decision', id, rules.chargeIdRules, rule
 router.post('/:tripId/discrepancies', id, rules.discrepancyRules, validate, c.addDiscrepancy);
 router.post('/:tripId/confirm', id, rules.confirmRules, validate, c.confirmTrip);
 router.post('/:tripId/reject-pod', id, rules.rejectPodRules, validate, c.rejectPod);
+router.post('/:tripId/gst-treatment', id, rules.gstRules, validate, c.setGstTreatment);
 router.post('/:tripId/payment', id, rules.paymentRules, validate, c.setPayment);
 router.post('/:tripId/placement-decision', id, rules.placementDecisionRules, validate, c.decidePlacement);
 

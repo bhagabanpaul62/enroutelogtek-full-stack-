@@ -71,7 +71,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                             value={form[keys.pin]}
                             invalid={Boolean(errors[keys.pin])}
                             onChange={(event) => setPin(event.target.value)}
-                            placeholder="700001"
+                            placeholder="6-digit PIN"
                             className="font-mono"
                         />
                         {lookingUp && (
@@ -82,7 +82,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                         )}
                     </div>
                 </FormField>
-                <FormField label="City" htmlFor={keys.city} required error={errors[keys.city]}>
+                <FormField label="City" htmlFor={keys.city} required error={errors[keys.city]} hint="Filled in from the PIN code">
                     <TextInput
                         id={keys.city}
                         maxLength={100}
@@ -91,7 +91,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                         onChange={(event) => onChange({ [keys.city]: event.target.value })}
                     />
                 </FormField>
-                <FormField label="State" htmlFor={keys.state} error={errors[keys.state]}>
+                <FormField label="State" htmlFor={keys.state} error={errors[keys.state]} hint="Filled in from the PIN code">
                     <TextInput
                         id={keys.state}
                         maxLength={100}
@@ -163,7 +163,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                         value={form[keys.contactPhone]}
                         invalid={Boolean(errors[keys.contactPhone])}
                         onChange={(event) => onChange({ [keys.contactPhone]: event.target.value })}
-                        placeholder="98765 43210"
+                        placeholder="10-digit mobile"
                         className="font-mono"
                     />
                 </FormField>

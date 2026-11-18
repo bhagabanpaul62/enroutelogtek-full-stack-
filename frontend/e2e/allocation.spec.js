@@ -1,4 +1,4 @@
-import { expect, loginAs, test, USERS } from './fixtures.js';
+import { expect, loginAs, seen, test, USERS } from './fixtures.js';
 
 // Needs the ALLOC-BACKEND routes and an accepted award with free trucks for the demo transporter.
 // dashboardNav "ready" flags for fleet-owner/loads and broker loads, transporters, fleet-owners must be on.
@@ -11,7 +11,7 @@ test('fleet owner sees the offers inbox with its columns and an empty-state or r
     const row = page.getByRole('row').nth(1);
     if (await page.getByText('No offers yet').isVisible().catch(() => false)) return;
     await row.click();
-    await expect(page.getByRole('button', { name: 'Accept offer' }).or(page.getByText('You accepted this offer.')).or(page.getByText(/Declined|Expired|Withdrawn/).first())).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Accept offer' }).or(page.getByText('You accepted this offer.')).or(page.getByText(/Declined|Expired|Withdrawn/).and(page.locator(':not(option)'))).first()).toBeVisible();
 });
 
 test('declining an offer needs a reason', async ({ page }) => {
@@ -19,7 +19,7 @@ test('declining an offer needs a reason', async ({ page }) => {
     await page.goto('/fleet-owner/loads');
     await page.getByRole('combobox', { name: 'Filter by status' }).selectOption('offered');
     const first = page.getByRole('row').nth(1);
-    test.skip(!(await first.isVisible().catch(() => false)) || (await page.getByText('No offers').isVisible().catch(() => false)), 'no open offer seeded');
+    test.skip(!(await seen(first)) || (await page.getByText('No offers').isVisible().catch(() => false)), 'no open offer seeded');
     await first.click();
     await page.getByRole('button', { name: 'Decline' }).click();
     await page.getByRole('button', { name: 'Decline offer' }).click();

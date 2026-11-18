@@ -110,9 +110,7 @@ const buildColumns = (now) => [
                 <span className="tabular-nums text-amber-300">
                     {formatCountdown(load.closesAt, now) || 'Closing now'}
                 </span>
-            ) : (
-                <span className="text-foreground/30">—</span>
-            ),
+            ) : null,
     },
     {
         key: 'status',

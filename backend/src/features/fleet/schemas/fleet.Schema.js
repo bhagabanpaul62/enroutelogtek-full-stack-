@@ -50,6 +50,8 @@ export const drivers = pgTable(
         availability: varchar('availability', { length: 20 }).notNull().default('available'), // available | on_trip | off_duty | inactive
         isActive: boolean('is_active').notNull().default(true),
         yearsExperience: integer('years_experience'),
+        // AJ-16: required to be assigned a hazmat load.
+        hazmatEndorsement: boolean('hazmat_endorsement').notNull().default(false),
         ...timestamps,
     },
     (table) => [

@@ -1,4 +1,4 @@
-import { test, expect, loginAs, USERS } from './fixtures.js';
+import { test, expect, loginAs, seen, USERS } from './fixtures.js';
 
 // Platform admin billing: plans and the payment review queue.
 test.describe('admin billing', () => {
@@ -46,11 +46,11 @@ test.describe('admin billing', () => {
 
         const row = page.locator('tbody tr[tabindex="0"]').first();
         // Needs a submitted payment (made by a company in billing.spec); skip cleanly when the queue is empty.
-        test.skip(!(await row.isVisible().catch(() => false)), 'no submitted payment in this database');
+        test.skip(!(await seen(row)), 'no submitted payment in this database');
         await row.click();
 
         const panel = page.getByRole('dialog');
-        await expect(panel.getByText('Proof')).toBeVisible();
+        await expect(panel.getByText('Proof', { exact: true })).toBeVisible();
         await panel.getByRole('button', { name: 'Reject' }).click();
         const reject = page.getByRole('dialog').last();
         await expect(reject.getByRole('button', { name: 'Reject payment' })).toBeDisabled();
@@ -61,7 +61,7 @@ test.describe('admin billing', () => {
     test('approve confirmation states its consequence', async ({ page }) => {
         await page.goto('/rootAdmin/payments');
         const row = page.locator('tbody tr[tabindex="0"]').first();
-        test.skip(!(await row.isVisible().catch(() => false)), 'no submitted payment in this database');
+        test.skip(!(await seen(row)), 'no submitted payment in this database');
         await row.click();
         await page.getByRole('dialog').getByRole('button', { name: 'Approve' }).click();
         const confirm = page.getByRole('dialog').last();
