@@ -18,6 +18,7 @@ export const listOffersApi = (params) => api.get('/allocations/offers', { params
 export const listPlacedApi = (params) => api.get('/allocations/placed', { params }).then(asPage);
 export const getAllocationApi = (id) => api.get(`/allocations/${id}`).then(body);
 export const getPartnersApi = (params) => api.get('/allocations/partners', { params }).then(body);
+export const getPartnerApi = (companyId) => api.get(`/allocations/partners/${companyId}`).then(body);
 export const createAllocationApi = (payload) => api.post('/allocations', payload).then(body);
 export const withdrawAllocationApi = (id, note) => api.post(`/allocations/${id}/withdraw`, note ? { note } : {}).then(body);
 export const acceptAllocationApi = (id) => api.post(`/allocations/${id}/accept`, {}).then(body);

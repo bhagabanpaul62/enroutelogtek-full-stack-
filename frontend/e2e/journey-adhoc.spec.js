@@ -236,6 +236,7 @@ test('transporter moves truck 1 through the statuses and uploads a POD', async (
     await deliver.getByLabel('Add POD photo').setInputFiles(podFile);
     await expect(deliver.getByText('enroute-pod.png')).toBeVisible({ timeout: 20_000 });
     await deliver.locator('#podCondition').selectOption('clean');
+    await deliver.getByLabel('Received by').fill('Store keeper');
     await deliver.getByRole('button', { name: 'Deliver with POD', exact: true }).click();
     await expect(deliver).toBeHidden({ timeout: 15_000 });
     await expect(page.getByText('Delivered').first()).toBeVisible();

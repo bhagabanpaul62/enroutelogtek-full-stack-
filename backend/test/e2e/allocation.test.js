@@ -85,6 +85,17 @@ describe('allocation: transporter -> fleet owner and broker', { timeout: 400000 
         assert.equal((await api(broker, 'POST', `/allocations/${mine[0].id}/accept`)).status, 404);
     });
 
+    test('partner view: lists filter by counterparty, summary only for a connection', async () => {
+        const placed = ok(await api(transporter, 'GET', `/allocations/placed?companyId=${ids.fleetowner}`));
+        assert.ok(placed.length >= 1 && placed.every((row) => row.to.id === ids.fleetowner));
+        assert.equal(ok(await api(transporter, 'GET', '/allocations/placed?companyId=00000000-0000-4000-8000-000000000000')).length, 0);
+        assert.equal((await api(transporter, 'GET', '/allocations/placed?companyId=nope')).status, 422);
+        const summary = ok(await api(transporter, 'GET', `/allocations/partners/${ids.fleetowner}`));
+        assert.equal(summary.company.id, ids.fleetowner);
+        assert.ok(summary.placed >= placed.length);
+        assert.equal((await api(transporter, 'GET', '/allocations/partners/00000000-0000-4000-8000-000000000000')).status, 404, 'not a connection');
+    });
+
     test('fleet owner accepts, assigns its own truck; double answers are refused', async () => {
         const [offered] = ok(await api(fleetowner, 'GET', `/allocations/offers?status=offered&awardId=${awardId}`));
         const accepted = ok(await api(fleetowner, 'POST', `/allocations/${offered.id}/accept`));

@@ -41,7 +41,7 @@ export function validateTransition(to, f, { trip, load, hasPod }) {
         if (f.podCondition === 'remarks' && !f.podRemarks.trim()) e.podRemarks = 'Write what the consignee noted.';
         if (!f.podUrl && !hasPod) e.podUrl = 'Add the photo of the signed LR.';
         if (f.receivedByPhone.trim() && !/^\d{10}$/.test(f.receivedByPhone.trim())) e.receivedByPhone = 'Enter a 10 digit mobile number.';
-        if (f.receivedByPhone.trim() && !f.receivedBy.trim()) e.receivedBy = 'Enter the name of the person who received the goods.';
+        if (!f.receivedBy.trim()) e.receivedBy = 'Enter who received the goods.';
         if (f.receivedAt) {
             const at = new Date(f.receivedAt).getTime();
             if (at > Date.now() + 60_000) e.receivedAt = 'The time received cannot be in the future.';
@@ -185,7 +185,7 @@ export default function TransitionModal({ open, onOpenChange, trip, load, to, ha
                         <Field errors={errors} id="podCondition" label="Condition on the LR" required>
                             <SelectField id="podCondition" value={f.podCondition} onChange={set('podCondition')} placeholder="Pick one" options={POD_CONDITIONS} />
                         </Field>
-                        <Field errors={errors} id="receivedBy" label="Received by" hint="Name of the person who signed for the goods.">
+                        <Field errors={errors} id="receivedBy" label="Received by" required hint="Name of the person who signed for the goods.">
                             <TextField id="receivedBy" maxLength={100} value={f.receivedBy} onChange={set('receivedBy')} autoComplete="off" />
                         </Field>
                         <Field errors={errors} id="receivedByPhone" label="Receiver's mobile number" hint="10 digits.">

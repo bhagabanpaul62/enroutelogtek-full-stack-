@@ -5,7 +5,7 @@
  */
 import { and, desc, eq, ilike, inArray, ne, notExists, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { db } from '#shared/db/index.js';
+import { db, outer } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { decodeCursor, encodeCursor } from '#shared/utils/cursorHelper.js';
 import { companies, companyType } from '#features/company/schemas/company.Schema.js';
@@ -24,6 +24,8 @@ const publicCompanyFields = (table) => ({
     type: table.companyType,
     logoUrl: table.logoUrl,
     enrouteCompanyId: table.enrouteCompanyId,
+    // Head office city = the company's first branch (same rule as findHqBranch).
+    city: sql`(select b.city from branch b where b.company_id = ${outer(table.id)} order by b.created_at, b.id limit 1)`,
 });
 
 // createdAt as exact Postgres text, used only to build the next cursor (see cursorHelper.js).

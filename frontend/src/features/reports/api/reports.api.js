@@ -76,10 +76,21 @@ export async function getReportApi(params, companyType) {
 
 export const getEarningsApi = (params) => getReportApi(params, 'fleet_owner');
 
-// Backend /metrics/overview -> { pending, live, monthly }; shown as cards. Recent activity is not served yet, so it stays empty.
+// Backend /metrics/overview -> { pending, live, monthly }; shown as cards.
+// Recent activity = the signed-in user's latest notifications: they fan out to every member of the
+// company and each one carries its own absolute link (data.link).
 const MONTH_HREF = {};
+const ACTIVITY_LIMIT = 8;
+const recentActivity = () =>
+    api
+        .get('/notifications', { params: { limit: ACTIVITY_LIMIT } })
+        .then(unwrap)
+        .then((items) => (Array.isArray(items) ? items : []).map((n) => ({ id: n.id, text: n.title, detail: n.message, at: n.createdAt, href: n.data?.link })))
+        // The feed is secondary: if it fails, the metric cards still load.
+        .catch(() => []);
+
 export async function getOverviewMetricsApi() {
-    const m = await api.get('/metrics/overview').then(unwrap);
+    const [m, activity] = await Promise.all([api.get('/metrics/overview').then(unwrap), recentActivity()]);
     const plain = (list) => (list ?? []).map((c) => ({ key: c.key, label: c.label, value: c.count, href: MONTH_HREF[c.key] }));
     const monthly = (m.monthly ?? []).map((c) => ({
         key: c.key,
@@ -87,7 +98,7 @@ export async function getOverviewMetricsApi() {
         value: c.money ? formatINR(c.thisMonth, { compact: true }) : c.thisMonth,
         meta: c.changePercent === null || c.changePercent === undefined ? 'No earlier month to compare' : `${c.changePercent > 0 ? '+' : ''}${c.changePercent}% vs last month`,
     }));
-    return { cards: [...plain(m.pending), ...plain(m.live), ...monthly], activity: [] };
+    return { cards: [...plain(m.pending), ...plain(m.live), ...monthly], activity };
 }
 
 /** Saves the file the server builds for the same filters. companyType picks the dataset. format: csv | xlsx. */

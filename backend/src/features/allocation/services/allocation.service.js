@@ -9,6 +9,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { db, outer } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { companies } from '#features/company/schemas/company.Schema.js';
+import { branch } from '#features/company/schemas/branch.Schema.js';
 import { companyConnections } from '#features/network/schemas/companyConnection.Schema.js';
 import { awards, commodities, loads } from '#features/load/schemas/index.js';
 import { trips, tripEvents } from '#features/trip/schemas/trip.Schema.js';
@@ -146,11 +147,13 @@ export const getAllocation = async (user, id) => {
     return { ...allocation, events: events.map(({ actorCompanyId, ...e }) => ({ ...e, actor: actorCompanyId ? (names.get(actorCompanyId) ?? null) : 'System' })) };
 };
 
-const listFor = async (user, side, { status, awardId, cursor, limit = DEFAULT_PAGE_LIMIT }) => {
+const listFor = async (user, side, { status, awardId, companyId, cursor, limit = DEFAULT_PAGE_LIMIT }) => {
     const column = side === 'to' ? allocations.toCompanyId : allocations.fromCompanyId;
     const conditions = [eq(column, user.companyId)];
     if (status) conditions.push(eq(allocations.status, status));
     if (awardId) conditions.push(eq(allocations.awardId, awardId));
+    // The other company: the offerer on the Offers list (from), the recipient on the Placed list (to).
+    if (companyId) conditions.push(eq(side === 'to' ? allocations.fromCompanyId : allocations.toCompanyId, companyId));
     if (cursor) conditions.push(afterCursor(allocations.createdAt, allocations.id, cursor));
     const rows = await baseSelect().where(and(...conditions)).orderBy(desc(allocations.createdAt), desc(allocations.id)).limit(limit + 1);
     const page = toPage(rows, limit, (row) => row);
@@ -226,6 +229,60 @@ export const listPartners = async (user, { type } = {}) => {
             sql`exists (select 1 from ${companyConnections} c where c.connection_status = 'accepted' and ((c.source_company_id = ${id} and c.target_company_id = ${outer(companies.id)}) or (c.target_company_id = ${id} and c.source_company_id = ${outer(companies.id)})))`,
         ))
         .orderBy(asc(companies.companyName));
+};
+
+/**
+ * One partner of the caller, for the Transporters / Fleet owners detail page. Counts are allocation rows
+ * between the two companies, both directions: offersReceived = offers the partner made to me, placed = offers
+ * I made to them. The caller is always on each row, so the rate is visible.
+ */
+export const getPartner = async (user, partnerId) => {
+    await requireCompany(user);
+    needAny(user, PERMISSIONS.ALLOCATIONS_MANAGE, PERMISSIONS.OFFERS_RESPOND);
+    const me = user.companyId;
+    const [connection] = await db
+        .select({ connectedSince: companyConnections.createdAt })
+        .from(companyConnections)
+        .where(and(
+            eq(companyConnections.connectionStatus, 'accepted'),
+            or(
+                and(eq(companyConnections.sourceCompanyId, me), eq(companyConnections.targetCompanyId, partnerId)),
+                and(eq(companyConnections.sourceCompanyId, partnerId), eq(companyConnections.targetCompanyId, me)),
+            ),
+        ))
+        .limit(1);
+    if (!connection) throw new AppError('Partner not found', 404);
+    const [partner] = await db
+        .select({
+            id: companies.id, name: companies.companyName, type: companies.companyType,
+            city: sql`(select ${branch.city} from ${branch} where ${branch.companyId} = ${outer(companies.id)} and ${branch.isActive} order by ${branch.createdAt} limit 1)`,
+            state: sql`(select ${branch.state} from ${branch} where ${branch.companyId} = ${outer(companies.id)} and ${branch.isActive} order by ${branch.createdAt} limit 1)`,
+        })
+        .from(companies)
+        .where(eq(companies.id, partnerId))
+        .limit(1);
+    if (!partner) throw new AppError('Partner not found', 404);
+    const between = or(
+        and(eq(allocations.fromCompanyId, me), eq(allocations.toCompanyId, partnerId)),
+        and(eq(allocations.fromCompanyId, partnerId), eq(allocations.toCompanyId, me)),
+    );
+    const [agg] = await db
+        .select({
+            offersReceived: sql`count(*) filter (where ${allocations.fromCompanyId} = ${partnerId})::int`,
+            placed: sql`count(*) filter (where ${allocations.fromCompanyId} = ${me})::int`,
+            accepted: sql`count(*) filter (where ${allocations.status} = 'accepted')::int`,
+            declined: sql`count(*) filter (where ${allocations.status} = 'declined')::int`,
+            openOffers: sql`count(*) filter (where ${allocations.status} = 'offered')::int`,
+            valuePaise: sql`coalesce(sum(${allocations.ratePerTruckPaise} * ${allocations.quantity}) filter (where ${allocations.status} = 'accepted'), 0)::bigint`,
+        })
+        .from(allocations)
+        .where(between);
+    return {
+        company: { id: partner.id, name: partner.name, type: partner.type, city: partner.city ?? null, state: partner.state ?? null },
+        connectedSince: connection.connectedSince,
+        offersReceived: agg.offersReceived, placed: agg.placed, accepted: agg.accepted, declined: agg.declined,
+        openOffers: agg.openOffers, valuePaise: Number(agg.valuePaise),
+    };
 };
 
 // ---------- offering ----------

@@ -141,7 +141,7 @@ describe('ad hoc journey: FTL, PTL and failure branches', { timeout: 420000 }, (
             assert.match(noBill.body.message, /e-way bill/i);
             ok(await transition(t1, trip.id, { to: 'in_transit', etaAt: iso(2 * 86400000), ewayBillNumber: `1234567890${n}`, ewayBillValidUntil: iso(5 * 86400000) }));
             ok(await transition(t1, trip.id, { to: 'reached_drop' }));
-            assert.equal((await transition(t1, trip.id, { to: 'delivered', podCondition: 'clean' })).status, 422, 'POD file first');
+            assert.equal((await transition(t1, trip.id, { to: 'delivered', podCondition: 'clean', receivedBy: 'Store keeper' })).status, 422, 'POD file first');
             ok(await api(t1, 'POST', `/trips/${trip.id}/documents`, { documentType: 'pod', fileUrl: POD }), 201);
             ok(await transition(t1, trip.id, { to: 'delivered', podCondition: 'clean', receivedBy: 'Sita' }));
         }
@@ -151,9 +151,9 @@ describe('ad hoc journey: FTL, PTL and failure branches', { timeout: 420000 }, (
         assert.equal((await api(t1, 'POST', `/trips/${a.id}/reject-pod`, { reason: 'Blurry' })).status, 403, 'transporter cannot reject its own POD');
         ok(await api(customer, 'POST', `/trips/${a.id}/reject-pod`, { reason: 'Blurry photo' }));
         assert.equal(ok(await api(customer, 'GET', `/trips/${a.id}`)).trip.status, 'reached_drop');
-        assert.equal((await transition(t1, a.id, { to: 'delivered', podCondition: 'clean' })).status, 422, 'the old POD does not count');
+        assert.equal((await transition(t1, a.id, { to: 'delivered', podCondition: 'clean', receivedBy: 'Store keeper' })).status, 422, 'the old POD does not count');
         ok(await api(t1, 'POST', `/trips/${a.id}/documents`, { documentType: 'pod', fileUrl: `${POD}?v=2` }), 201);
-        ok(await transition(t1, a.id, { to: 'delivered', podCondition: 'clean' }));
+        ok(await transition(t1, a.id, { to: 'delivered', podCondition: 'clean', receivedBy: 'Store keeper' }));
         assert.equal(ok(await api(customer, 'GET', `/trips/${a.id}`)).trip.status, 'delivered');
     });
 

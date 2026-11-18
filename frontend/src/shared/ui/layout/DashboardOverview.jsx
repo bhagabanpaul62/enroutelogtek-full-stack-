@@ -61,7 +61,7 @@ function useTileCounts(tiles) {
 }
 
 /**
- * Real metrics from GET /metrics/overview: { cards: [{ key, label, value, meta?, href?, action?: { label, href } }], activity: [{ id, text, at, href? }] }.
+ * Real metrics from GET /metrics/overview: { cards: [{ key, label, value, meta?, href?, action?: { label, href } }], activity: [{ id, text, detail?, at, href? }] } (activity = the user's latest notifications).
  * hrefs are relative to this dashboard. A 404 means the endpoint is not deployed: the section hides instead of showing zeros.
  */
 function useOverviewMetrics() {
@@ -106,7 +106,7 @@ function NavCard({ page }) {
 
 /**
  * The landing page of every dashboard: a greeting, the real counts that need the user, the
- * company's metrics and recent activity from /metrics/overview, and a card for every section.
+ * company's metrics and recent activity (latest notifications), and a card for every section.
  * No invented numbers: no data means an empty state, an unreachable endpoint means a retry.
  * @param {{ companyType: string }} props the dashboard owner type
  */
@@ -187,20 +187,24 @@ export default function DashboardOverview({ companyType }) {
                                     />
                                 ))}
                             </div>
-                            {activity.length > 0 ? <Panel title="Recent activity">
+                            <Panel title="Recent activity">
                                 {activity.length === 0 ? (
-                                    <EmptyState title="Nothing has happened yet" description="Trips, bids and approvals show up here as they happen." />
+                                    <EmptyState title="Nothing has happened yet" description="Bids, awards, trips and approvals show up here as they happen." />
                                 ) : (
                                     <ul className="flex flex-col divide-y divide-white/[0.06]">
                                         {activity.map((a) => (
-                                            <li key={a.id} className="flex items-center justify-between gap-4 py-2.5 text-sm">
-                                                {a.href ? <Link href={withBase(a.href)} className="min-w-0 truncate text-[var(--ds-on-surface)] hover:underline">{a.text}</Link> : <span className="min-w-0 truncate text-[var(--ds-on-surface)]">{a.text}</span>}
+                                            <li key={a.id} className="flex items-start justify-between gap-4 py-2.5 text-sm">
+                                                <span className="min-w-0">
+                                                    {/* Notification links are already absolute (/customer/loads/…). */}
+                                                    {a.href ? <Link href={a.href} className="block truncate text-[var(--ds-on-surface)] hover:underline">{a.text}</Link> : <span className="block truncate text-[var(--ds-on-surface)]">{a.text}</span>}
+                                                    {a.detail ? <span className="mt-0.5 line-clamp-1 block text-xs text-[var(--ds-on-surface-muted)]">{a.detail}</span> : null}
+                                                </span>
                                                 <span className="shrink-0 text-xs text-[var(--ds-on-surface-muted)]">{formatRelative(a.at)}</span>
                                             </li>
                                         ))}
                                     </ul>
                                 )}
-                            </Panel> : null}
+                            </Panel>
                         </>
                     )}
                 </section>

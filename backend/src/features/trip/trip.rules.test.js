@@ -96,8 +96,8 @@ describe('transitionProblems', () => {
         assert.equal(transitionProblems(t, 'delivered', { podCondition: 'clean' }, { hasPod: false })?.status, 422);
         assert.equal(transitionProblems(t, 'delivered', {}, { hasPod: true })?.status, 422);
         assert.equal(transitionProblems(t, 'delivered', { podCondition: 'remarks' }, { hasPod: true })?.status, 422);
-        assert.equal(transitionProblems(t, 'delivered', { podCondition: 'remarks', podRemarks: '2 bags torn' }, { hasPod: true }), null);
-        assert.equal(transitionProblems(t, 'delivered', { podCondition: 'clean' }, { hasPod: true }), null);
+        assert.equal(transitionProblems(t, 'delivered', { podCondition: 'remarks', podRemarks: '2 bags torn', receivedBy: 'Store keeper' }, { hasPod: true }), null);
+        assert.equal(transitionProblems(t, 'delivered', { podCondition: 'clean', receivedBy: 'Store keeper' }, { hasPod: true }), null);
     });
     it('cancel needs a reason', () => {
         assert.equal(transitionProblems(trip(), 'cancelled', {})?.status, 422);
@@ -261,13 +261,20 @@ describe('wave 5 gaps', () => {
     const atDrop = { status: 'reached_drop', reachedDropAt: new Date(NOW.getTime() - 2 * H), vehicleId: 'v', driverId: 'd' };
     const deliver = (input) => transitionProblems(atDrop, 'delivered', { podCondition: 'clean', ...input }, { hasPod: true, now: NOW });
 
-    it('AJ-27: receiver fields are optional but validated', () => {
-        assert.equal(deliver({}), null);
+    it('AJ-27: delivered without the receiver name is refused', () => {
+        assert.equal(deliver({}).status, 422);
+        assert.equal(deliver({ receivedBy: '   ' }).status, 422);
+        assert.equal(deliver({}).message, 'Enter who received the goods');
+        assert.equal(receiverProblem(atDrop, {}, NOW).status, 422);
+    });
+
+    it('AJ-27: with the name, delivered is ok; the phone stays optional', () => {
+        assert.equal(deliver({ receivedBy: 'R Kumar' }), null);
         assert.equal(deliver({ receivedBy: 'R Kumar', receivedByPhone: '9876543210', receivedAt: new Date(NOW.getTime() - H) }), null);
-        assert.equal(deliver({ receivedByPhone: '12345' }).status, 422);
-        assert.equal(deliver({ receivedAt: new Date(NOW.getTime() + 2 * H) }).status, 422);
-        assert.equal(deliver({ receivedAt: new Date(NOW.getTime() - 5 * H) }).status, 422);
-        assert.equal(receiverProblem(atDrop, {}, NOW), null);
+        assert.equal(deliver({ receivedBy: 'R Kumar', receivedByPhone: '12345' }).status, 422);
+        assert.equal(deliver({ receivedBy: 'R Kumar', receivedAt: new Date(NOW.getTime() + 2 * H) }).status, 422);
+        assert.equal(deliver({ receivedBy: 'R Kumar', receivedAt: new Date(NOW.getTime() - 5 * H) }).status, 422);
+        assert.equal(receiverProblem(atDrop, { receivedBy: 'R Kumar' }, NOW), null);
     });
 
     it('AJ-28: rejected is a discrepancy kind', () => {

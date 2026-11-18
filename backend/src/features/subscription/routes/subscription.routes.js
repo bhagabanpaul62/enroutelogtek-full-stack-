@@ -23,6 +23,7 @@ platformBillingRoutes.get('/plans', v.listPlansRules, validate, c.getPlansAdmin)
 platformBillingRoutes.post('/plans', v.createPlanRules, validate, c.postPlan);
 platformBillingRoutes.patch('/plans/:planId', v.planIdRules, v.updatePlanRules, validate, c.patchPlan);
 platformBillingRoutes.get('/payments', v.paymentListRules, validate, c.getPayments);
+platformBillingRoutes.get('/payments/summary', c.getPaymentSummary);
 platformBillingRoutes.get('/payments/:id', v.submissionIdRules, validate, c.getPayment);
 platformBillingRoutes.post('/payments/:id/approve', v.approveRules, validate, c.approvePayment);
 platformBillingRoutes.post('/payments/:id/reject', v.rejectRules, validate, c.rejectPayment);

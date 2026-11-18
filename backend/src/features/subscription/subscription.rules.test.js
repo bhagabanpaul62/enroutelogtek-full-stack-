@@ -165,6 +165,14 @@ describe('approvalEffect', () => {
         const lapsed = approvalEffect(sub(), submission({ purpose: 'renewal', periodMonths: 1 }), d('2027-02-01'));
         assert.equal(lapsed.values.endsAt.toISOString().slice(0, 10), '2027-03-01');
     });
+    test('the renewal quote previews the same end date approval will set, in grace too', () => {
+        const plan = { name: 'Growth', monthlyPricePaise: 100, extraSeatPricePaise: 10, includedSeats: 5 };
+        for (const at of [now, d('2026-12-03'), d('2027-02-01')]) {
+            const quote = computeQuote({ purpose: 'renewal', plan, sub: sub(), periodMonths: 1, extraSeats: 0, now: at });
+            const { values } = approvalEffect(sub(), submission({ purpose: 'renewal', periodMonths: 1 }), at);
+            assert.equal(quote.endsAt.toISOString(), values.endsAt.toISOString());
+        }
+    });
     test('extra seats add, keep dates, and are refused after the term', () => {
         const ok = approvalEffect(sub({ extraSeats: 2 }), submission({ purpose: 'extra_seats', extraSeats: 3 }), now);
         assert.equal(ok.values.extraSeats, 5);

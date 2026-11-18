@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Users } from 'lucide-react';
 import { useCursorList } from '@/shared/hooks/useCursorList';
 import { DataGrid } from '@/shared/ui/data-grid';
@@ -15,6 +16,8 @@ const COPY = {
 /** Broker pages: connected companies of one type, plus what was placed with each (summed from the Placed list; accepted trucks and their value). */
 export default function PartnersPage({ type, networkHref = '/broker/network' }) {
     const copy = COPY[type];
+    const router = useRouter();
+    const detailBase = type === 'transporter' ? '/broker/transporters' : '/broker/fleet-owners';
     const list = useCursorList(listConnectionsApi, { companyType: type }, { pageSize: 50 });
     // Fleet owners: what I placed with them. Transporters: what they offered me.
     const incoming = type === 'transporter';
@@ -32,7 +35,7 @@ export default function PartnersPage({ type, networkHref = '/broker/network' }) 
         }
         return list.items.map((c) => {
             const s = byCompany.get(c.company?.id) ?? { offered: 0, accepted: 0, value: 0 };
-            return { id: c.connectionId ?? c.company?.id, name: c.company?.name ?? '', city: c.company?.city ?? '', ...s };
+            return { id: c.company?.id ?? c.connectionId, name: c.company?.name ?? '', city: c.company?.city ?? '', ...s };
         });
     }, [list.items, placed.items, incoming]);
 
@@ -53,6 +56,7 @@ export default function PartnersPage({ type, networkHref = '/broker/network' }) 
             <DataGrid
                 columns={columns}
                 rows={rows}
+                onRowClick={(row) => router.push(`${detailBase}/${row.id}`)}
                 isLoading={list.isLoading}
                 error={list.error}
                 onRetry={list.reload}

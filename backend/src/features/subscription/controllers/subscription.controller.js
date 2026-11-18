@@ -67,6 +67,9 @@ export const getPayments = asyncHandler(async (req, res) => {
     return paginatedResponse(res, items, pagination, 'Payments fetched');
 });
 
+export const getPaymentSummary = asyncHandler(async (req, res) =>
+    successResponse(res, await submissions.countPaymentsByStatus(), 'Payment counts fetched'));
+
 export const getPayment = asyncHandler(async (req, res) =>
     successResponse(res, await submissions.getPayment(req.params.id), 'Payment fetched'));
 

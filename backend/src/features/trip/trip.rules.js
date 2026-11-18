@@ -188,13 +188,13 @@ export const transitionProblems = (trip, to, input = {}, ctx = {}) => {
 };
 
 /**
- * AJ-27: who signed for the goods. Name and phone are optional until DELIVERY_REQUIRES_RECEIVER is on;
- * a phone, when given, is 10 digits; the receive time cannot be before the truck reached the drop or in the future.
+ * AJ-27: who signed for the goods. The name is required once DELIVERY_REQUIRES_RECEIVER is on; the phone stays optional.
+ * A phone, when given, is 10 digits; the receive time cannot be before the truck reached the drop or in the future.
  */
 export const receiverProblem = (trip, input = {}, now = new Date()) => {
     const name = input.receivedBy?.trim();
     const phone = input.receivedByPhone?.trim();
-    if (DELIVERY_REQUIRES_RECEIVER && (!name || !phone)) return unprocessable('Enter who received the goods (name and phone)');
+    if (DELIVERY_REQUIRES_RECEIVER && !name) return unprocessable('Enter who received the goods');
     if (phone && !/^\d{10}$/.test(phone)) return unprocessable('The receiver phone must be 10 digits');
     if (input.receivedAt) {
         const at = new Date(input.receivedAt).getTime();

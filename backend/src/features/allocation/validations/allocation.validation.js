@@ -6,10 +6,12 @@ const single = (field) => query(field).optional().not().isArray().withMessage(`$
 
 export const idRules = [param('id').isUUID().withMessage('id must be a valid id')];
 export const awardIdRules = [param('awardId').isUUID().withMessage('awardId must be a valid id')];
+export const partnerIdRules = [param('companyId').isUUID().withMessage('companyId must be a valid id')];
 
 export const listRules = [
     single('status').isIn(ALLOCATION_STATUSES).withMessage(`status must be one of: ${ALLOCATION_STATUSES.join(', ')}`),
     single('awardId').isUUID().withMessage('awardId must be a valid id'),
+    single('companyId').isUUID().withMessage('companyId must be a valid id'),
     single('cursor').isLength({ max: 500 }).withMessage('Invalid cursor'),
     single('limit').isInt({ min: 1, max: 100 }).withMessage('limit must be a number from 1 to 100').toInt(),
 ];

@@ -108,6 +108,13 @@ export const remainingDays = (sub, now) => (sub.endsAt ? daysUntil(sub.endsAt, n
  * plan. extra_seats: pro-rata on the live subscription's price snapshot, for the days left.
  * @returns {{ amountPaise, baseAmountPaise, extraAmountPaise, remainingDays, totalSeats, periodMonths, endsAt, snapshot }}
  */
+/**
+ * Where a paid term's next period starts: a renewal of an active or in-grace paid plan runs on from
+ * the old end date (grace days count against it, per the spec); anything else starts now.
+ */
+export const renewalBase = (sub, purpose, now) =>
+    purpose === PURPOSE.RENEWAL && sub?.kind === 'paid' && [STATE.ACTIVE, STATE.GRACE].includes(accessState(sub, now)) ? sub.endsAt : now;
+
 export const computeQuote = ({ purpose, plan, sub, periodMonths, extraSeats, now }) => {
     if (purpose === PURPOSE.EXTRA_SEATS) {
         const days = remainingDays(sub, now);
@@ -133,7 +140,7 @@ export const computeQuote = ({ purpose, plan, sub, periodMonths, extraSeats, now
     }
     const baseAmountPaise = plan.monthlyPricePaise * periodMonths;
     const extraAmountPaise = plan.extraSeatPricePaise * extraSeats * periodMonths;
-    const startsFrom = purpose === PURPOSE.RENEWAL && sub.endsAt && sub.endsAt > now ? sub.endsAt : now;
+    const startsFrom = renewalBase(sub, purpose, now);
     return {
         amountPaise: baseAmountPaise + extraAmountPaise,
         baseAmountPaise,
@@ -178,7 +185,7 @@ export const approvalEffect = (sub, submission, now) => {
     }
 
     const renewing = submission.purpose === PURPOSE.RENEWAL;
-    const base = renewing && sub.kind === 'paid' && [STATE.ACTIVE, STATE.GRACE].includes(state) ? sub.endsAt : now;
+    const base = renewalBase(sub, submission.purpose, now);
     const endsAt = addMonths(base, submission.periodMonths);
     return {
         problem: null,

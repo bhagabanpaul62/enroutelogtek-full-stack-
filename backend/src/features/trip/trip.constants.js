@@ -68,6 +68,6 @@ export const GST_TREATMENTS = {
     rcm: { label: 'Reverse charge (RCM)', ratePct: 5, customerItc: false },
     forward: { label: 'Forward charge', ratePct: 12, customerItc: true },
 };
-/** AJ-27: set true to make the receiver's name and phone mandatory at delivery (the UI must send them first). */
-export const DELIVERY_REQUIRES_RECEIVER = false;
+/** AJ-27: set true to make the receiver's name mandatory at delivery (the phone stays optional). */
+export const DELIVERY_REQUIRES_RECEIVER = true;
 export const PLACEMENT_SOURCES = ['late', 'executor_cancel'];

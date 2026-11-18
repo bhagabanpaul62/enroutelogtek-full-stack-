@@ -120,15 +120,15 @@ describe('trips: from accepted award to completed load', { timeout: 300000 }, ()
         assert.equal(swapped.vehicle.id, spare.id);
         assert.ok(swapped.events.some((e) => e.type === 'vehicle_swap'));
         ok(await transition(t1.id, { to: 'reached_drop' }));
-        assert.equal((await transition(t1.id, { to: 'delivered', podCondition: 'clean' })).status, 422, 'POD file first');
+        assert.equal((await transition(t1.id, { to: 'delivered', podCondition: 'clean', receivedBy: 'Store keeper' })).status, 422, 'POD file first');
         ok(await api(transporter, 'POST', `/trips/${t1.id}/documents`, { documentType: 'pod', fileUrl: 'https://example.com/pod.jpg' }), 201);
         assert.equal((await api(customer, 'POST', `/trips/${t1.id}/documents`, { documentType: 'pod', fileUrl: 'https://example.com/x.jpg' })).status, 403);
-        ok(await transition(t1.id, { to: 'delivered', podCondition: 'remarks', podRemarks: '2 bags torn' }));
+        ok(await transition(t1.id, { to: 'delivered', podCondition: 'remarks', podRemarks: '2 bags torn', receivedBy: 'Store keeper' }));
         // proof can be sent back and must be replaced
         ok(await api(customer, 'POST', `/trips/${t1.id}/reject-pod`, { reason: 'Blurry' }));
-        assert.equal((await transition(t1.id, { to: 'delivered', podCondition: 'clean' })).status, 422, 'old POD does not count');
+        assert.equal((await transition(t1.id, { to: 'delivered', podCondition: 'clean', receivedBy: 'Store keeper' })).status, 422, 'old POD does not count');
         ok(await api(transporter, 'POST', `/trips/${t1.id}/documents`, { documentType: 'pod', fileUrl: 'https://example.com/pod2.jpg' }), 201);
-        ok(await transition(t1.id, { to: 'delivered', podCondition: 'remarks', podRemarks: '2 bags torn' }));
+        ok(await transition(t1.id, { to: 'delivered', podCondition: 'remarks', podRemarks: '2 bags torn', receivedBy: 'Store keeper' }));
 
         const disc = ok(await api(customer, 'POST', `/trips/${t1.id}/discrepancies`, { kind: 'damage', quantity: 2, unit: 'packages', note: 'Torn', photoUrls: ['https://example.com/d.jpg'] }), 201);
         assert.equal(disc.discrepancies.length, 1);
@@ -193,7 +193,7 @@ describe('trips: from accepted award to completed load', { timeout: 300000 }, ()
             ok(await transition(trip.id, body));
         }
         ok(await api(transporter, 'POST', `/trips/${trip.id}/documents`, { documentType: 'pod', fileUrl: 'https://example.com/c.jpg' }), 201);
-        const delivered = ok(await transition(trip.id, { to: 'delivered', podCondition: 'clean' }));
+        const delivered = ok(await transition(trip.id, { to: 'delivered', podCondition: 'clean', receivedBy: 'Store keeper' }));
         assert.ok(delivered.trip.autoCompleteAt, 'auto-complete deadline is set');
         const days = (new Date(delivered.trip.autoCompleteAt) - new Date(delivered.trip.deliveredAt)) / 86400000;
         assert.ok(Math.abs(days - 7) < 0.01, 'seven days');

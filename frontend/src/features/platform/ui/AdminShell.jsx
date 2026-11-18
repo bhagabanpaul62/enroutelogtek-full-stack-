@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import { Building2, KeyRound, BadgeCheck, Layers, LogOut, Menu, ShieldCheck, Users, Wallet } from 'lucide-react';
@@ -10,6 +10,8 @@ import { Button } from '@/shared/ui/primitives/button';
 import { SidePanel } from '@/shared/ui/kit';
 import { Brand, NavList } from '@/shared/ui/layout/DashboardSidebar';
 import { logoutUserAction } from '@/features/auth/state/authAction';
+import { getCompanySummaryApi } from '../api/platform.api';
+import { getPaymentSummaryApi } from '../subscriptions/api/subscriptions.api';
 
 // The admin sections, in the shape NavList reads. `match` decides when an item is the current page.
 const SECTIONS = [
@@ -30,6 +32,27 @@ const SECTIONS = [
     },
 ];
 
+// Nav item link -> how many things wait there (companies to review, payments to check).
+const waitingCounts = async () => {
+    const data = (response) => response.data?.data ?? {};
+    const [companies, payments] = await Promise.all([getCompanySummaryApi().then(data), getPaymentSummaryApi().then(data)]);
+    return { '/rootAdmin': companies.pending ?? 0, '/rootAdmin/payments': payments.submitted ?? 0 };
+};
+
+/** Re-reads the waiting counts on every page change, so a decision clears its badge. A failed read shows no badge. */
+function useWaitingCounts() {
+    const pathname = usePathname();
+    const [counts, setCounts] = useState({});
+    useEffect(() => {
+        let live = true;
+        waitingCounts().then((next) => live && setCounts(next), () => {});
+        return () => {
+            live = false;
+        };
+    }, [pathname]);
+    return counts;
+}
+
 /** Frame for the platform admin area: the same sidebar look as the company dashboards, who is signed in, sign out. */
 export default function AdminShell({ children }) {
     const router = useRouter();
@@ -37,6 +60,8 @@ export default function AdminShell({ children }) {
     const { user } = useSelector((state) => state.auth);
     const [navOpen, setNavOpen] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
+    const counts = useWaitingCounts();
+    const sections = SECTIONS.map((section) => ({ ...section, items: section.items.map((item) => ({ ...item, count: counts[item.link] })) }));
 
     const onSignOut = async () => {
         setSigningOut(true);
@@ -67,12 +92,12 @@ export default function AdminShell({ children }) {
                 <Link href="/rootAdmin" className="px-3" aria-label="EnrouteLogtek platform">
                     <Brand />
                 </Link>
-                <NavList sections={SECTIONS} />
+                <NavList sections={sections} />
                 <div className="mt-auto">{account}</div>
             </aside>
             <SidePanel open={navOpen} onOpenChange={setNavOpen} side="left" size="sm" title={<Brand />}>
                 <div className="flex h-full flex-col gap-8">
-                    <NavList sections={SECTIONS} onNavigate={() => setNavOpen(false)} />
+                    <NavList sections={sections} onNavigate={() => setNavOpen(false)} />
                     <div className="mt-auto">{account}</div>
                 </div>
             </SidePanel>

@@ -21,5 +21,6 @@ export const placed = asyncHandler(async (req, res) => {
     const { items, pagination } = await service.listPlaced(req.user, queryOf(req));
     return paginatedResponse(res, items, pagination, 'Placed offers fetched');
 });
+export const partner = asyncHandler(async (req, res) => successResponse(res, await service.getPartner(req.user, params(req).companyId), 'Partner fetched'));
 export const partners = asyncHandler(async (req, res) => successResponse(res, await service.listPartners(req.user, queryOf(req)), 'Partners fetched'));
 export const getOne = asyncHandler(async (req, res) => successResponse(res, await service.getAllocation(req.user, params(req).id), 'Allocation fetched'));

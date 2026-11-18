@@ -9,6 +9,8 @@ export const updatePlanApi = (planId, data) => api.patch(`/platform/plans/${plan
 
 // Cursor-paginated. params: { status, companyId, cursor, limit }
 export const listPaymentsApi = (params) => api.get('/platform/payments', { params });
+// { submitted: 1, approved: 7, ... }
+export const getPaymentSummaryApi = () => api.get('/platform/payments/summary');
 // The submission, the company's current subscription, its last events, and effectPreview (one line).
 export const getPaymentApi = (id) => api.get(`/platform/payments/${id}`);
 export const approvePaymentApi = (id, note) => api.post(`/platform/payments/${id}/approve`, note ? { note } : {});

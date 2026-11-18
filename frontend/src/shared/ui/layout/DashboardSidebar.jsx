@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { dashboardSections } from '@/shared/lib/dashboardNav';
+import { toneChip } from '@/shared/ui/kit/tone';
 
 // Icon per nav item key (see shared/lib/dashboardNav.js).
 export const NAV_ICONS = {
@@ -76,6 +77,12 @@ export function NavList({ onNavigate, sections: given }) {
                                         <Icon className="size-4 shrink-0" aria-hidden />
                                         <span className="min-w-0 flex-1 truncate">{item.name}</span>
                                         {!item.ready ? <span className="text-[11px] text-[var(--ds-on-surface-muted)]">Soon</span> : null}
+                                        {/* `count` = things waiting for this user's action on that page. */}
+                                        {item.count > 0 ? (
+                                            <span className={cn('min-w-5 rounded-full px-1.5 text-center text-[11px] font-medium tabular-nums', toneChip('warning'))} aria-label={`${item.count} waiting`}>
+                                                {item.count}
+                                            </span>
+                                        ) : null}
                                     </Link>
                                 </li>
                             );

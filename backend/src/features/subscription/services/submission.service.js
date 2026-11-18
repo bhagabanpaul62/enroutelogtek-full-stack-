@@ -383,3 +383,12 @@ export const rejectSubmission = async (id, admin, reason) => {
     });
     return getPayment(id);
 };
+
+/** Payments per status for the admin nav badge: { submitted: 1, approved: 7, ... }. */
+export const countPaymentsByStatus = async () => {
+    const rows = await db
+        .select({ status: paymentSubmissions.status, count: sql`count(*)::int`.mapWith(Number) })
+        .from(paymentSubmissions)
+        .groupBy(paymentSubmissions.status);
+    return Object.fromEntries(rows.map((row) => [row.status, row.count]));
+};
