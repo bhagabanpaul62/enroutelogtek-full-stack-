@@ -32,12 +32,16 @@ export const verifyLoginOtpAction = createAsyncThunk('auth/verifyLoginOtp', asyn
     }
 });
 
-/** Restores the session from the HttpOnly cookie. Resolves with the same user shape as login. */
+/**
+ * Restores the session from the HttpOnly cookie. Resolves with the same user shape as login.
+ * A 401 means "not signed in" (the expected answer for a visitor), so it stores no error.
+ */
 export const checkAuthAction = createAsyncThunk('auth/aboutMe', async (_, thunkAPI) => {
     try {
         const res = await aboutMeApi();
         return res.data.data;
     } catch (error) {
+        if (error.response?.status === 401) return thunkAPI.rejectWithValue(null);
         return thunkAPI.rejectWithValue(messageOf(error, 'Not signed in'));
     }
 });

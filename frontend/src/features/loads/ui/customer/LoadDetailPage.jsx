@@ -1,16 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Ban, CheckCheck, Clock, Loader2, Pencil, RefreshCw } from 'lucide-react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { Ban, CalendarClock, CheckCheck, Clock, Gavel, Pencil, RefreshCw, Target, Trophy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/ui/primitives/button';
-import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
-import { awardLoadApi, cancelLoadApi, completeLoadApi, extendLoadApi } from '../../api/loads.api';
+import {
+    EntityHeader,
+    ErrorState,
+    Panel,
+    SkeletonRows,
+    StatCard,
+    TabBar,
+    formatINR,
+} from '@/shared/ui/kit';
+import { awardLoadApi, cancelLoadApi, extendLoadApi } from '../../api/loads.api';
+import TripsPanel from '@/features/trips/ui/TripsPanel';
 import { useCan } from '@/shared/hooks/useCan';
 import { PERMISSIONS } from '@/shared/lib/permissions';
-import { formatCountdown, formatDate, formatRoute, formatTimeWindow } from '../../lib/format';
+import { formatBid, formatCountdown, formatDate, formatRoute, formatTimeWindow } from '../../lib/format';
 import LoadSummary from '../components/LoadSummary';
+import LoadTypeBadge from '../components/LoadTypeBadge';
 import StatusBadge from '../components/StatusBadge';
 import AwardDialog from './AwardDialog';
 import AwardPanel from './AwardPanel';
@@ -18,6 +29,7 @@ import BidBoard from './BidBoard';
 import ExtendDialog from './ExtendDialog';
 import InvitedList from './InvitedList';
 import ActivityLog from './ActivityLog';
+import PlacementMissBanner from './PlacementMissBanner';
 import ReasonDialog from './ReasonDialog';
 import { useLoadDetail } from './useLoadDetail';
 import { useNow } from './useNow';
@@ -26,56 +38,96 @@ const LOADS_PATH = '/customer/loads';
 const CANCELLABLE = ['draft', 'live', 'closed', 'expired'];
 const EXTENDABLE = ['live', 'expired'];
 const COMPLETABLE = ['accepted', 'in_execution'];
+const TAB_IDS = ['overview', 'bids', 'trips', 'invited', 'activity'];
+const TRIP_STATUSES = ['accepted', 'in_execution', 'completed'];
+const PANEL_ID = 'load-tab-panel';
 
-function Section({ title, children, aside }) {
+const compactRupees = (rupees) => (rupees === null || rupees === undefined || rupees === '' ? '—' : formatINR(Math.round(Number(rupees) * 100), { compact: true }));
+
+function PageShell({ children }) {
+    return <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 lg:px-8">{children}</div>;
+}
+
+/** The four numbers that matter on this load, all from what the API returned. */
+function KpiRow({ load, now }) {
+    const bids = load.bids ?? [];
+    const best = bids.find((bid) => bid.currentRank === 1) ?? null;
+    const live = load.status === 'live';
+    const closesIn = live ? formatCountdown(load.closesAt, now) : '';
+    const invited = load.invitations?.length ?? 0;
     return (
-        <section className="rounded-[4px] border border-border bg-card p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-[13px] font-semibold uppercase tracking-wider text-[#c6c6c7]">{title}</h2>
-                {aside}
-            </div>
-            {children}
-        </section>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard label="Bids received" value={String(bids.length)} icon={<Gavel className="size-4" />} meta={invited ? `${invited} invited` : undefined} />
+            <StatCard
+                label="Lowest bid"
+                value={best ? compactRupees(load.priceBasis === 'per_kg' ? best.totalAmount : best.currentAmount) : '—'}
+                icon={<Trophy className="size-4" />}
+                meta={best ? `${best.transporter?.name}${load.priceBasis === 'per_kg' ? `, ${formatBid(best.currentAmount, 'per_kg')}` : ''}` : 'No bids yet'}
+            />
+            <StatCard label={load.priceBasis === 'per_kg' ? 'Target per kg' : 'Target price'} value={compactRupees(load.targetPrice)} icon={<Target className="size-4" />} meta="Hidden from transporters" />
+            {live ? (
+                <StatCard label="Bidding closes in" value={closesIn || 'Closing…'} icon={<Clock className="size-4" />} meta={`Pickup ${formatDate(load.pickupDate)}`} />
+            ) : (
+                <StatCard label="Pickup" value={formatDate(load.pickupDate) || '—'} icon={<CalendarClock className="size-4" />} meta={formatTimeWindow(load.pickupTimeFrom, load.pickupTimeTo)} />
+            )}
+        </div>
     );
 }
 
-/** /customer/loads/[loadId]: one load, its bids, the invited transporters and the manager actions. */
-export default function LoadDetailPage({ loadId }) {
+function DetailSkeleton() {
+    return (
+        <PageShell>
+            <div aria-busy="true" className="flex flex-col gap-6">
+                <div className="h-9 w-64 animate-pulse rounded-xl bg-white/[0.06] motion-reduce:animate-none" />
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+                    {Array.from({ length: 4 }, (_, i) => (
+                        <div key={i} className="h-[136px] animate-pulse rounded-3xl bg-[var(--ds-surface-container-low)] motion-reduce:animate-none" />
+                    ))}
+                </div>
+                <Panel>
+                    <SkeletonRows rows={4} />
+                </Panel>
+            </div>
+        </PageShell>
+    );
+}
+
+/** One load, its bids, the invited transporters and the manager actions, as a record page with tabs. */
+function LoadDetailView({ loadId }) {
     const { load, error, isLoading, refreshError, reload, replaceLoad } = useLoadDetail(loadId);
     // Running the load (edit, extend, cancel) and deciding it (award, delivered) are separate permissions.
     const canManage = useCan(PERMISSIONS.LOADS_MANAGE);
     const canAward = useCan(PERMISSIONS.LOADS_AWARD);
     const now = useNow();
-    const [confirmDialog, confirm] = useConfirm();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get('tab');
+    const tab = TAB_IDS.includes(tabParam) ? tabParam : 'overview';
+    const setTab = (next) => router.replace(next === 'overview' ? pathname : `${pathname}?tab=${next}`, { scroll: false });
     const [busy, setBusy] = useState(false);
     // Which dialog is open: null | 'extend' | 'cancel' | { bid } for the award.
     const [dialog, setDialog] = useState(null);
+    const [tripsKey, setTripsKey] = useState(0); // remounts the trips panel after a decision
 
-    if (isLoading) {
-        return (
-            <div className="mx-auto w-full max-w-5xl px-4 py-6 lg:px-8">
-                <div className="flex items-center gap-2 py-16 text-[13px] text-muted-foreground" aria-busy="true">
-                    <Loader2 size={16} className="animate-spin" /> Loading load…
-                </div>
-            </div>
-        );
-    }
+    if (isLoading) return <DetailSkeleton />;
 
     if (error || !load) {
         return (
-            <div className="mx-auto w-full max-w-5xl px-4 py-6 lg:px-8">
-                <div className="flex flex-col items-start gap-4 py-10">
-                    <p className="text-[14px] text-foreground">{error || 'This load could not be loaded.'}</p>
-                    <div className="flex gap-2">
-                        <Button variant="outline" onClick={reload}>
-                            Try again
-                        </Button>
+            <PageShell>
+                <Panel>
+                    <ErrorState
+                        title="This load could not be loaded"
+                        description={error || 'Check your connection and try again.'}
+                        onRetry={reload}
+                    />
+                    <div className="mt-2 text-center">
                         <Link href={LOADS_PATH} className="text-[13px] text-primary hover:underline">
                             Back to loads
                         </Link>
                     </div>
-                </div>
-            </div>
+                </Panel>
+            </PageShell>
         );
     }
 
@@ -114,31 +166,23 @@ export default function LoadDetailPage({ loadId }) {
         if (await run(() => awardLoadApi(load.id, bid.id, reason || undefined))) setDialog(null);
     };
 
-    const complete = async () => {
-        const ok = await confirm({
-            title: `Mark ${load.loadNumber} as delivered?`,
-            description: 'The load is closed as completed. The transporter is told the trip is done.',
-            confirmLabel: 'Mark delivered',
-        });
-        if (ok) run(() => completeLoadApi(load.id), `${load.loadNumber} marked delivered`);
-    };
-
     const closesIn = load.status === 'live' ? formatCountdown(load.closesAt, now) : '';
+    const bidCount = load.bids?.length ?? 0;
     const actions = canManage || canAward ? (
-        <div className="flex flex-wrap gap-2">
+        <>
             {canManage && load.status === 'draft' && (
                 <Button size="lg" nativeButton={false} render={<Link href={`${LOADS_PATH}/new?id=${load.id}`} />}>
                     <Pencil /> Edit draft
                 </Button>
             )}
             {canManage && EXTENDABLE.includes(load.status) && (
-                <Button size="lg" variant={load.status === 'expired' ? 'default' : 'outline'} disabled={busy} onClick={() => setDialog('extend')}>
+                <Button size="lg" variant={load.status === 'expired' ? 'default' : 'secondary'} disabled={busy} onClick={() => setDialog('extend')}>
                     <Clock /> {load.status === 'expired' ? 'Reopen bidding' : 'Extend bidding'}
                 </Button>
             )}
             {canAward && COMPLETABLE.includes(load.status) && (
-                <Button size="lg" disabled={busy} onClick={complete}>
-                    <CheckCheck /> Mark delivered
+                <Button size="lg" onClick={() => setTab('trips')}>
+                    <CheckCheck /> Confirm deliveries
                 </Button>
             )}
             {canManage && CANCELLABLE.includes(load.status) && (
@@ -146,66 +190,102 @@ export default function LoadDetailPage({ loadId }) {
                     <Ban /> Cancel load
                 </Button>
             )}
-        </div>
+        </>
     ) : null;
 
-    return (
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-5 px-4 py-6 lg:px-8">
-            <Link href={LOADS_PATH} className="inline-flex w-fit items-center gap-1 text-[13px] text-[#c6c6c7] hover:text-foreground">
-                <ArrowLeft size={14} /> Loads
-            </Link>
+    const tabs = [
+        { id: 'overview', label: 'Overview' },
+        { id: 'bids', label: 'Bids', count: bidCount },
+        ...(load.award || TRIP_STATUSES.includes(load.status) ? [{ id: 'trips', label: 'Trips' }] : []),
+        { id: 'invited', label: 'Invited', count: load.invitations?.length ?? 0 },
+        { id: 'activity', label: 'Activity', count: load.events?.length ?? 0 },
+    ];
 
-            <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <h1 className="font-mono text-[20px] font-semibold tracking-tight text-foreground">{load.loadNumber}</h1>
+    return (
+        <PageShell>
+            <EntityHeader
+                back={{ href: LOADS_PATH, label: 'Loads' }}
+                title={load.loadNumber}
+                chips={
+                    <>
                         <StatusBadge status={load.status} />
-                    </div>
-                    <p className="mt-1 text-[15px] text-foreground">{formatRoute(load)}</p>
-                    <p className="mt-0.5 text-[13px] text-[#c6c6c7]">
-                        Pickup {formatDate(load.pickupDate)}, {formatTimeWindow(load.pickupTimeFrom, load.pickupTimeTo)}
-                        {closesIn && <span className="text-primary"> · bidding closes in {closesIn}</span>}
-                        {load.status === 'live' && !closesIn && <span> · closing…</span>}
-                    </p>
-                    {load.status === 'cancelled' && (
-                        <p className="mt-1 text-[13px] text-destructive">
-                            Cancelled{load.cancelReason ? `: ${load.cancelReason}` : ''}
-                        </p>
-                    )}
-                </div>
-                {actions}
-            </header>
+                        <LoadTypeBadge type={load.loadType} />
+                    </>
+                }
+                meta={[
+                    formatRoute(load),
+                    `Pickup ${formatDate(load.pickupDate)}, ${formatTimeWindow(load.pickupTimeFrom, load.pickupTimeTo)}`,
+                    closesIn ? <span className="text-primary">Bidding closes in {closesIn}</span> : null,
+                    load.status === 'cancelled' ? <span className="text-red-300">Cancelled{load.cancelReason ? `: ${load.cancelReason}` : ''}</span> : null,
+                ]}
+                actions={actions}
+            >
+                <TabBar tabs={tabs} value={tab} onChange={setTab} label="Load sections" panelId={PANEL_ID} />
+            </EntityHeader>
 
             {refreshError && (
-                <p className="flex items-center gap-2 text-[12px] text-[#f0955a]">
-                    <RefreshCw size={12} /> {refreshError}
+                <p className="flex items-center gap-2 text-xs text-amber-300">
+                    <RefreshCw size={12} aria-hidden /> {refreshError}
                 </p>
             )}
 
-            {load.award && <AwardPanel award={load.award} history={load.awardHistory ?? []} now={now} />}
+            {TRIP_STATUSES.includes(load.status) && (
+                <p role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/[0.05] px-4 py-3 text-sm text-[var(--ds-on-surface-variant)]">
+                    <span>{load.status === 'completed' ? 'This load is complete. Each truck’s trip and papers are on Trips.' : 'The truck is booked. Follow each trip from pickup to delivery on Trips.'}</span>
+                    <Link href="/customer/trips" className="text-primary hover:underline">
+                        Open trips
+                    </Link>
+                </p>
+            )}
 
-            <Section
-                title={`Bids (${load.bids?.length ?? 0})`}
-                aside={
-                    load.status === 'closed' && canAward && (load.bids?.length ?? 0) > 0 ? (
-                        <span className="text-[12px] text-[#c6c6c7]">Pick the winner from the board</span>
-                    ) : null
-                }
-            >
-                <BidBoard load={load} canManage={canAward} busy={busy} onPick={(bid) => setDialog({ bid })} />
-            </Section>
+            <PlacementMissBanner
+                loadId={load.id}
+                status={load.status}
+                transporterCompanyId={load.award?.transporterCompanyId}
+                canDecide={canManage}
+                onDecided={() => {
+                    setTripsKey((n) => n + 1);
+                    reload();
+                }}
+            />
 
-            <LoadSummary load={load} showTarget />
+            <div id={PANEL_ID} role="tabpanel" className="flex flex-col gap-6">
+                {tab === 'overview' && (
+                    <>
+                        <KpiRow load={load} now={now} />
+                        {load.award && <AwardPanel award={load.award} history={load.awardHistory ?? []} now={now} load={load} />}
+                        <LoadSummary load={load} showTarget hideEmpty className="items-stretch lg:grid-cols-2" />
+                    </>
+                )}
 
-            <Section title={`Invited transporters (${load.invitations?.length ?? 0})`}>
-                <InvitedList invitations={load.invitations ?? []} />
-            </Section>
+                {tab === 'bids' && (
+                    <Panel
+                        title={`Bids (${bidCount})`}
+                        action={
+                            load.status === 'closed' && canAward && bidCount > 0 ? (
+                                <span className="text-xs text-[var(--ds-on-surface-muted)]">Pick the winner from the board</span>
+                            ) : null
+                        }
+                    >
+                        <BidBoard load={load} canManage={canAward} busy={busy} onPick={(bid) => setDialog({ bid })} />
+                    </Panel>
+                )}
 
-            <Section title="Activity">
-                <ActivityLog events={load.events ?? []} />
-            </Section>
+                {tab === 'trips' && <TripsPanel key={tripsKey} loadId={load.id} />}
 
-            {confirmDialog}
+                {tab === 'invited' && (
+                    <Panel title={`Invited transporters (${load.invitations?.length ?? 0})`}>
+                        <InvitedList invitations={load.invitations ?? []} />
+                    </Panel>
+                )}
+
+                {tab === 'activity' && (
+                    <Panel title="Activity">
+                        <ActivityLog events={load.events ?? []} />
+                    </Panel>
+                )}
+            </div>
+
             <ExtendDialog
                 key={dialog === 'extend' ? 'extend-open' : 'extend-closed'}
                 open={dialog === 'extend'}
@@ -218,8 +298,10 @@ export default function LoadDetailPage({ loadId }) {
             <ReasonDialog
                 key={dialog === 'cancel' ? 'cancel-open' : 'cancel-closed'}
                 open={dialog === 'cancel'}
+                icon={<Ban className="size-5" />}
                 title={`Cancel ${load.loadNumber}?`}
                 description="Invited transporters are told the load is off. A cancelled load cannot be reopened; you can post a new one."
+                summary={`${bidCount} ${bidCount === 1 ? 'bid' : 'bids'} so far`}
                 confirmLabel="Cancel load"
                 destructive
                 busy={busy}
@@ -231,10 +313,21 @@ export default function LoadDetailPage({ loadId }) {
                 key={dialog?.bid ? `award-${dialog.bid.id}` : 'award-closed'}
                 open={Boolean(dialog?.bid)}
                 bid={dialog?.bid ?? null}
+                priceBasis={load.priceBasis}
                 busy={busy}
                 onCancel={() => setDialog(null)}
                 onSubmit={award}
             />
-        </div>
+        </PageShell>
+    );
+}
+
+/** /customer/loads/[loadId] */
+export default function LoadDetailPage({ loadId }) {
+    // useSearchParams() needs a Suspense boundary in the App Router.
+    return (
+        <Suspense fallback={<DetailSkeleton />}>
+            <LoadDetailView loadId={loadId} />
+        </Suspense>
     );
 }

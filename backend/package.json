@@ -7,7 +7,10 @@
     "test": "node --test \"src/**/*.test.js\"",
     "start": "node src/index.js ",
     "dev": "nodemon --legacy-watch src/index.js ",
-    "seed:root-admin": "node src/scripts/seedRootAdmin.js"
+    "seed:root-admin": "node src/scripts/seedRootAdmin.js",
+    "seed:demo": "node src/scripts/seedDemo.js",
+    "dev:mail": "node src/scripts/devMailSink.js",
+    "test:e2e": "node --test --test-concurrency=1 \"test/e2e/*.test.js\""
   },
   "keywords": [],
   "author": "",
@@ -37,7 +40,8 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.1",
-    "pg": "^8.21.0"
+    "pg": "^8.21.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

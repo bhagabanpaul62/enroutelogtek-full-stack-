@@ -1,62 +1,55 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, ExternalLink, FileText, Loader2 } from 'lucide-react';
+import { Building2, CheckCircle2, ExternalLink, FileText, Lock, LockOpen } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
-import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
 import { COMPANY_TYPE_LABELS } from '@/shared/lib/dashboardNav';
-import { DOCUMENT_TYPE_LABELS } from '../constants';
+import { formatDate, formatDateTime } from '@/shared/lib/format';
 import {
-    approveCompanyApi,
-    blockCompanyApi,
-    rejectCompanyApi,
-    unblockCompanyApi,
-} from '../api/platform.api';
+    EmptyState,
+    EntityHeader,
+    ErrorState,
+    Fact,
+    FactList,
+    IconChip,
+    Panel,
+    SkeletonRows,
+    StatusChip,
+    TabBar,
+    ToneBadge,
+} from '@/shared/ui/kit';
+import { DOCUMENT_TYPE_LABELS } from '../constants';
+import { approveCompanyApi, blockCompanyApi, rejectCompanyApi, unblockCompanyApi } from '../api/platform.api';
 import { useCompanyDetail } from '../hooks/useCompanyDetail';
 import { useCompanyDecision } from '../hooks/useCompanyDecision';
-import { formatDate, formatDateTime } from '../lib/formatDate';
 import CompanyTeamSection from './components/CompanyTeamSection';
-import Facts from './components/Facts';
-import RejectDialog from './components/RejectDialog';
-import StatusBadge from './components/StatusBadge';
+import ConfirmModal from './components/ConfirmModal';
+import RejectModal from './components/RejectModal';
 
-function Section({ title, children, aside }) {
-    return (
-        <section className="rounded-md border border-border bg-card p-4">
-            <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="text-[13px] font-semibold uppercase tracking-wider text-[#c6c6c7]">{title}</h2>
-                {aside}
-            </div>
-            {children}
-        </section>
-    );
-}
+const BACK = { href: '/rootAdmin', label: 'Companies' };
 
 function Documents({ documents }) {
-    if (documents.length === 0) {
-        return <p className="text-[13px] text-muted-foreground">No documents uploaded.</p>;
-    }
+    if (documents.length === 0) return <EmptyState title="No documents uploaded" description="The company has not uploaded any yet." />;
     return (
-        <ul className="divide-y divide-border">
+        <ul className="flex flex-col">
             {documents.map((doc) => (
-                <li key={doc.id} className="flex items-center justify-between gap-3 py-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                        <FileText size={14} className="shrink-0 text-muted-foreground" />
-                        <span className="truncate text-[13px] text-foreground">
-                            {DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType}
-                        </span>
-                        <span className="hidden text-[11px] text-muted-foreground sm:inline">
-                            {formatDate(doc.createdAt)}
-                        </span>
+                <li key={doc.id} className="flex items-center gap-3 rounded-2xl px-3 py-3">
+                    <IconChip>
+                        <FileText className="size-4" />
+                    </IconChip>
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm text-[var(--ds-on-surface)]">{DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType}</p>
+                        <p className="text-xs text-[var(--ds-on-surface-muted)]">Uploaded {formatDate(doc.createdAt)}</p>
                     </div>
                     <a
                         href={doc.fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex shrink-0 items-center gap-1 text-[12px] text-primary hover:underline"
+                        aria-label={`Open ${DOCUMENT_TYPE_LABELS[doc.documentType] ?? doc.documentType}`}
+                        title="Open in a new tab"
+                        className="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/[0.06] text-[var(--ds-on-surface-variant)] transition-colors hover:bg-white/[0.12] hover:text-[var(--ds-on-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ds-primary)]"
                     >
-                        Open <ExternalLink size={12} />
+                        <ExternalLink className="size-4" aria-hidden />
                     </a>
                 </li>
             ))}
@@ -64,199 +57,220 @@ function Documents({ documents }) {
     );
 }
 
-/** Master Admin: one company's registration, documents and the approve / reject / block actions. */
+function Overview({ company, branches, rejections, status }) {
+    return (
+        <div className="grid gap-4 lg:grid-cols-2">
+            <Panel title="Company">
+                <FactList>
+                    <Fact label="GST number" copy={company.gstNumber}>{company.gstNumber}</Fact>
+                    <Fact label="PAN number" copy={company.panNumber}>{company.panNumber}</Fact>
+                    <Fact label="Company email" copy={company.companyEmailId}>{company.companyEmailId}</Fact>
+                    <Fact label="Company phone" copy={company.companyPhoneNumber}>{company.companyPhoneNumber}</Fact>
+                    <Fact label="Registered">{formatDate(company.createdAt)}</Fact>
+                </FactList>
+            </Panel>
+
+            <Panel title={branches.length > 1 ? `Branches (${branches.length})` : 'Branch'}>
+                {branches.length === 0 ? (
+                    <EmptyState title="No branch recorded" />
+                ) : (
+                    <ul className="flex flex-col gap-1">
+                        {branches.map((b) => (
+                            <li key={b.id} className="flex items-start gap-3 rounded-2xl px-3 py-3">
+                                <IconChip>
+                                    <Building2 className="size-4" />
+                                </IconChip>
+                                <div className="min-w-0">
+                                    <p className="text-sm text-[var(--ds-on-surface)]">
+                                        {b.branchName || 'Head office'}
+                                        {b.branchCode ? <span className="ml-2 text-xs text-[var(--ds-on-surface-muted)]">{b.branchCode}</span> : null}
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-[var(--ds-on-surface-muted)]">
+                                        {[b.address, b.city, [b.state, b.pinCode].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
+                                    </p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </Panel>
+
+            {status === 'draft' && (
+                <Panel title="Not submitted yet">
+                    <EmptyState title="Nothing to decide yet" description="This company has not submitted its documents." />
+                </Panel>
+            )}
+
+            {rejections.length > 0 && (
+                <Panel title="Rejection history" className="lg:col-span-2">
+                    <ul className="flex flex-col gap-1">
+                        {rejections.map((r) => (
+                            <li key={r.id} className="rounded-2xl px-3 py-3">
+                                <p className="text-sm text-[var(--ds-on-surface)]">{r.message}</p>
+                                <p className="mt-0.5 text-xs tabular-nums text-[var(--ds-on-surface-muted)]">{formatDateTime(r.createdAt)}</p>
+                            </li>
+                        ))}
+                    </ul>
+                </Panel>
+            )}
+        </div>
+    );
+}
+
+/** Master Admin: one company's registration, documents, team and the approve / reject / block actions. */
 export default function CompanyDetailPage({ companyId }) {
     const { detail, error, isLoading, reload } = useCompanyDetail(companyId);
     const { run, busy } = useCompanyDecision();
-    const [confirmDialog, confirm] = useConfirm();
-    const [rejectOpen, setRejectOpen] = useState(false);
+    const [tab, setTab] = useState('overview');
+    // null | 'approve' | 'reject' | 'block' | 'unblock'
+    const [dialog, setDialog] = useState(null);
 
     if (isLoading) {
         return (
-            <div className="flex items-center gap-2 py-16 text-[13px] text-muted-foreground" aria-busy="true">
-                <Loader2 size={16} className="animate-spin" /> Loading company…
+            <div className="flex flex-col gap-5" aria-busy="true">
+                <div className="h-9 w-64 animate-pulse rounded-xl bg-white/[0.06] motion-reduce:animate-none" aria-hidden />
+                <Panel>
+                    <SkeletonRows rows={5} />
+                </Panel>
             </div>
         );
     }
 
     if (error || !detail) {
         return (
-            <div className="flex flex-col items-start gap-4 py-10">
-                <p className="text-[14px] text-foreground">{error || 'This company could not be loaded.'}</p>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={reload}>
-                        Try again
-                    </Button>
-                    <Link href="/rootAdmin" className="text-[13px] text-primary hover:underline">
-                        Back to companies
-                    </Link>
-                </div>
+            <div className="flex flex-col gap-5">
+                <EntityHeader back={BACK} title="Company" />
+                <Panel>
+                    <ErrorState title="Couldn't load this company" description={error || 'This company could not be loaded.'} onRetry={reload} />
+                </Panel>
             </div>
         );
     }
 
-    const { company, branches, documents, rejections } = detail;
+    const { company, branches, documents, rejections, users } = detail;
     const status = company.companyStatus;
 
     const decide = async (action) => {
         const result = await run(action);
-        if (result) reload();
-        return result;
+        if (result) {
+            setDialog(null);
+            reload();
+        }
     };
 
-    const approve = async () => {
-        const ok = await confirm({
+    const tabs = [
+        { id: 'overview', label: 'Overview' },
+        { id: 'documents', label: 'Documents', count: documents.length },
+        { id: 'team', label: 'Team' },
+    ];
+
+    const actions = (
+        <>
+            {(status === 'pending' || status === 'rejected') && (
+                <Button className="h-10 rounded-xl px-4 text-sm" onClick={() => setDialog('approve')} disabled={busy}>
+                    <CheckCircle2 /> Approve
+                </Button>
+            )}
+            {status === 'pending' && (
+                <Button variant="destructive" className="h-10 rounded-xl px-4 text-sm" onClick={() => setDialog('reject')} disabled={busy}>
+                    Reject
+                </Button>
+            )}
+            {status === 'approved' && (
+                <Button variant="destructive" className="h-10 rounded-xl px-4 text-sm" onClick={() => setDialog('block')} disabled={busy}>
+                    <Lock /> Block
+                </Button>
+            )}
+            {status === 'blocked' && (
+                <Button className="h-10 rounded-xl px-4 text-sm" onClick={() => setDialog('unblock')} disabled={busy}>
+                    <LockOpen /> Unblock
+                </Button>
+            )}
+        </>
+    );
+
+    const userCount = users?.length;
+    const confirms = {
+        approve: {
             title: `Approve ${company.companyName}?`,
             description: 'The company can log in right away. Its admins get an approval email.',
+            summary: 'Approval email sent to its admins',
             confirmLabel: 'Approve',
-        });
-        if (ok) decide(() => approveCompanyApi(company.id));
-    };
-
-    const block = async () => {
-        const ok = await confirm({
+            action: () => approveCompanyApi(company.id),
+        },
+        block: {
             title: `Block ${company.companyName}?`,
-            description:
-                'Every user of this company is signed out now and cannot log in until you unblock it. Its connections stay as they are.',
+            description: 'Every user of this company cannot log in until you unblock it. Its connections stay as they are.',
+            summary: typeof userCount === 'number' ? `${userCount} ${userCount === 1 ? 'user' : 'users'} signed out now` : 'All users signed out now',
             confirmLabel: 'Block',
-            destructive: true,
-        });
-        if (ok) decide(() => blockCompanyApi(company.id));
-    };
-
-    const unblock = async () => {
-        const ok = await confirm({
+            danger: true,
+            icon: <Lock className="size-5" />,
+            action: () => blockCompanyApi(company.id),
+        },
+        unblock: {
             title: `Unblock ${company.companyName}?`,
             description: 'The company goes back to approved and its users can log in again.',
+            summary: 'Status goes back to approved',
             confirmLabel: 'Unblock',
-        });
-        if (ok) decide(() => unblockCompanyApi(company.id));
+            action: () => unblockCompanyApi(company.id),
+        },
     };
-
-    const reject = async (reason) => {
-        const result = await decide(() => rejectCompanyApi(company.id, reason));
-        if (result) setRejectOpen(false);
-    };
+    const confirm = confirms[dialog];
 
     return (
         <div className="flex flex-col gap-5">
-            <Link
-                href="/rootAdmin"
-                className="inline-flex w-fit items-center gap-1 text-[13px] text-[#c6c6c7] hover:text-foreground"
+            <EntityHeader
+                back={BACK}
+                leading={
+                    <IconChip className="size-12">
+                        <Building2 className="size-5" />
+                    </IconChip>
+                }
+                title={company.companyName}
+                chips={
+                    <>
+                        <StatusChip value={status} />
+                        <ToneBadge label={COMPANY_TYPE_LABELS[company.companyType] ?? company.companyType} />
+                    </>
+                }
+                meta={[company.enrouteCompanyId, `Registered ${formatDate(company.createdAt)}`]}
+                actions={actions}
             >
-                <ArrowLeft size={14} /> Companies
-            </Link>
+                <TabBar tabs={tabs} value={tab} onChange={setTab} label="Company sections" panelId="company-panel" />
+            </EntityHeader>
 
-            <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <h1 className="text-[22px] font-semibold tracking-tight text-foreground">
-                            {company.companyName}
-                        </h1>
-                        <StatusBadge status={status} />
-                    </div>
-                    <p className="mt-1 text-[13px] text-[#c6c6c7]">
-                        {COMPANY_TYPE_LABELS[company.companyType] ?? company.companyType} ·{' '}
-                        <span className="font-mono">{company.enrouteCompanyId}</span> · registered{' '}
-                        {formatDate(company.createdAt)}
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                    {(status === 'pending' || status === 'rejected') && (
-                        <Button onClick={approve} disabled={busy}>
-                            Approve
-                        </Button>
-                    )}
-                    {status === 'pending' && (
-                        <Button variant="destructive" onClick={() => setRejectOpen(true)} disabled={busy}>
-                            Reject
-                        </Button>
-                    )}
-                    {status === 'approved' && (
-                        <Button variant="destructive" onClick={block} disabled={busy}>
-                            Block
-                        </Button>
-                    )}
-                    {status === 'blocked' && (
-                        <Button onClick={unblock} disabled={busy}>
-                            Unblock
-                        </Button>
-                    )}
-                </div>
-            </header>
-
-            {status === 'draft' && (
-                <p className="rounded-md border border-dashed border-border px-4 py-3 text-[13px] text-[#c6c6c7]">
-                    This company has not submitted its documents yet. There is nothing to decide until it does.
-                </p>
-            )}
-
-            <div className="grid gap-4 lg:grid-cols-2">
-                <Section title="Company">
-                    <Facts
-                        items={[
-                            ['GST number', company.gstNumber],
-                            ['PAN number', company.panNumber],
-                            ['Company email', company.companyEmailId],
-                            ['Company phone', company.companyPhoneNumber],
-                        ]}
-                    />
-                </Section>
-
-                <Section title="Documents">
-                    <Documents documents={documents} />
-                </Section>
-
-                <Section title={branches.length === 1 ? 'Branch' : `Branches (${branches.length})`}>
-                    {branches.length === 0 ? (
-                        <p className="text-[13px] text-muted-foreground">No branch recorded.</p>
-                    ) : (
-                        <ul className="flex flex-col gap-3">
-                            {branches.map((b) => (
-                                <li key={b.id} className="text-[13px] text-foreground">
-                                    <p className="font-medium">
-                                        {b.branchName || 'Head office'}{' '}
-                                        {b.branchCode && (
-                                            <span className="font-mono text-[11px] text-muted-foreground">{b.branchCode}</span>
-                                        )}
-                                    </p>
-                                    <p className="text-[#c6c6c7]">
-                                        {b.address}, {b.city}, {b.state} {b.pinCode}
-                                    </p>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </Section>
-
-                {rejections.length > 0 && (
-                    <Section title="Rejection history">
-                        <ul className="flex flex-col gap-3">
-                            {rejections.map((r) => (
-                                <li key={r.id} className="text-[13px]">
-                                    <p className="text-foreground">{r.message}</p>
-                                    <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                                        {formatDateTime(r.createdAt)}
-                                    </p>
-                                </li>
-                            ))}
-                        </ul>
-                    </Section>
+            <div id="company-panel" role="tabpanel">
+                {tab === 'overview' && <Overview company={company} branches={branches} rejections={rejections} status={status} />}
+                {tab === 'documents' && (
+                    <Panel title="Documents">
+                        <Documents documents={documents} />
+                    </Panel>
                 )}
+                {/* The people of the company, managed here as its Owner. */}
+                {tab === 'team' && <CompanyTeamSection companyId={company.id} />}
             </div>
 
-            {/* The people of the company, managed here as its Owner (replaces a read-only list). */}
-            <CompanyTeamSection companyId={company.id} />
-
-            {confirmDialog}
-            <RejectDialog
-                key={rejectOpen ? 'open' : 'closed'}
-                open={rejectOpen}
+            {confirm && (
+                <ConfirmModal
+                    open
+                    icon={confirm.icon}
+                    title={confirm.title}
+                    description={confirm.description}
+                    summary={confirm.summary}
+                    confirmLabel={confirm.confirmLabel}
+                    danger={confirm.danger}
+                    busy={busy}
+                    onConfirm={() => decide(confirm.action)}
+                    onCancel={() => setDialog(null)}
+                />
+            )}
+            <RejectModal
+                key={dialog === 'reject' ? 'open' : 'closed'}
+                open={dialog === 'reject'}
                 companyName={company.companyName}
                 busy={busy}
-                onCancel={() => setRejectOpen(false)}
-                onSubmit={reject}
+                onCancel={() => setDialog(null)}
+                onSubmit={(reason) => decide(() => rejectCompanyApi(company.id, reason))}
             />
         </div>
     );

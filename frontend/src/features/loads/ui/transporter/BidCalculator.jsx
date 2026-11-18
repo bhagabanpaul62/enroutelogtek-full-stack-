@@ -1,21 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { Inset, ModalField, Panel, SegmentedControl } from '@/shared/ui/kit';
 import { Button } from '@/shared/ui/primitives/button';
 import { Input } from '@/shared/ui/primitives/input';
-import { Field, FieldLabel } from '@/shared/ui/primitives/field';
+import { Loader2 } from 'lucide-react';
 import { MARGIN_TYPE_LABELS, MAX_ATTEMPTS } from '../../constants';
-import { formatRupees } from '../../lib/format';
 import { submitBidApi } from '../../api/loads.api';
 import { useBidActions } from '../../hooks/useBidActions';
+import { perKgTotal } from '../../lib/format';
+import { rs } from './money';
+
+const round2 = (n) => Math.round(n * 100) / 100;
 
 // Same arithmetic as the backend: percent is a share of the base, fixed is rupees on top.
-const finalAmount = (base, marginType, marginValue) => {
-    const total = marginType === 'percent' ? base + (base * marginValue) / 100 : base + marginValue;
-    return Math.round(total * 100) / 100;
-};
+const marginAmount = (base, marginType, marginValue) =>
+    round2(marginType === 'percent' ? (base * marginValue) / 100 : marginValue);
 
 // Why the form is locked, or '' when the user may bid.
 const lockedReason = (load, canManage, now) => {
@@ -24,6 +24,8 @@ const lockedReason = (load, canManage, now) => {
     if (load.closesAt && new Date(load.closesAt).getTime() <= now) return 'Bidding has closed.';
     return '';
 };
+
+const MARGIN_OPTIONS = Object.entries(MARGIN_TYPE_LABELS).map(([value, label]) => ({ value, label }));
 
 /**
  * Base rate + margin = the amount the customer sees. Shown while bidding is live; locked with
@@ -47,7 +49,12 @@ export default function BidCalculator({ load, canManage, now, onChanged }) {
     const isValid =
         baseRate.trim() !== '' && Number.isFinite(base) && base > 0 &&
         marginValue.trim() !== '' && Number.isFinite(margin) && margin >= 0;
-    const total = isValid ? finalAmount(base, marginType, margin) : null;
+    const perKg = load.priceBasis === 'per_kg';
+    const unit = perKg ? ' per kg' : '';
+    const kg = Number(load.chargeableWeightKg) || 0;
+    const marginRs = isValid ? marginAmount(base, marginType, margin) : null;
+    const total = isValid ? round2(base + marginRs) : null;
+    const grandTotal = perKg && total !== null && kg > 0 ? perKgTotal(total, kg) : null;
 
     const submit = async (event) => {
         event.preventDefault();
@@ -70,22 +77,20 @@ export default function BidCalculator({ load, canManage, now, onChanged }) {
     };
 
     return (
-        <section className="rounded-[4px] border border-border bg-card p-4" aria-label="Place a bid">
-            <h2 className="text-[13px] font-semibold text-foreground">Place a bid</h2>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-                Your base rate plus your margin is the amount the customer sees.
+        <Panel title="Place a bid" action={<span className="text-xs tabular-nums text-[var(--ds-on-surface-muted)]">Attempt {Math.min(attemptNumber, maxAttempts)} of {maxAttempts}</span>}>
+            <p className="-mt-2 mb-4 text-[13px] text-[var(--ds-on-surface-muted)]">
+                {perKg
+                    ? `This is a part load: you bid in ₹ per kg, charged on ${kg || 'the'} kg chargeable weight. Your rate plus your margin is what the customer sees, with the total.`
+                    : 'Your base rate plus your margin is the amount the customer sees.'}
             </p>
 
             {reason && (
-                <p className="mt-3 rounded-[4px] border border-dashed border-border px-3 py-2 text-[12px] text-[#c6c6c7]">
-                    {reason}
-                </p>
+                <p className="mb-4 rounded-2xl bg-white/[0.035] px-4 py-3 text-[13px] text-[var(--ds-on-surface-variant)]">{reason}</p>
             )}
 
-            <form onSubmit={submit} noValidate className="mt-4">
-                <div className="grid gap-4 sm:grid-cols-3">
-                    <Field>
-                        <FieldLabel htmlFor="bid-base-rate">Base rate (₹)</FieldLabel>
+            <form onSubmit={submit} noValidate className="flex flex-col gap-5">
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <ModalField label={perKg ? 'Base rate (₹ per kg)' : 'Base rate (₹)'} htmlFor="bid-base-rate">
                         <Input
                             id="bid-base-rate"
                             type="number"
@@ -95,76 +100,66 @@ export default function BidCalculator({ load, canManage, now, onChanged }) {
                             value={baseRate}
                             onChange={(event) => setBaseRate(event.target.value)}
                             disabled={locked}
-                            placeholder="e.g. 58000"
+                            placeholder={perKg ? 'e.g. 12.5' : 'e.g. 58000'}
                         />
-                    </Field>
-
-                    <Field>
-                        <FieldLabel id="bid-margin-type-label">Margin type</FieldLabel>
-                        <div
-                            role="group"
-                            aria-labelledby="bid-margin-type-label"
-                            className="flex h-7 overflow-hidden rounded-md border border-input"
-                        >
-                            {Object.entries(MARGIN_TYPE_LABELS).map(([value, label]) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    aria-pressed={marginType === value}
-                                    disabled={locked}
-                                    onClick={() => setMarginType(value)}
-                                    className={cn(
-                                        'flex-1 text-[12px] transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                                        marginType === value
-                                            ? 'bg-primary font-medium text-primary-foreground'
-                                            : 'text-[#c6c6c7] hover:bg-input/50',
-                                    )}
-                                >
-                                    {label}
-                                </button>
-                            ))}
+                    </ModalField>
+                    <ModalField label={`Margin ${marginType === 'percent' ? '(%)' : perKg ? '(₹ per kg)' : '(₹)'}`} htmlFor="bid-margin-value">
+                        <div className="flex items-center gap-2">
+                            <Input
+                                id="bid-margin-value"
+                                type="number"
+                                inputMode="decimal"
+                                min="0"
+                                step="any"
+                                value={marginValue}
+                                onChange={(event) => setMarginValue(event.target.value)}
+                                disabled={locked}
+                                placeholder={marginType === 'percent' ? 'e.g. 8' : perKg ? 'e.g. 1' : 'e.g. 4000'}
+                            />
                         </div>
-                    </Field>
-
-                    <Field>
-                        <FieldLabel htmlFor="bid-margin-value">
-                            Margin {marginType === 'percent' ? '(%)' : '(₹)'}
-                        </FieldLabel>
-                        <Input
-                            id="bid-margin-value"
-                            type="number"
-                            inputMode="decimal"
-                            min="0"
-                            step="any"
-                            value={marginValue}
-                            onChange={(event) => setMarginValue(event.target.value)}
-                            disabled={locked}
-                            placeholder={marginType === 'percent' ? 'e.g. 8' : 'e.g. 4000'}
-                        />
-                    </Field>
+                    </ModalField>
                 </div>
 
-                <div className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                            Final amount
-                        </p>
-                        <p className="mt-0.5 text-[28px] font-semibold leading-none tracking-tight text-foreground" aria-live="polite">
-                            {total === null ? '—' : formatRupees(total)}
-                        </p>
+                <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-[13px] text-[var(--ds-on-surface-muted)]">Margin type</span>
+                    <SegmentedControl
+                        label="Margin type"
+                        size="sm"
+                        options={MARGIN_OPTIONS}
+                        value={marginType}
+                        onChange={locked ? () => {} : setMarginType}
+                    />
+                </div>
+
+                <Inset>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] tabular-nums text-[var(--ds-on-surface-variant)]">
+                        <span>Base {rs(isValid ? base : null)}{unit}</span>
+                        <span aria-hidden>+</span>
+                        <span>Margin {rs(marginRs)}</span>
+                        <span aria-hidden>=</span>
                     </div>
-                    <Button type="submit" size="lg" disabled={locked || !isValid}>
-                        {busy && <Loader2 className="animate-spin" />}
-                        {busy ? 'Placing bid…' : `Place bid (attempt ${attemptNumber} of ${maxAttempts})`}
-                    </Button>
-                </div>
+                    <p className="mt-1 text-[32px] font-medium leading-none tracking-tight tabular-nums text-[var(--ds-on-surface)]" aria-live="polite">
+                        {total === null ? '—' : `${rs(total)}${unit}`}
+                    </p>
+                    {perKg && (
+                        <p className="mt-1 text-[13px] tabular-nums text-[var(--ds-on-surface-variant)]" aria-live="polite">
+                            {grandTotal === null ? `Total on ${kg} kg shows once you enter a rate` : `= ${rs(grandTotal)} on ${kg} kg`}
+                        </p>
+                    )}
+                    <p className="mt-1.5 text-xs text-[var(--ds-on-surface-muted)]">Final amount the customer sees</p>
+                </Inset>
 
                 {formError && (
-                    <p role="alert" className="mt-3 text-[12px] text-destructive">
+                    <p role="alert" className="text-xs text-red-300">
                         {formError}
                     </p>
                 )}
+
+                <Button type="submit" className="h-10 w-full rounded-xl text-sm sm:w-fit sm:self-end" disabled={locked || !isValid}>
+                    {busy && <Loader2 className="animate-spin" />}
+                    {busy ? 'Placing bid…' : `Place bid (attempt ${attemptNumber} of ${maxAttempts})`}
+                </Button>
             </form>
-        </section>
+        </Panel>
     );
 }

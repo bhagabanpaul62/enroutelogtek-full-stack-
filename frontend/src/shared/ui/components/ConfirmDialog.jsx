@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertDialog } from '@base-ui/react/alert-dialog';
-import { Button } from '@/shared/ui/primitives/button';
+import { AlertTriangle } from 'lucide-react';
+import { Modal, ModalFooter } from '@/shared/ui/kit';
 
 /**
  * Ask before a destructive action:
@@ -20,39 +20,27 @@ export function useConfirm() {
         setRequest(null);
     };
 
+    const destructive = Boolean(request?.destructive);
     const dialog = (
-        <AlertDialog.Root
+        <Modal
             open={request !== null}
+            // Escape key / outside click = cancel
             onOpenChange={(open) => {
-                // Escape key / outside click = cancel
                 if (!open) answer(false);
             }}
-        >
-            <AlertDialog.Portal>
-                <AlertDialog.Backdrop className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
-                {/* text-foreground: the portal renders outside the dashboard layout, so it
-                    doesn't inherit the layout's text color. */}
-                <AlertDialog.Popup className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-md border border-border bg-card p-5 text-foreground shadow-2xl">
-                    <AlertDialog.Title className="text-[15px] font-semibold text-foreground">
-                        {request?.title}
-                    </AlertDialog.Title>
-                    <AlertDialog.Description className="mt-2 text-[13px] leading-relaxed text-[#c6c6c7]">
-                        {request?.description}
-                    </AlertDialog.Description>
-                    <div className="mt-5 flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => answer(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            variant={request?.destructive ? 'destructive' : 'default'}
-                            onClick={() => answer(true)}
-                        >
-                            {request?.confirmLabel ?? 'Confirm'}
-                        </Button>
-                    </div>
-                </AlertDialog.Popup>
-            </AlertDialog.Portal>
-        </AlertDialog.Root>
+            size="sm"
+            tone={destructive ? 'danger' : undefined}
+            icon={destructive ? <AlertTriangle className="size-5" /> : undefined}
+            title={request?.title}
+            description={request?.description}
+            footer={
+                <ModalFooter
+                    secondary={{ label: 'Cancel', onClick: () => answer(false) }}
+                    primary={{ label: request?.confirmLabel ?? 'Confirm', onClick: () => answer(true) }}
+                    danger={destructive}
+                />
+            }
+        />
     );
 
     return [dialog, confirm];

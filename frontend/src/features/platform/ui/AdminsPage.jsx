@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AlertTriangle, KeyRound, Loader2, ShieldCheck, UserCheck, UserPlus, UserX } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { KeyRound, UserCheck, UserPlus, UserX } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
-import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
+import { DataGrid } from '@/shared/ui/data-grid';
+import { formatDate } from '@/shared/lib/format';
 import { useTeamAction } from '@/features/team/hooks/useTeamAction';
 import CredentialsDialog from '@/features/team/ui/members/CredentialsDialog';
 import PasswordDialog from '@/features/team/ui/members/PasswordDialog';
@@ -15,8 +15,8 @@ import {
     reactivateAdminApi,
     resetAdminPasswordApi,
 } from '../api/platform.api';
-import { formatDate } from '../lib/formatDate';
-import AdminDialog from './components/AdminDialog';
+import AdminModal from './components/AdminModal';
+import ConfirmModal from './components/ConfirmModal';
 
 // Loads the platform admin list; `key` says which load the stored answer belongs to.
 function useAdmins() {
@@ -44,6 +44,28 @@ function useAdmins() {
     return { ...state, isLoading: state.key === null, reload: () => setReloadCount((count) => count + 1) };
 }
 
+const COLUMNS = [
+    { key: 'name', label: 'Admin', type: 'person', value: (a) => ({ name: a.isYou ? `${a.name} (you)` : a.name, sub: a.email }) },
+    { key: 'status', label: 'Status', type: 'status', width: 120 },
+    {
+        key: 'mustChangePassword',
+        label: 'Password',
+        type: 'text',
+        width: 150,
+        value: (a) => (a.mustChangePassword ? 'Temporary' : 'Set'),
+    },
+    {
+        key: 'lastLogin',
+        label: 'Last sign-in',
+        type: 'date',
+        width: 130,
+        render: (a) => <span className="tabular-nums">{a.lastLogin ? formatDate(a.lastLogin) : 'Never'}</span>,
+    },
+];
+
+// Nobody acts on their own account, and a blocked account is not ours to change.
+const locked = (admin) => admin.isYou || admin.status === 'blocked';
+
 /**
  * Enroute's own staff accounts (root_admin). Add one with a temporary password, set a new
  * temporary password, deactivate or reactivate. Nobody acts on their own account here, and the
@@ -52,8 +74,7 @@ function useAdmins() {
 export default function AdminsPage() {
     const admins = useAdmins();
     const { run, busy } = useTeamAction();
-    const [confirmDialog, confirm] = useConfirm();
-    // null | { type: 'add' } | { type: 'password', admin } | { type: 'credentials', name, email, password }
+    // null | { type: 'add' } | { type: 'confirm', admin } | { type: 'password', admin } | { type: 'credentials', name, email, password }
     const [dialog, setDialog] = useState(null);
     const [dialogCount, setDialogCount] = useState(0);
     const open = (next) => {
@@ -77,94 +98,53 @@ export default function AdminsPage() {
 
     const toggleActive = async (admin) => {
         const deactivating = admin.status === 'active';
-        const confirmed = await confirm({
-            title: `${deactivating ? 'Deactivate' : 'Reactivate'} ${admin.name}?`,
-            description: deactivating
-                ? 'They are signed out at once and lose access to the platform until reactivated.'
-                : 'They can sign in to the platform again.',
-            confirmLabel: deactivating ? 'Deactivate' : 'Reactivate',
-            destructive: deactivating,
-        });
-        if (!confirmed) return;
         const action = deactivating ? () => deactivateAdminApi(admin.id) : () => reactivateAdminApi(admin.id);
-        if (await run(action, `${admin.name} ${deactivating ? 'deactivated' : 'reactivated'}`)) admins.reload();
+        if (await run(action, `${admin.name} ${deactivating ? 'deactivated' : 'reactivated'}`)) {
+            admins.reload();
+            setDialog(null);
+        }
     };
 
-    let body;
-    if (admins.isLoading) {
-        body = (
-            <div className="flex justify-center py-12 text-muted-foreground">
-                <Loader2 className="animate-spin" aria-label="Loading" />
-            </div>
-        );
-    } else if (admins.error) {
-        body = (
-            <div className="flex flex-col items-center rounded-md border border-dashed border-border px-6 py-12 text-center">
-                <AlertTriangle size={22} className="mb-3 text-muted-foreground" />
-                <p className="text-[13px] text-[#c6c6c7]">{admins.error}</p>
-                <Button variant="outline" className="mt-4" onClick={admins.reload}>
-                    Try again
-                </Button>
-            </div>
-        );
-    } else {
-        body = (
-            <ul className="divide-y divide-surface-container-low overflow-hidden rounded-md border border-border bg-card">
-                {admins.admins.map((admin) => {
-                    const inactive = admin.status !== 'active';
-                    return (
-                        <li key={admin.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center">
-                            <div className={cn('flex min-w-0 flex-1 items-center gap-3', inactive && 'opacity-60')}>
-                                <ShieldCheck size={18} className="shrink-0 text-primary" />
-                                <div className="min-w-0">
-                                    <p className="truncate text-[14px] font-medium text-foreground">
-                                        {admin.name}
-                                        {admin.isYou && <span className="ml-2 text-[12px] font-normal text-[#c6c6c7]">(you)</span>}
-                                    </p>
-                                    <p className="truncate text-[12px] text-[#c6c6c7]">{admin.email}</p>
-                                    <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                        {inactive ? 'Deactivated · ' : ''}
-                                        {admin.mustChangePassword && !inactive ? 'Temporary password · ' : ''}
-                                        {admin.lastLogin ? `Last sign-in ${formatDate(admin.lastLogin)}` : 'Never signed in'}
-                                    </p>
-                                </div>
-                            </div>
-                            {!admin.isYou && admin.status !== 'blocked' && (
-                                <div className="flex flex-wrap gap-2 sm:justify-end">
-                                    {!inactive && (
-                                        <Button variant="outline" disabled={busy} onClick={() => open({ type: 'password', admin })}>
-                                            <KeyRound /> New password
-                                        </Button>
-                                    )}
-                                    <Button variant={inactive ? 'outline' : 'destructive'} disabled={busy} onClick={() => toggleActive(admin)}>
-                                        {inactive ? <UserCheck /> : <UserX />} {inactive ? 'Reactivate' : 'Deactivate'}
-                                    </Button>
-                                </div>
-                            )}
-                        </li>
-                    );
-                })}
-            </ul>
-        );
-    }
+    const confirming = dialog?.type === 'confirm' ? dialog.admin : null;
+    const deactivating = confirming?.status === 'active';
 
     return (
-        <div className="flex flex-col gap-4">
-            <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-5">
+            <header className="flex flex-wrap items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-[22px] font-semibold tracking-tight text-foreground">Platform admins</h1>
-                    <p className="mt-1 text-[13px] text-[#c6c6c7]">
-                        Enroute staff who can approve companies and manage every company&apos;s users.
-                    </p>
+                    <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-[var(--ds-on-surface)]">Platform admins</h1>
+                    <p className="mt-1.5 text-sm text-[var(--ds-on-surface-muted)]">Enroute staff who can approve companies and manage every company&apos;s users.</p>
                 </div>
-                <Button onClick={() => open({ type: 'add' })}>
+                <Button className="h-10 rounded-xl px-4 text-sm" onClick={() => open({ type: 'add' })}>
                     <UserPlus /> Add admin
                 </Button>
             </header>
-            {body}
-            {dialog?.type === 'add' && (
-                <AdminDialog key={dialogCount} open busy={busy} onCancel={() => setDialog(null)} onSubmit={add} />
-            )}
+
+            <DataGrid
+                columns={COLUMNS}
+                rows={admins.admins}
+                isLoading={admins.isLoading}
+                error={admins.error}
+                onRetry={admins.reload}
+                getRowId={(admin) => admin.id}
+                rowActions={[
+                    { label: 'New password', icon: KeyRound, hidden: (admin) => locked(admin) || admin.status !== 'active', onClick: (admin) => open({ type: 'password', admin }) },
+                    { label: 'Deactivate', icon: UserX, danger: true, hidden: (admin) => locked(admin) || admin.status !== 'active', onClick: (admin) => open({ type: 'confirm', admin }) },
+                    { label: 'Reactivate', icon: UserCheck, hidden: (admin) => locked(admin) || admin.status === 'active', onClick: (admin) => open({ type: 'confirm', admin }) },
+                ]}
+                empty={{
+                    title: 'No platform admins yet',
+                    action: (
+                        <Button onClick={() => open({ type: 'add' })}>
+                            <UserPlus /> Add admin
+                        </Button>
+                    ),
+                }}
+                searchPlaceholder="Search admins"
+                maxHeight="calc(100vh - 16rem)"
+            />
+
+            {dialog?.type === 'add' && <AdminModal key={dialogCount} open busy={busy} onCancel={() => setDialog(null)} onSubmit={add} />}
             {dialog?.type === 'password' && (
                 <PasswordDialog
                     key={dialogCount}
@@ -176,16 +156,24 @@ export default function AdminsPage() {
                 />
             )}
             {dialog?.type === 'credentials' && (
-                <CredentialsDialog
-                    key={dialogCount}
-                    open
-                    name={dialog.name}
-                    email={dialog.email}
-                    password={dialog.password}
-                    onClose={() => setDialog(null)}
-                />
+                <CredentialsDialog key={dialogCount} open name={dialog.name} email={dialog.email} password={dialog.password} onClose={() => setDialog(null)} />
             )}
-            {confirmDialog}
+            <ConfirmModal
+                open={Boolean(confirming)}
+                icon={deactivating ? <UserX className="size-5" /> : <UserCheck className="size-5" />}
+                title={confirming ? `${deactivating ? 'Deactivate' : 'Reactivate'} ${confirming.name}?` : ''}
+                description={
+                    deactivating
+                        ? 'They lose access to the platform until reactivated.'
+                        : 'They can sign in to the platform again.'
+                }
+                summary={deactivating ? 'Signed out at once' : 'Access restored'}
+                confirmLabel={deactivating ? 'Deactivate' : 'Reactivate'}
+                danger={deactivating}
+                busy={busy}
+                onConfirm={() => toggleActive(confirming)}
+                onCancel={() => setDialog(null)}
+            />
         </div>
     );
 }

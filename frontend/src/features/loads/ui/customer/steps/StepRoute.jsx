@@ -2,9 +2,13 @@
 
 import { useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { SegmentedControl } from '@/shared/ui/kit';
 import { lookupPinCodeApi } from '../../../api/loads.api';
+import { PLACE_KIND_LABELS } from '../../../constants';
 import { todayIso } from '../loadTime';
-import { FormField, TextInput } from './FormField';
+import { CheckboxRow, FieldGroup, FormField, TextInput } from './FormField';
+
+const PLACE_KIND_OPTIONS = Object.entries(PLACE_KIND_LABELS).map(([value, label]) => ({ value, label }));
 
 /** PIN code, city, state, address and optional contact for one end of the route. */
 function PlaceFields({ prefix, title, form, errors, onChange }) {
@@ -15,6 +19,8 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
         address: `${prefix}Address`,
         contactName: `${prefix}ContactName`,
         contactPhone: `${prefix}ContactPhone`,
+        kind: `${prefix}PlaceKind`,
+        oda: `${prefix}IsOda`,
     };
     const [lookingUp, setLookingUp] = useState(false);
     const [lookupNote, setLookupNote] = useState('');
@@ -47,10 +53,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
     };
 
     return (
-        <fieldset className="grid gap-3 rounded-[4px] border border-border bg-card p-4">
-            <legend className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                {title}
-            </legend>
+        <FieldGroup title={title}>
             <div className="grid gap-3 sm:grid-cols-[140px_1fr_1fr]">
                 <FormField
                     label="PIN code"
@@ -68,7 +71,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                             value={form[keys.pin]}
                             invalid={Boolean(errors[keys.pin])}
                             onChange={(event) => setPin(event.target.value)}
-                            placeholder="700001"
+                            placeholder="6-digit PIN"
                             className="font-mono"
                         />
                         {lookingUp && (
@@ -79,7 +82,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                         )}
                     </div>
                 </FormField>
-                <FormField label="City" htmlFor={keys.city} required error={errors[keys.city]}>
+                <FormField label="City" htmlFor={keys.city} required error={errors[keys.city]} hint="Filled in from the PIN code">
                     <TextInput
                         id={keys.city}
                         maxLength={100}
@@ -88,7 +91,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                         onChange={(event) => onChange({ [keys.city]: event.target.value })}
                     />
                 </FormField>
-                <FormField label="State" htmlFor={keys.state} error={errors[keys.state]}>
+                <FormField label="State" htmlFor={keys.state} error={errors[keys.state]} hint="Filled in from the PIN code">
                     <TextInput
                         id={keys.state}
                         maxLength={100}
@@ -107,6 +110,28 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                     placeholder="Plant, warehouse or street address"
                 />
             </FormField>
+
+            {/* AJ-06 / AJ-07: door or godown, and out-of-delivery-area */}
+            <div className="grid gap-3 sm:grid-cols-2">
+                <FormField
+                    label={prefix === 'pickup' ? 'Pickup is at a' : 'Drop is at a'}
+                    hint={form[keys.kind] === 'godown' ? 'A godown or warehouse the truck backs into' : 'The consignor or consignee premises'}
+                >
+                    <SegmentedControl
+                        label={`${title} place type`}
+                        options={PLACE_KIND_OPTIONS}
+                        value={form[keys.kind]}
+                        onChange={(value) => onChange({ [keys.kind]: value })}
+                    />
+                </FormField>
+                <CheckboxRow
+                    id={keys.oda}
+                    label="Out of delivery area (ODA)"
+                    description="Tick if this place is outside the normal delivery area; transporters price it in."
+                    checked={form[keys.oda]}
+                    onChange={(on) => onChange({ [keys.oda]: on })}
+                />
+            </div>
 
             {/* AJ-05: contact shared with the transporter after award acceptance */}
             <div className="grid gap-3 sm:grid-cols-2">
@@ -138,12 +163,12 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                         value={form[keys.contactPhone]}
                         invalid={Boolean(errors[keys.contactPhone])}
                         onChange={(event) => onChange({ [keys.contactPhone]: event.target.value })}
-                        placeholder="98765 43210"
+                        placeholder="10-digit mobile"
                         className="font-mono"
                     />
                 </FormField>
             </div>
-        </fieldset>
+        </FieldGroup>
     );
 }
 
@@ -156,10 +181,7 @@ export default function StepRoute({ form, errors, onChange }) {
             <PlaceFields prefix="pickup" title="Pickup" form={form} errors={errors} onChange={onChange} />
             <PlaceFields prefix="drop" title="Drop" form={form} errors={errors} onChange={onChange} />
 
-            <fieldset className="grid gap-3 rounded-[4px] border border-border bg-card p-4">
-                <legend className="px-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Schedule
-                </legend>
+            <FieldGroup title="Schedule">
                 <div className="grid gap-3 sm:grid-cols-3">
                     <FormField label="Pickup date" htmlFor="pickupDate" required error={errors.pickupDate}>
                         <TextInput
@@ -189,7 +211,7 @@ export default function StepRoute({ form, errors, onChange }) {
                         />
                     </FormField>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
                     <FormField
                         label="Flexibility (days)"
                         htmlFor="flexibilityDays"
@@ -222,8 +244,26 @@ export default function StepRoute({ form, errors, onChange }) {
                             onChange={(event) => onChange({ expectedDeliveryDate: event.target.value })}
                         />
                     </FormField>
+                    <FormField
+                        label="Distance (km)"
+                        htmlFor="distanceKm"
+                        hint="Optional. Helps transporters price per km."
+                        error={errors.distanceKm}
+                    >
+                        <TextInput
+                            id="distanceKm"
+                            type="number"
+                            min={1}
+                            max={10000}
+                            step={1}
+                            inputMode="numeric"
+                            value={form.distanceKm}
+                            invalid={Boolean(errors.distanceKm)}
+                            onChange={(event) => onChange({ distanceKm: event.target.value })}
+                        />
+                    </FormField>
                 </div>
-            </fieldset>
+            </FieldGroup>
         </div>
     );
 }

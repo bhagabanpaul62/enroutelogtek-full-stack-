@@ -1,59 +1,56 @@
-import { formatCountdown, formatDateTime } from '../../lib/format';
+import { Fact, FactList, Panel, StatusChip } from '@/shared/ui/kit';
+import { formatBid, formatCountdown, formatDateTime, formatRupees, perKgTotal } from '../../lib/format';
+import { TermsFacts } from '../components/LoadExtraFacts';
 
-const STATUS_TEXT = {
-    pending: 'Waiting for the transporter to accept',
-    accepted: 'Accepted',
-    declined: 'Declined',
-    expired: 'No answer in time',
-};
+const STATUS_OPTIONS = [
+    { value: 'pending', label: 'Waiting to accept' },
+    { value: 'expired', label: 'No answer in time' },
+    { value: 'revoked', label: 'Taken back, truck missed' },
+];
 
-const TONE = {
-    pending: 'text-primary',
-    accepted: 'text-[#3ccf7a]',
-    declined: 'text-destructive',
-    expired: 'text-[#f0955a]',
-};
-
-function AwardLine({ award, now }) {
+function AwardLine({ award, now, load }) {
+    const perKg = load?.priceBasis === 'per_kg';
     const acceptIn = award.status === 'pending' ? formatCountdown(award.acceptBy, now) : '';
     return (
-        <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-            <div>
-                <p className="text-[14px] font-medium text-foreground">{award.transporter?.name}</p>
-                <p className="font-mono text-[11px] text-muted-foreground">{award.transporter?.enrouteCompanyId}</p>
+        <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="min-w-0 truncate text-base font-medium text-[var(--ds-on-surface)]">{award.transporter?.name}</p>
+                <StatusChip value={award.status} options={STATUS_OPTIONS} />
             </div>
-            <div>
-                <p className={`text-[13px] ${TONE[award.status] ?? 'text-foreground'}`}>
-                    {STATUS_TEXT[award.status] ?? award.status}
-                </p>
+            <FactList>
+                {award.amount != null && (
+                    <Fact label="Winning bid">
+                        {formatBid(award.amount, load?.priceBasis)}
+                        {perKg && load.chargeableWeightKg ? (
+                            <span className="ml-1 text-xs text-[var(--ds-on-surface-muted)]">
+                                {formatRupees(perKgTotal(award.amount, load.chargeableWeightKg))} on {load.chargeableWeightKg} kg
+                            </span>
+                        ) : null}
+                    </Fact>
+                )}
                 {award.status === 'pending' && (
-                    <p className="text-[12px] text-[#c6c6c7]">
-                        Accept by {formatDateTime(award.acceptBy)}
+                    <Fact label="Accept by">
+                        {formatDateTime(award.acceptBy)}
                         {acceptIn ? ` · ${acceptIn} left` : ''}
-                    </p>
+                    </Fact>
                 )}
                 {award.respondedAt && award.status !== 'pending' && (
-                    <p className="text-[12px] text-[#c6c6c7]">{formatDateTime(award.respondedAt)}</p>
+                    <Fact label={award.status === 'accepted' ? 'Accepted on' : 'Answered'}>{formatDateTime(award.respondedAt)}</Fact>
                 )}
-            </div>
-            {award.reason && (
-                <div className="sm:col-span-2">
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Reason</p>
-                    <p className="text-[13px] text-foreground">{award.reason}</p>
-                </div>
-            )}
-            {award.assignedAt && (
-                <div className="sm:col-span-2 rounded-[4px] border border-border bg-background p-3">
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Truck and driver</p>
-                    <p className="mt-1 text-[13px] text-foreground">
-                        <span className="font-mono">{award.vehicleNumber}</span> · {award.driverName} ·{' '}
-                        <a href={`tel:${award.driverPhone}`} className="text-primary hover:underline">
-                            {award.driverPhone}
-                        </a>
-                    </p>
-                    <p className="text-[12px] text-[#c6c6c7]">Assigned {formatDateTime(award.assignedAt)}</p>
-                </div>
-            )}
+                {award.reason && <Fact label="Reason">{award.reason}</Fact>}
+                {award.assignedAt && (
+                    <>
+                        <Fact label="Truck">{award.vehicleNumber}</Fact>
+                        <Fact label="Driver">{award.driverName}</Fact>
+                        <Fact label="Driver phone" copy={award.driverPhone}>
+                            <a href={`tel:${award.driverPhone}`} className="text-primary hover:underline">
+                                {award.driverPhone}
+                            </a>
+                        </Fact>
+                        <Fact label="Assigned">{formatDateTime(award.assignedAt)}</Fact>
+                    </>
+                )}
+            </FactList>
         </div>
     );
 }
@@ -63,26 +60,34 @@ function AwardLine({ award, now }) {
  * load was awarded more than once, the earlier awards.
  * @param {{ award: object, history: object[], now: number }} props
  */
-export default function AwardPanel({ award, history, now }) {
+export default function AwardPanel({ award, history, now, load }) {
     const earlier = history.filter((item) => item.id !== award.id);
     return (
-        <section className="rounded-[4px] border border-primary/40 bg-card p-4">
-            <h2 className="mb-3 text-[13px] font-semibold uppercase tracking-wider text-[#c6c6c7]">Winner</h2>
-            <AwardLine award={award} now={now} />
+        <Panel title="Winner">
+            <AwardLine award={award} now={now} load={load} />
+            {award.termsSnapshot && (
+                <div className="mt-5">
+                    <h4 className="mb-2 font-mono text-[11px] uppercase tracking-[0.05em] text-[var(--ds-on-surface-muted)]">
+                        Agreed terms{award.termsAcceptedAt ? `, frozen ${formatDateTime(award.termsAcceptedAt)}` : ''}
+                    </h4>
+                    <FactList>
+                        <TermsFacts terms={award.termsSnapshot} />
+                    </FactList>
+                    <p className="mt-2 px-2 text-xs text-[var(--ds-on-surface-muted)]">These stay as agreed on every truck, even if the load is edited later.</p>
+                </div>
+            )}
             {earlier.length > 0 && (
-                <div className="mt-4 border-t border-border pt-3">
-                    <p className="mb-2 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Earlier awards
-                    </p>
-                    <ul className="grid gap-3">
+                <div className="mt-6 pt-2">
+                    <h4 className="mb-3 font-mono text-[11px] uppercase tracking-[0.05em] text-[var(--ds-on-surface-muted)]">Earlier awards</h4>
+                    <ul className="flex flex-col gap-5 opacity-80">
                         {earlier.map((item) => (
-                            <li key={item.id} className="opacity-80">
-                                <AwardLine award={item} now={now} />
+                            <li key={item.id}>
+                                <AwardLine award={item} now={now} load={load} />
                             </li>
                         ))}
                     </ul>
                 </div>
             )}
-        </section>
+        </Panel>
     );
 }

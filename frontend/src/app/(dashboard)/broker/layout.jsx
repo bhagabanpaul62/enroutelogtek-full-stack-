@@ -1,12 +1,5 @@
-import CompanyTypeGuard from '@/shared/guards/companyTypeGuard'
-import React from 'react'
+import CompanyTypeGuard from '@/shared/guards/companyTypeGuard';
 
-function BrokerLayout({children}) {
-  return (
-      <div>
-          <CompanyTypeGuard companyType={'broker'} > {children}</CompanyTypeGuard>
-      </div>
-  );
+export default function Layout({ children }) {
+    return <CompanyTypeGuard companyType="broker">{children}</CompanyTypeGuard>;
 }
-
-export default BrokerLayout

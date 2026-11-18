@@ -1,0 +1,1 @@
+ALTER TYPE "public"."award_status" ADD VALUE 'revoked';

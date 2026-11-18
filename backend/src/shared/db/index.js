@@ -1,3 +1,4 @@
+import { getTableName, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 
 // Timestamp columns are "timestamp without time zone" and Drizzle reads them as UTC.
@@ -9,3 +10,10 @@ export const db = drizzle({
         options: '-c timezone=UTC',
     },
 });
+
+/**
+ * An outer-table column for a correlated subquery, always written "table"."column".
+ * Drizzle prints a bare "id" inside the select list of a one-table query, and inside a
+ * subquery a bare name binds to the subquery's own table (t.driver_id = t.id).
+ */
+export const outer = (column) => sql.raw(`"${getTableName(column.table)}"."${column.name}"`);

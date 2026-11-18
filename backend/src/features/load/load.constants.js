@@ -20,9 +20,10 @@ export const LOAD_STATUSES = [
     'cancelled',
 ];
 
-export const PRICE_BASES = ['per_vehicle', 'per_ton', 'per_km'];
+export const PRICE_BASES = ['per_vehicle', 'per_ton', 'per_km', 'per_kg'];
 export const MARGIN_TYPES = ['percent', 'fixed'];
-export const AWARD_STATUSES = ['pending', 'accepted', 'declined', 'expired'];
+// revoked: the customer took an accepted award back after the truck was not placed on time.
+export const AWARD_STATUSES = ['pending', 'accepted', 'declined', 'expired', 'revoked'];
 export const LOAD_TYPES = ['FTL', 'PTL'];
 export const PACKAGING_TYPES = ['bags', 'pallets', 'loose', 'coils', 'drums', 'boxes', 'other'];
 export const SPECIAL_REQUIREMENT_TAGS = [
@@ -57,3 +58,23 @@ export const CANCELLABLE_FROM = ['draft', 'live', 'closed', 'expired'];
 export const EXTENDABLE_FROM = ['live', 'expired'];
 export const AWARDABLE_FROM = ['closed'];
 export const EDITABLE_FROM = ['draft'];
+
+// ---- Wave 2: Ad Hoc execution (AJ-05..13) ----
+export const PLACE_KINDS = ['door', 'godown'];
+export const HANDLING_TYPES = ['manual', 'forklift', 'crane', 'none'];
+export const PAYABLE_BY = ['consignor', 'consignee', 'transporter'];
+export const HAZMAT_CLASSES = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+// PRD section 4 (Q-10, Q-19, Q-20): every business default in one place.
+export const PTL_DEFAULTS = {
+    volumetricDivisor: 5000, // cm3 per kg: L*W*H*packages / 5000
+    minChargeableKg: 50,
+};
+export const TERMS_DEFAULTS = {
+    freeTimeLoadingHours: 24,
+    freeTimeUnloadingHours: 24,
+    detentionRatePaisePerHour: 0,
+    labourPayableBy: 'consignor',
+    freightPayableBy: 'consignor',
+    tollIncluded: true,
+};

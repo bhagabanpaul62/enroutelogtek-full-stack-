@@ -1,53 +1,37 @@
+import { Panel, Timeline } from '@/shared/ui/kit';
 import { MAX_ATTEMPTS } from '../../constants';
-import { formatDateTime, formatRupees } from '../../lib/format';
+import { formatDateTime } from '../../lib/format';
+import { rs } from './money';
 
-const TH = 'px-4 py-2 text-left font-medium whitespace-nowrap';
-const TD = 'px-4 py-2 whitespace-nowrap';
-
-const formatMargin = (attempt) =>
-    attempt.marginType === 'percent' ? `+${attempt.marginValue}%` : `+${formatRupees(attempt.marginValue)}`;
+const marginText = (attempt) =>
+    attempt.marginType === 'percent' ? `${attempt.marginValue}%` : rs(attempt.marginValue);
 
 /**
- * My earlier attempts on this load, in order. Renders nothing when there are none.
+ * My earlier attempts on this load, as a feed. Renders nothing when there are none.
  * @param {{ attempts?: object[], maxAttempts?: number }} props
  */
-export default function MyAttempts({ attempts, maxAttempts = MAX_ATTEMPTS }) {
+export default function MyAttempts({ attempts, maxAttempts = MAX_ATTEMPTS, priceBasis }) {
+    const unit = priceBasis === 'per_kg' ? '/kg' : '';
     if (!attempts?.length) return null;
 
+    const steps = attempts.map((attempt, i) => ({
+        key: attempt.attemptNumber,
+        state: i === attempts.length - 1 ? 'current' : 'done',
+        label: `Attempt ${attempt.attemptNumber}: ${rs(attempt.finalAmount)}${unit} (L${attempt.rankAtSubmit})`,
+        note: `Base ${rs(attempt.baseRate)}${unit} + ${marginText(attempt)} margin`,
+        time: formatDateTime(attempt.createdAt),
+    }));
+
     return (
-        <section className="rounded-[4px] border border-border bg-card" aria-label="My attempts">
-            <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-4">
-                <h2 className="text-[13px] font-semibold text-foreground">My attempts</h2>
-                <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+        <Panel
+            title="My attempts"
+            action={
+                <span className="text-xs tabular-nums text-[var(--ds-on-surface-muted)]">
                     {attempts.length} of {maxAttempts} used
                 </span>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-[13px]">
-                    <thead>
-                        <tr className="border-y border-border font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                            <th scope="col" className={TH}>#</th>
-                            <th scope="col" className={TH}>Base rate</th>
-                            <th scope="col" className={TH}>Margin</th>
-                            <th scope="col" className={TH}>Final amount</th>
-                            <th scope="col" className={TH}>Rank then</th>
-                            <th scope="col" className={TH}>Time</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                        {attempts.map((attempt) => (
-                            <tr key={attempt.attemptNumber}>
-                                <td className={`${TD} font-mono text-muted-foreground`}>{attempt.attemptNumber}</td>
-                                <td className={TD}>{formatRupees(attempt.baseRate)}</td>
-                                <td className={`${TD} text-[#c6c6c7]`}>{formatMargin(attempt)}</td>
-                                <td className={`${TD} font-medium text-foreground`}>{formatRupees(attempt.finalAmount)}</td>
-                                <td className={`${TD} font-mono text-primary`}>L{attempt.rankAtSubmit}</td>
-                                <td className={`${TD} text-muted-foreground`}>{formatDateTime(attempt.createdAt)}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-        </section>
+            }
+        >
+            <Timeline steps={steps} />
+        </Panel>
     );
 }

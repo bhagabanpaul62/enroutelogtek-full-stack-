@@ -1,11 +1,11 @@
 'use client';
 
-import { ShieldOff } from 'lucide-react';
 import { useSelector } from 'react-redux';
 import { useCan } from '@/shared/hooks/useCan';
 import { PERMISSIONS } from '@/shared/lib/permissions';
+import { EmptyState, EntityHeader, Panel } from '@/shared/ui/kit';
 import { companyTeamApi } from '../api/team.api';
-import TeamManager, { TeamNotice } from './TeamManager';
+import TeamManager from './TeamManager';
 
 /**
  * Team: the company's people and roles. Shown to people whose role holds team.manage or
@@ -19,27 +19,20 @@ export default function TeamPage() {
     const canGrant = (key) => Boolean(me?.isOwner) || Boolean(me?.permissions?.includes(key));
 
     return (
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 lg:px-8">
-            <header className="mb-6">
-                <h1 className="text-[22px] font-semibold tracking-tight text-foreground">Team</h1>
-                <p className="mt-1 text-[13px] text-[#c6c6c7]">
-                    The people in your company and what each role may do. Changes apply the next time
-                    they do anything in Enroute.
-                </p>
-            </header>
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 lg:px-8">
+            <EntityHeader
+                title="Team"
+                meta={['The people in your company and what each role may do. Changes apply the next time they do anything in Enroute.']}
+            />
             {canManageTeam || canManageRoles ? (
-                <TeamManager
-                    api={companyTeamApi}
-                    canManageTeam={canManageTeam}
-                    canManageRoles={canManageRoles}
-                    canGrant={canGrant}
-                />
+                <TeamManager api={companyTeamApi} canManageTeam={canManageTeam} canManageRoles={canManageRoles} canGrant={canGrant} />
             ) : (
-                <TeamNotice
-                    icon={ShieldOff}
-                    title="Your role cannot manage the team"
-                    description="Ask an Owner or Co-admin of your company if you need someone added or a role changed."
-                />
+                <Panel>
+                    <EmptyState
+                        title="Your role cannot manage the team"
+                        description="Ask an Owner or Co-admin of your company if you need someone added or a role changed."
+                    />
+                </Panel>
             )}
         </div>
     );

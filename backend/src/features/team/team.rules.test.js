@@ -50,13 +50,23 @@ describe('permission catalogue', () => {
     it('gives transporters bid, award and trip permissions and no load permissions', () => {
         const keys = permissionKeysFor('transporter');
         assert.deepEqual(
-            keys.filter((key) => !key.startsWith('network') && !key.startsWith('team') && !key.startsWith('roles')),
-            [P.BIDS_SUBMIT, P.AWARDS_RESPOND, P.TRIPS_ASSIGN],
+            keys.filter((key) => !key.startsWith('network') && !key.startsWith('team') && !key.startsWith('roles') && !key.startsWith('billing')),
+            [
+                P.BIDS_SUBMIT,
+                P.AWARDS_RESPOND,
+                P.QUOTES_SUBMIT,
+                P.CONTRACTS_RESPOND,
+                P.ALLOCATIONS_MANAGE,
+                P.TRIPS_ASSIGN,
+                P.TRIPS_UPDATE,
+                P.FLEET_MANAGE,
+            ],
         );
     });
-    it('gives brokers and fleet owners only the shared administration permissions', () => {
-        assert.deepEqual(permissionKeysFor('broker'), [P.NETWORK_MANAGE, P.TEAM_MANAGE, P.ROLES_MANAGE]);
-        assert.deepEqual(permissionKeysFor('fleet_owner'), [P.NETWORK_MANAGE, P.TEAM_MANAGE, P.ROLES_MANAGE]);
+    it('gives brokers and fleet owners trip updates, fleet owners also fleet, plus administration', () => {
+        const admin = [P.NETWORK_MANAGE, P.TEAM_MANAGE, P.ROLES_MANAGE, P.BILLING_MANAGE];
+        assert.deepEqual(permissionKeysFor('broker'), [P.ALLOCATIONS_MANAGE, P.OFFERS_RESPOND, P.TRIPS_UPDATE, ...admin]);
+        assert.deepEqual(permissionKeysFor('fleet_owner'), [P.OFFERS_RESPOND, P.TRIPS_UPDATE, P.FLEET_MANAGE, ...admin]);
     });
     it('describes each permission without leaking the type list', () => {
         const entry = catalogueFor('customer')[0];
@@ -76,21 +86,31 @@ describe('preset roles', () => {
     });
     it('keep today’s access for a customer: managers run loads, the network only for co-admins', () => {
         const byName = Object.fromEntries(presetRolesFor('customer').map((r) => [r.name, r.permissions]));
-        assert.deepEqual(byName['Bid manager'], [P.LOADS_MANAGE, P.LOADS_AWARD]);
+        assert.deepEqual(byName['Bid manager'], [P.LOADS_MANAGE, P.LOADS_AWARD, P.RFQS_MANAGE, P.CONTRACTS_MANAGE]);
         assert.deepEqual(byName['Co-admin'], [
             P.LOADS_MANAGE,
             P.LOADS_AWARD,
+            P.RFQS_MANAGE,
+            P.CONTRACTS_MANAGE,
             P.NETWORK_MANAGE,
             P.TEAM_MANAGE,
             P.ROLES_MANAGE,
+            P.BILLING_MANAGE,
         ]);
         assert.deepEqual(byName.Viewer, []);
         assert.deepEqual(byName['Trip manager'], []);
-        assert.deepEqual(byName.Accounts, []);
+        assert.deepEqual(byName.Accounts, [P.BILLING_MANAGE]);
     });
     it('keep today’s access for a transporter', () => {
         const byName = Object.fromEntries(presetRolesFor('transporter').map((r) => [r.name, r.permissions]));
-        assert.deepEqual(byName['Bid manager'], [P.BIDS_SUBMIT, P.AWARDS_RESPOND, P.TRIPS_ASSIGN]);
+        assert.deepEqual(byName['Bid manager'], [
+            P.BIDS_SUBMIT,
+            P.AWARDS_RESPOND,
+            P.TRIPS_ASSIGN,
+            P.QUOTES_SUBMIT,
+            P.CONTRACTS_RESPOND,
+            P.ALLOCATIONS_MANAGE,
+        ]);
     });
 });
 

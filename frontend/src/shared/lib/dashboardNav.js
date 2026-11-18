@@ -38,37 +38,37 @@ const GENERAL = [
 const MAIN = {
     customer: [
         { slug: 'loads', icon: 'loads', name: 'Loads', description: 'Ad Hoc loads: post one, invite transporters, pick the winning bid.', ready: true },
-        { slug: 'rfqs', icon: 'rfqs', name: 'RFQs', description: 'Contract RFQs: a lane or volume over a period.' },
-        { slug: 'contracts', icon: 'contracts', name: 'Contracts', description: 'The awarded bids and their terms.' },
-        { slug: 'trips', icon: 'trips', name: 'Trips', description: 'Every truck on your loads, from dispatch to proof of delivery.' },
+        { slug: 'rfqs', icon: 'rfqs', name: 'RFQs', description: 'Contract RFQs: a lane or volume over a period.', ready: true },
+        { slug: 'contracts', icon: 'contracts', name: 'Contracts', description: 'The awarded bids and their terms.', ready: true },
+        { slug: 'trips', icon: 'trips', name: 'Trips', description: 'Every truck on your loads, from dispatch to proof of delivery.', ready: true },
     ],
     transporter: [
-        { slug: 'rfqs', icon: 'rfqs', name: 'RFQs', description: 'Loads open to you from connected shippers, on a clock.' },
+        { slug: 'rfqs', icon: 'rfqs', name: 'RFQs', description: 'Loads open to you from connected shippers, on a clock.', ready: true },
         { slug: 'bids', icon: 'bids', name: 'Bids', description: 'Loads you were invited to, your bids and where each one stands.', ready: true },
-        { slug: 'contracts', icon: 'contracts', name: 'Contracts', description: 'What you have won and accepted.' },
-        { slug: 'fleet', icon: 'fleet', name: 'Fleet', description: 'Your vehicles and their papers.' },
-        { slug: 'drivers', icon: 'drivers', name: 'Drivers', description: 'Who is on which trip.' },
-        { slug: 'trips', icon: 'trips', name: 'Trips', description: 'Dispatch to proof of delivery for every truck.' },
+        { slug: 'contracts', icon: 'contracts', name: 'Contracts', description: 'What you have won and accepted.', ready: true },
+        { slug: 'fleet', icon: 'fleet', name: 'Fleet', description: 'Your vehicles and their papers.', ready: true },
+        { slug: 'drivers', icon: 'drivers', name: 'Drivers', description: 'Who is on which trip.', ready: true },
+        { slug: 'trips', icon: 'trips', name: 'Trips', description: 'Dispatch to proof of delivery for every truck.', ready: true },
     ],
     broker: [
-        { slug: 'loads', icon: 'loads', name: 'Loads', description: 'What needs moving and who you placed it with.' },
-        { slug: 'transporters', icon: 'transporters', name: 'Transporters', description: 'The transporters you place loads with.' },
-        { slug: 'fleet-owners', icon: 'fleet-owners', name: 'Fleet owners', description: 'Trucks you can call on.' },
-        { slug: 'trips', icon: 'trips', name: 'Trips', description: 'Dispatch to proof of delivery.' },
+        { slug: 'loads', icon: 'loads', name: 'Loads', description: 'What needs moving and who you placed it with.', ready: true },
+        { slug: 'transporters', icon: 'transporters', name: 'Transporters', description: 'The transporters you place loads with.', ready: true },
+        { slug: 'fleet-owners', icon: 'fleet-owners', name: 'Fleet owners', description: 'Trucks you can call on.', ready: true },
+        { slug: 'trips', icon: 'trips', name: 'Trips', description: 'Dispatch to proof of delivery.', ready: true },
     ],
     fleet_owner: [
-        { slug: 'loads', icon: 'loads', name: 'Loads', description: 'Loads offered to your trucks. Accept or decline each one.' },
-        { slug: 'vehicles', icon: 'vehicles', name: 'Vehicles', description: 'Each truck, its papers and its availability.' },
-        { slug: 'drivers', icon: 'drivers', name: 'Drivers', description: 'Who is on which trip.' },
-        { slug: 'trips', icon: 'trips', name: 'Trips', description: 'Dispatch to proof of delivery.' },
-        { slug: 'earnings', icon: 'earnings', name: 'Earnings', description: 'Per trip and per vehicle.' },
+        { slug: 'loads', icon: 'loads', name: 'Loads', description: 'Loads offered to your trucks. Accept or decline each one.', ready: true },
+        { slug: 'vehicles', icon: 'vehicles', name: 'Vehicles', description: 'Each truck, its papers and its availability.', ready: true },
+        { slug: 'drivers', icon: 'drivers', name: 'Drivers', description: 'Who is on which trip.', ready: true },
+        { slug: 'trips', icon: 'trips', name: 'Trips', description: 'Dispatch to proof of delivery.', ready: true },
+        { slug: 'earnings', icon: 'earnings', name: 'Earnings', description: 'Per trip and per vehicle.', ready: true },
     ],
 };
 
 const ADMINISTRATION = [
-    { slug: 'reports', icon: 'reports', name: 'Reports', description: 'Across RFQs, contracts and trips.' },
+    { slug: 'reports', icon: 'reports', name: 'Reports', description: 'Across RFQs, contracts and trips.', ready: true },
     { slug: 'team', icon: 'team', name: 'Team', description: 'Your people, their roles and what each role may do.', ready: true },
-    { slug: 'settings', icon: 'settings', name: 'Settings', description: 'Company profile, branches and documents.' },
+    { slug: 'settings', icon: 'settings', name: 'Settings', description: 'Company profile, branches and documents.', ready: true },
 ];
 
 const withLink = (basePath) => (item) => ({

@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Loader2, Search, Users } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { Button } from '@/shared/ui/primitives/button';
+import { EmptyState, ErrorState, SkeletonRows } from '@/shared/ui/kit';
 import { formatDate } from '../../../lib/format';
 import { TextInput } from './FormField';
 import { useInvitees } from './useInvitees';
@@ -17,8 +18,8 @@ function InviteeCard({ company, checked, onChange }) {
         <label
             htmlFor={`invite-${company.id}`}
             className={cn(
-                'flex cursor-pointer items-start gap-3 rounded-[4px] border bg-card px-3 py-3 transition-colors',
-                checked ? 'border-primary/50' : 'border-border hover:border-surface-container-highest',
+                'flex cursor-pointer items-start gap-3 rounded-2xl px-4 py-3 transition-colors',
+                checked ? 'bg-primary/10 ring-1 ring-primary/50' : 'bg-white/[0.04] hover:bg-white/[0.07]',
             )}
         >
             <input
@@ -30,13 +31,12 @@ function InviteeCard({ company, checked, onChange }) {
             />
             <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14px] font-medium text-foreground">{company.name}</span>
-                <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-                    <span className="font-mono text-muted-foreground">{company.enrouteCompanyId}</span>
-                    <span className="text-[#c6c6c7]">
+                <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--ds-on-surface-muted)]">
+                    <span>
                         {loads} {loads === 1 ? 'load' : 'loads'} with you
                     </span>
                     {company.connectedAt && (
-                        <span className="text-[#c6c6c7]">connected since {formatDate(company.connectedAt)}</span>
+                        <span>connected since {formatDate(company.connectedAt)}</span>
                     )}
                 </span>
             </span>
@@ -72,7 +72,7 @@ export default function StepInvite({ form, errors, onChange }) {
     const noConnections = !isLoading && !error && items.length === 0 && !debouncedSearch;
 
     return (
-        <div className="grid gap-3">
+        <div className="grid gap-4 rounded-3xl bg-[var(--ds-surface-container-low)] p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <div className="relative flex-1">
                     <Search
@@ -90,11 +90,11 @@ export default function StepInvite({ form, errors, onChange }) {
                     />
                 </div>
                 <div className="flex items-center justify-between gap-3 sm:justify-end">
-                    <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                    <span className="text-[13px] tabular-nums text-[var(--ds-on-surface-muted)]">
                         {selected.size} selected
                     </span>
                     {items.length > 0 && (
-                        <Button variant="outline" onClick={toggleAll}>
+                        <Button variant="secondary" onClick={toggleAll}>
                             {allVisibleSelected ? 'Clear all' : `Select all (${items.length})`}
                         </Button>
                     )}
@@ -108,34 +108,24 @@ export default function StepInvite({ form, errors, onChange }) {
             )}
 
             {isLoading ? (
-                <div className="flex items-center gap-2 py-8 text-[13px] text-muted-foreground" aria-busy="true">
-                    <Loader2 size={16} className="animate-spin" /> Loading your transporters…
-                </div>
+                <SkeletonRows rows={4} />
             ) : error ? (
-                <div className="flex flex-col items-start gap-3 rounded-[4px] border border-dashed border-border px-4 py-6">
-                    <p className="text-[13px] text-foreground">{error}</p>
-                    <Button variant="outline" onClick={reload}>
-                        Try again
-                    </Button>
-                </div>
+                <ErrorState title="Couldn't load your transporters" description={error} onRetry={reload} />
             ) : noConnections ? (
-                <div className="flex flex-col items-center rounded-[4px] border border-dashed border-border px-6 py-10 text-center">
-                    <Users size={22} className="mb-3 text-muted-foreground" />
-                    <p className="text-[14px] font-medium text-foreground">No connected transporters yet</p>
-                    <p className="mt-1 max-w-sm text-[13px] text-[#c6c6c7]">
-                        Only transporters in your network can be invited to bid.
-                    </p>
-                    <Link
-                        href="/customer/network"
-                        className="mt-4 inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/80"
-                    >
-                        Connect with transporters first
-                    </Link>
-                </div>
+                <EmptyState
+                    title="No connected transporters yet"
+                    description="Only transporters in your network can be invited to bid."
+                    action={
+                        <Link
+                            href="/customer/network"
+                            className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/80"
+                        >
+                            Connect with transporters first
+                        </Link>
+                    }
+                />
             ) : items.length === 0 ? (
-                <p className="rounded-[4px] border border-dashed border-border px-4 py-6 text-center text-[13px] text-[#c6c6c7]">
-                    No transporter matches &ldquo;{debouncedSearch}&rdquo;.
-                </p>
+                <EmptyState title={`No transporter matches "${debouncedSearch}"`} />
             ) : (
                 <ul className="grid gap-2 sm:grid-cols-2">
                     {items.map((company) => (

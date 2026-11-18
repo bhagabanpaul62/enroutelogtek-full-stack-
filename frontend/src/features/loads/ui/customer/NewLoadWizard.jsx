@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Check, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/ui/primitives/button';
+import { EmptyState, ErrorState, SkeletonRows, StatusChip } from '@/shared/ui/kit';
 import { WIZARD_STEPS } from '../../constants';
 import { useLoadDraft } from '../../hooks/useLoadDraft';
 import { useCan } from '@/shared/hooks/useCan';
@@ -13,6 +14,7 @@ import { PERMISSIONS } from '@/shared/lib/permissions';
 import { formatCountdown } from '../../lib/format';
 import { todayIso } from './loadTime';
 import { useNow } from './useNow';
+import LoadTypeBadge from '../components/LoadTypeBadge';
 import { FormAlert } from './steps/FormField';
 import { useMasters } from './steps/useMasters';
 import { fieldsForStep, formFromLoad, validateStep } from './steps/wizardForm';
@@ -21,7 +23,7 @@ import StepMaterial from './steps/StepMaterial';
 import StepPricing from './steps/StepPricing';
 import StepReview from './steps/StepReview';
 import StepRoute from './steps/StepRoute';
-import { FactsPanel, ProgressLine, StepRail } from './WizardChrome';
+import { FactsPanel, ProgressLine, StepRail, stepFact } from './WizardChrome';
 
 const LOADS_PATH = '/customer/loads';
 const LAST_STEP = WIZARD_STEPS.length;
@@ -40,15 +42,15 @@ function PublishedState({ load }) {
     const invited = load.invitations?.length ?? load.inviteeCompanyIds?.length ?? 0;
 
     return (
-        <div className="mx-auto flex max-w-lg flex-col items-center py-12 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Check size={22} />
+        <div className="mx-auto flex max-w-lg flex-col items-center rounded-3xl bg-[var(--ds-surface-container-low)] px-6 py-12 text-center">
+            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-400/15 text-emerald-300">
+                <Check size={22} aria-hidden />
             </div>
-            <p className="mt-4 font-mono text-[12px] text-primary">{load.loadNumber}</p>
-            <h2 className="mt-1 text-[22px] font-semibold text-foreground">
+            <p className="mt-4 text-[13px] text-[var(--ds-on-surface-muted)]">{load.loadNumber}</p>
+            <h2 className="mt-1 text-[22px] font-semibold text-[var(--ds-on-surface)]">
                 Live{closesIn ? `, bidding closes in ${closesIn}` : ''}
             </h2>
-            <p className="mt-2 text-[13px] text-[#c6c6c7]">
+            <p className="mt-2 text-sm text-[var(--ds-on-surface-muted)]">
                 {invited} {invited === 1 ? 'transporter' : 'transporters'} invited and notified. Bids show
                 up on the load&apos;s page as they come in.
             </p>
@@ -56,7 +58,7 @@ function PublishedState({ load }) {
                 <Button size="lg" nativeButton={false} render={<Link href={`${LOADS_PATH}/${load.id}`} />}>
                     View bids
                 </Button>
-                <Button size="lg" variant="outline" nativeButton={false} render={<Link href={LOADS_PATH} />}>
+                <Button size="lg" variant="secondary" nativeButton={false} render={<Link href={LOADS_PATH} />}>
                     Back to loads
                 </Button>
             </div>
@@ -65,10 +67,10 @@ function PublishedState({ load }) {
 }
 
 /** The step form, its buttons and the side panels. Remounted (key) when the draft gets its id. */
-function WizardForm({ draft, masters, onPublished }) {
+function WizardForm({ draft, masters, gateType, onPublished }) {
     const router = useRouter();
     const { load, step, goTo, saveStep, saving, saveError, fieldErrors } = draft;
-    const [form, setForm] = useState(() => formFromLoad(load));
+    const [form, setForm] = useState(() => formFromLoad(load, Date.now(), { loadType: gateType }));
     const [clientErrors, setClientErrors] = useState({});
     // Set when the review step sent the user back to fix something: Next returns to review.
     const [returnStep, setReturnStep] = useState(null);
@@ -133,8 +135,8 @@ function WizardForm({ draft, masters, onPublished }) {
                     <ProgressLine step={step} />
                 </div>
                 <div className="max-w-2xl">
-                    <h2 className="text-[18px] font-semibold text-foreground">{WIZARD_STEPS[step - 1].title}</h2>
-                    <p className="mb-4 mt-1 text-[13px] text-[#c6c6c7]">{STEP_INTRO[step]}</p>
+                    <h2 className="text-[20px] font-semibold tracking-tight text-[var(--ds-on-surface)]">{WIZARD_STEPS[step - 1].title}</h2>
+                    <p className="mb-5 mt-1 text-sm text-[var(--ds-on-surface-muted)]">{STEP_INTRO[step]}</p>
 
                     {body}
 
@@ -144,16 +146,15 @@ function WizardForm({ draft, masters, onPublished }) {
                         </div>
                     )}
 
-                    <footer className="sticky bottom-0 -mx-4 mt-6 flex items-center justify-between gap-2 border-t border-border bg-background px-4 py-3 lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:px-0">
-                        <div>
+                    <footer className="sticky bottom-0 z-10 -mx-4 mt-6 flex flex-wrap items-center gap-3 bg-[var(--ds-surface-container-low)] px-4 py-3 lg:mx-0 lg:rounded-2xl lg:px-5">
+                        <p className="min-w-0 flex-1 truncate text-sm text-[var(--ds-on-surface-muted)]">{stepFact(form, step)}</p>
+                        <div className="flex items-center gap-2">
                             {step > 1 && (
                                 <Button variant="ghost" size="lg" onClick={back} disabled={saving}>
                                     <ArrowLeft /> Back
                                 </Button>
                             )}
-                        </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="lg" onClick={saveDraft} disabled={saving}>
+                            <Button variant="secondary" size="lg" onClick={saveDraft} disabled={saving}>
                                 <Save /> Save draft
                             </Button>
                             {step < LAST_STEP && (
@@ -181,6 +182,8 @@ function WizardView() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const idParam = searchParams.get('id');
+    // The FTL / PTL gate (mode picker) sends ?type=; a resumed draft keeps the type it was saved with.
+    const gateType = searchParams.get('type') === 'PTL' ? 'PTL' : 'FTL';
     const canManage = useCan(PERMISSIONS.LOADS_MANAGE);
     const draft = useLoadDraft(idParam);
     const masters = useMasters();
@@ -196,32 +199,28 @@ function WizardView() {
     let body;
     if (!canManage) {
         body = (
-            <p className="rounded-md border border-dashed border-border px-4 py-6 text-[13px] text-[#c6c6c7]">
-                Only admins, co-admins and bid managers can post loads. Ask one of them, or go back to{' '}
-                <Link href={LOADS_PATH} className="text-primary hover:underline">
-                    the loads list
-                </Link>
-                .
-            </p>
+            <div className="rounded-3xl bg-[var(--ds-surface-container-low)] p-6">
+                <EmptyState
+                    title="Only admins, co-admins and bid managers can post loads"
+                    description="Ask one of them to post it for you."
+                    action={
+                        <Button variant="secondary" nativeButton={false} render={<Link href={LOADS_PATH} />}>
+                            Back to loads
+                        </Button>
+                    }
+                />
+            </div>
         );
     } else if (draft.isLoading || redirectTo) {
         body = (
-            <div className="flex items-center gap-2 py-16 text-[13px] text-muted-foreground" aria-busy="true">
-                <Loader2 size={16} className="animate-spin" /> Loading draft…
+            <div className="rounded-3xl bg-[var(--ds-surface-container-low)] p-6" aria-busy="true">
+                <SkeletonRows rows={5} />
             </div>
         );
     } else if (draft.error) {
         body = (
-            <div className="flex flex-col items-start gap-4 py-10">
-                <p className="text-[14px] text-foreground">{draft.error}</p>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={draft.reload}>
-                        Try again
-                    </Button>
-                    <Button variant="ghost" nativeButton={false} render={<Link href={LOADS_PATH} />}>
-                        Back to loads
-                    </Button>
-                </div>
+            <div className="rounded-3xl bg-[var(--ds-surface-container-low)] p-6">
+                <ErrorState title="Couldn't open this draft" description={draft.error} onRetry={draft.reload} />
             </div>
         );
     } else if (published) {
@@ -232,26 +231,29 @@ function WizardView() {
                 key={draft.load?.id ?? 'new'}
                 draft={draft}
                 masters={masters}
+                gateType={gateType}
                 onPublished={setPublished}
             />
         );
     }
 
     return (
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 lg:px-8">
+        <div className="mx-auto w-full max-w-6xl px-4 py-6 lg:px-8">
             <header className="mb-6 flex items-start justify-between gap-3">
                 <div>
                     <Link
                         href={LOADS_PATH}
-                        className="inline-flex items-center gap-1 text-[13px] text-[#c6c6c7] hover:text-foreground"
+                        className="inline-flex items-center gap-1 rounded-md text-[13px] text-[var(--ds-on-surface-muted)] hover:text-[var(--ds-on-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ds-primary)]"
                     >
-                        <ArrowLeft size={14} /> Loads
+                        <ArrowLeft size={14} aria-hidden /> Loads
                     </Link>
-                    <h1 className="mt-1 text-[22px] font-semibold tracking-tight text-foreground">New Ad Hoc load</h1>
+                    <h1 className="mt-1 flex items-center gap-3 text-[28px] font-semibold leading-tight tracking-tight text-[var(--ds-on-surface)]">
+                        New Ad Hoc load <LoadTypeBadge type={draft.load?.loadType ?? gateType} className="mt-1" />
+                    </h1>
                 </div>
                 {draft.load && !published && (
-                    <span className="font-mono text-[12px] text-muted-foreground">
-                        {draft.load.loadNumber} · draft
+                    <span className="flex items-center gap-2 text-[13px] text-[var(--ds-on-surface-muted)]">
+                        {draft.load.loadNumber} <StatusChip value="draft" />
                     </span>
                 )}
             </header>

@@ -64,6 +64,55 @@
       "when": 1794420874465,
       "tag": "0008_team_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794936378730,
+      "tag": "0009_pickup_drop_contacts",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794938920504,
+      "tag": "0010_company_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794941874968,
+      "tag": "0011_adhoc_execution",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794942100465,
+      "tag": "0012_award_revoked",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794946322616,
+      "tag": "0013_contracts_subscriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794947180814,
+      "tag": "0014_allocations",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794972438687,
+      "tag": "0015_wave5_gaps",
+      "breakpoints": true
     }
   ]
 }

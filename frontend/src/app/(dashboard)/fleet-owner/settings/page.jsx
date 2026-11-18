@@ -1,7 +1,5 @@
-import ComingSoon from '@/shared/ui/layout/ComingSoon';
+import SettingsPage from '@/features/settings/ui/SettingsPage';
 
 export const metadata = { title: 'Settings' };
 
-export default function Page() {
-    return <ComingSoon companyType="fleet_owner" slug="settings" />;
-}
+export default SettingsPage;

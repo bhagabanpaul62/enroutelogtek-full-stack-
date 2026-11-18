@@ -172,6 +172,7 @@ export async function finishLogin({ challengeId, code, userAgent, ipAddress }, n
         if (blocked) return { problem: { ...blocked, code: AUTH_ERROR_CODE.LOGIN_RESTART } };
 
         const tokens = await replaceSessions(tx, user, { userAgent, ipAddress }, now);
+        await tx.update(users).set({ lastLogin: now }).where(eq(users.id, user.id));
         return { user, company, tokens };
     });
 

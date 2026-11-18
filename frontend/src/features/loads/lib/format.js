@@ -1,37 +1,18 @@
 // Display helpers for loads. Everything is shown in Indian time and rupees.
 
-const TZ = 'Asia/Kolkata';
+import { formatDate as sharedDate, formatDateTime as sharedDateTime, formatINR } from '@/shared/lib/format';
 
-/** 61480 → "₹61,480"; null → "—" */
+/** 61480 → "₹61,480"; null → "—". Loads store rupees; the shared formatter takes paise. */
 export const formatRupees = (amount) =>
-    amount === null || amount === undefined || Number.isNaN(Number(amount))
+    amount === null || amount === undefined || amount === '' || Number.isNaN(Number(amount))
         ? '—'
-        : `₹${Number(amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+        : formatINR(Math.round(Number(amount) * 100));
 
-/** "2026-11-12" → "12 Nov 2026" */
-export const formatDate = (isoDate) => {
-    if (!isoDate) return '—';
-    const [y, m, d] = String(isoDate).slice(0, 10).split('-').map(Number);
-    return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        timeZone: 'UTC',
-    });
-};
+/** "2026-11-12" → "Nov 12" (year only when it is not this year) */
+export const formatDate = (isoDate) => sharedDate(isoDate) || '—';
 
-/** ISO timestamp → "12 Nov 2026, 9:00 am" (IST) */
-export const formatDateTime = (iso) =>
-    iso
-        ? new Date(iso).toLocaleString('en-IN', {
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit',
-              timeZone: TZ,
-          })
-        : '—';
+/** ISO timestamp → "Nov 12, 9:00 am" (IST) */
+export const formatDateTime = (iso) => sharedDateTime(iso) || '—';
 
 /** "09:00" + "12:00" → "09:00 to 12:00"; one side only → that side; none → "any time" */
 export const formatTimeWindow = (from, to) => {
@@ -64,3 +45,9 @@ export const toLocalInputValue = (iso) => {
 /** The route in one line: "Kolkata → New Delhi" */
 export const formatRoute = (load) =>
     [load.pickupCity || load.pickupPinCode || '?', load.dropCity || load.dropPinCode || '?'].join(' → ');
+
+/** A bid or award amount with its unit: "₹58,000" per truck, "₹56.50/kg" for a part load. */
+export const formatBid = (amount, priceBasis) => `${formatRupees(amount)}${priceBasis === 'per_kg' ? '/kg' : ''}`;
+
+/** Total in rupees of a ₹ per kg amount on the chargeable weight, rounded to paise. */
+export const perKgTotal = (amountPerKg, chargeableWeightKg) => Math.round(Number(amountPerKg) * Number(chargeableWeightKg) * 100) / 100;

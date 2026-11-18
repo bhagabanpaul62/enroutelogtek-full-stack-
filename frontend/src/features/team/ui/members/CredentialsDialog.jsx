@@ -1,8 +1,9 @@
 'use client';
 
-import { Copy } from 'lucide-react';
+import { Copy, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/ui/primitives/button';
+import { Fact, FactList, Inset } from '@/shared/ui/kit';
 import TeamDialog from '../components/TeamDialog';
 
 /**
@@ -25,21 +26,27 @@ export default function CredentialsDialog({ open, name, email, password, onClose
         <TeamDialog
             open={open}
             onClose={onClose}
+            icon={<KeyRound className="size-5" />}
             title={`Share these details with ${name}`}
             description="Send them privately. Enroute does not email the password, and it will not be shown again."
-        >
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-md border border-border bg-background p-3 text-[13px]">
-                <dt className="text-[#c6c6c7]">Email</dt>
-                <dd className="break-all font-mono text-foreground">{email}</dd>
-                <dt className="text-[#c6c6c7]">Password</dt>
-                <dd className="break-all font-mono text-foreground">{password}</dd>
-            </dl>
-            <div className="mt-4 flex justify-end gap-2">
-                <Button variant="outline" onClick={copy}>
-                    <Copy /> Copy
+            summary="They choose their own password at first sign-in"
+            extra={
+                <Button type="button" variant="secondary" className="h-10 rounded-xl px-4 text-sm" onClick={copy}>
+                    <Copy /> Copy both
                 </Button>
-                <Button onClick={onClose}>Done</Button>
-            </div>
+            }
+            done={{ label: 'Done', onClick: onClose }}
+        >
+            <Inset>
+                <FactList>
+                    <Fact label="Email" copy={email}>
+                        <span className="break-all">{email}</span>
+                    </Fact>
+                    <Fact label="Password" copy={password}>
+                        <span className="break-all font-mono">{password}</span>
+                    </Fact>
+                </FactList>
+            </Inset>
         </TeamDialog>
     );
 }

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, UserPlus, Pencil } from 'lucide-react';
 import { Button } from '@/shared/ui/primitives/button';
-import TeamDialog, { FormField, inputClass } from '../components/TeamDialog';
+import { ModalField } from '@/shared/ui/kit';
+import TeamDialog, { inputClass } from '../components/TeamDialog';
 import { generateTemporaryPassword, temporaryPasswordProblem } from '../../lib/tempPassword';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -74,15 +75,18 @@ export default function MemberDialog({ open, member, roles, busy, onCancel, onSu
             open={open}
             busy={busy}
             onClose={onCancel}
+            icon={adding ? <UserPlus className="size-5" /> : <Pencil className="size-5" />}
             title={adding ? 'Add a person' : `Edit ${member.name}`}
             description={
                 adding
                     ? 'They sign in with this email and the temporary password, then choose their own.'
                     : 'A new role applies the next time they do anything in Enroute.'
             }
+            form="member-form"
+            primary={{ label: adding ? 'Add person' : 'Save changes' }}
         >
-            <form onSubmit={submit} noValidate className="flex flex-col gap-2">
-                <FormField id="member-name" label="Name" error={shown.name}>
+            <form id="member-form" onSubmit={submit} noValidate className="flex flex-col gap-4">
+                <ModalField label="Name" htmlFor="member-name" error={shown.name}>
                     <input
                         id="member-name"
                         className={inputClass}
@@ -91,11 +95,10 @@ export default function MemberDialog({ open, member, roles, busy, onCancel, onSu
                         maxLength={255}
                         autoComplete="off"
                         aria-invalid={Boolean(shown.name) || undefined}
-                        aria-describedby="member-name-note"
                     />
-                </FormField>
+                </ModalField>
 
-                <FormField id="member-email" label="Email" error={shown.email} hint={adding ? '' : 'The email cannot be changed.'}>
+                <ModalField label="Email" htmlFor="member-email" error={shown.email} hint={adding ? '' : 'The email cannot be changed.'}>
                     <input
                         id="member-email"
                         type="email"
@@ -106,11 +109,10 @@ export default function MemberDialog({ open, member, roles, busy, onCancel, onSu
                         maxLength={255}
                         autoComplete="off"
                         aria-invalid={Boolean(shown.email) || undefined}
-                        aria-describedby="member-email-note"
                     />
-                </FormField>
+                </ModalField>
 
-                <FormField id="member-phone" label="Phone (optional)" error={shown.phone}>
+                <ModalField label="Phone (optional)" htmlFor="member-phone" error={shown.phone}>
                     <input
                         id="member-phone"
                         type="tel"
@@ -120,23 +122,16 @@ export default function MemberDialog({ open, member, roles, busy, onCancel, onSu
                         maxLength={15}
                         autoComplete="off"
                         aria-invalid={Boolean(shown.phone) || undefined}
-                        aria-describedby="member-phone-note"
                     />
-                </FormField>
+                </ModalField>
 
-                <FormField
-                    id="member-role"
-                    label="Role"
-                    error={shown.roleId}
-                    hint="Only roles whose permissions you also have are listed."
-                >
+                <ModalField label="Role" htmlFor="member-role" error={shown.roleId} hint="Only roles whose permissions you also have are listed.">
                     <select
                         id="member-role"
                         className={inputClass}
                         value={values.roleId}
                         onChange={set('roleId')}
                         aria-invalid={Boolean(shown.roleId) || undefined}
-                        aria-describedby="member-role-note"
                     >
                         <option value="">Choose a role…</option>
                         {assignable.map((role) => (
@@ -145,12 +140,12 @@ export default function MemberDialog({ open, member, roles, busy, onCancel, onSu
                             </option>
                         ))}
                     </select>
-                </FormField>
+                </ModalField>
 
                 {adding && (
-                    <FormField
-                        id="member-password"
+                    <ModalField
                         label="Temporary password"
+                        htmlFor="member-password"
                         error={shown.temporaryPassword}
                         hint="You will see it again after saving, to share with them."
                     >
@@ -164,29 +159,20 @@ export default function MemberDialog({ open, member, roles, busy, onCancel, onSu
                                 autoComplete="off"
                                 spellCheck={false}
                                 aria-invalid={Boolean(shown.temporaryPassword) || undefined}
-                                aria-describedby="member-password-note"
                             />
                             <Button
                                 type="button"
-                                variant="outline"
-                                className="mt-1.5 h-9"
+                                variant="secondary"
+                                className="size-10 shrink-0 rounded-xl"
                                 onClick={() => setValues((prev) => ({ ...prev, temporaryPassword: generateTemporaryPassword() }))}
                                 aria-label="Generate a new temporary password"
+                                title="Generate a new temporary password"
                             >
                                 <RefreshCw />
                             </Button>
                         </div>
-                    </FormField>
+                    </ModalField>
                 )}
-
-                <div className="mt-2 flex justify-end gap-2">
-                    <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>
-                        Cancel
-                    </Button>
-                    <Button type="submit" disabled={busy}>
-                        {busy ? 'Saving…' : adding ? 'Add person' : 'Save changes'}
-                    </Button>
-                </div>
             </form>
         </TeamDialog>
     );

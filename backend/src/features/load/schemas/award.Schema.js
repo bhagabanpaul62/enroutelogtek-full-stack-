@@ -1,4 +1,4 @@
-import { index, pgEnum, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import { index, jsonb, pgEnum, pgTable, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 import { companies } from '#features/company/schemas/company.Schema.js';
 import { users } from '#features/auth/schemas/users.Schema.js';
 import { timestamps } from '#shared/schemas/column.Helper.js';
@@ -21,9 +21,9 @@ export const awards = pgTable(
         loadId: uuid('load_id')
             .notNull()
             .references(() => loads.id),
-        bidId: uuid('bid_id')
-            .notNull()
-            .references(() => bids.id),
+        // Null for awards made by an acknowledged contract indent (the rate is in termsSnapshot).
+        bidId: uuid('bid_id').references(() => bids.id),
+        contractIndentId: uuid('contract_indent_id'),
         transporterCompanyId: uuid('transporter_company_id')
             .notNull()
             .references(() => companies.id),
@@ -39,6 +39,10 @@ export const awards = pgTable(
         driverName: varchar('driver_name', { length: 100 }),
         driverPhone: varchar('driver_phone', { length: 15 }),
         assignedAt: timestamp('assigned_at'),
+        // Commercial terms of the load frozen at acceptance (free time, detention, labour, toll,
+        // freight payer, price). Later load edits never change what the transporter agreed to.
+        termsSnapshot: jsonb('terms_snapshot'),
+        termsAcceptedAt: timestamp('terms_accepted_at'),
         ...timestamps,
     },
     (table) => [

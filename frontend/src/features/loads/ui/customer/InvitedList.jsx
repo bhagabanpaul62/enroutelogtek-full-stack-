@@ -1,31 +1,30 @@
 import { Eye, Gavel } from 'lucide-react';
+import { EmptyState, ToneBadge } from '@/shared/ui/kit';
 import { formatDateTime } from '../../lib/format';
 
 /** The transporters invited to a published load, with "viewed" and "has bid" marks. */
 export default function InvitedList({ invitations }) {
     if (invitations.length === 0) {
-        return <p className="text-[13px] text-muted-foreground">Nobody was invited.</p>;
+        return <EmptyState title="Nobody was invited" description="Invitations go out when the load is published." />;
     }
     return (
-        <ul className="divide-y divide-border">
+        <ul className="flex flex-col">
             {invitations.map((invitation) => (
-                <li key={invitation.id} className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <li key={invitation.id} className="flex flex-col gap-1 rounded-2xl px-3 py-3 transition-colors hover:bg-white/[0.03] sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                        <p className="truncate text-[13px] text-foreground">{invitation.company.name}</p>
-                        <p className="font-mono text-[11px] text-muted-foreground">{invitation.company.enrouteCompanyId}</p>
+                        <p className="truncate text-sm text-[var(--ds-on-surface)]">{invitation.company.name}</p>
+                        <p className="font-mono text-[11px] text-[var(--ds-on-surface-muted)]">{invitation.company.enrouteCompanyId}</p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <div className="flex flex-wrap items-center gap-3 text-xs">
                         {invitation.hasBid ? (
-                            <span className="inline-flex items-center gap-1 rounded-[2px] border border-primary/50 bg-primary/10 px-1.5 py-0.5 font-mono uppercase tracking-wider text-primary">
-                                <Gavel size={11} /> Has bid
-                            </span>
+                            <ToneBadge label="Has bid" tone="accent" className="normal-case" />
                         ) : null}
                         {invitation.viewedAt ? (
-                            <span className="inline-flex items-center gap-1 text-[#c6c6c7]">
-                                <Eye size={12} /> Viewed {formatDateTime(invitation.viewedAt)}
+                            <span className="inline-flex items-center gap-1 text-[var(--ds-on-surface-variant)]">
+                                <Eye size={12} aria-hidden /> Viewed {formatDateTime(invitation.viewedAt)}
                             </span>
                         ) : (
-                            <span className="text-muted-foreground">Not viewed yet</span>
+                            <span className="text-[var(--ds-on-surface-muted)]">Not viewed yet</span>
                         )}
                     </div>
                 </li>

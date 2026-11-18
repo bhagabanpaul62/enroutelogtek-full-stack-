@@ -182,3 +182,46 @@ select:-webkit-autofill {
   border: 1px solid #222222 !important;
   transition: background-color 9999s ease-in-out 0s;
 }
+/* ═══════════════════════════════════════════════════════════════
+   Dashboard kit tokens (src/shared/ui/kit). The kit's --ds-* names
+   map onto the brand variables above. One accent = gold (--primary).
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --ds-color-background: var(--background);
+  --ds-surface-container-low: var(--color-surface-container-low);
+  --ds-surface-container: var(--color-surface-container);
+  --ds-surface-container-high: var(--color-surface-container-high);
+  --ds-surface-container-highest: var(--color-surface-container-highest);
+  --ds-on-surface: var(--foreground);
+  --ds-on-surface-variant: color-mix(in oklab, var(--foreground) 72%, transparent);
+  --ds-on-surface-muted: color-mix(in oklab, var(--foreground) 50%, transparent);
+  --ds-primary: var(--primary);
+  --ds-color-primary-400: var(--primary);
+  --ds-color-success-400: var(--color-success);
+  --ds-color-danger-400: var(--destructive);
+  /* chart helpers: faint grid, hatch and tick ruler, neutral series */
+  --ds-grid: color-mix(in oklab, white 6%, transparent);
+  --ds-hatch: color-mix(in oklab, white 5%, transparent);
+  --ds-tick: color-mix(in oklab, white 7%, transparent);
+  --ds-series-neutral: color-mix(in oklab, white 32%, transparent);
+}
+
+/* Entrance motion: 8px fade-up, staggered with --ds-delay. Off under reduced motion. */
+@keyframes ds-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ds-grow-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes ds-grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.ds-rise { animation: ds-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: var(--ds-delay, 0ms); }
+.ds-grow-y { transform-origin: bottom; animation: ds-grow-y 600ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: var(--ds-delay, 0ms); }
+.ds-grow-x { transform-origin: left; animation: ds-grow-x 700ms cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: var(--ds-delay, 0ms); }
+@media (prefers-reduced-motion: reduce) {
+  .ds-rise, .ds-grow-y, .ds-grow-x { animation: none; }
+}

@@ -1,53 +1,67 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'sonner';
-import { Building2, KeyRound, LogOut, Menu, ShieldCheck, Users, X } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
+import { Building2, KeyRound, BadgeCheck, Layers, LogOut, Menu, ShieldCheck, Users, Wallet } from 'lucide-react';
+import { Button } from '@/shared/ui/primitives/button';
+import { SidePanel } from '@/shared/ui/kit';
+import { Brand, NavList } from '@/shared/ui/layout/DashboardSidebar';
 import { logoutUserAction } from '@/features/auth/state/authAction';
+import { getCompanySummaryApi } from '../api/platform.api';
+import { getPaymentSummaryApi } from '../subscriptions/api/subscriptions.api';
 
-// The admin sections. `match` decides when an item is the current page.
+// The admin sections, in the shape NavList reads. `match` decides when an item is the current page.
 const SECTIONS = [
     {
         name: 'platform',
         items: [
-            { href: '/rootAdmin', label: 'Companies', icon: Building2, match: /^\/rootAdmin(\/companies.*)?$/ },
-            { href: '/rootAdmin/users', label: 'Users', icon: Users, match: /^\/rootAdmin\/users/ },
-            { href: '/rootAdmin/admins', label: 'Platform admins', icon: ShieldCheck, match: /^\/rootAdmin\/admins/ },
+            { link: '/rootAdmin', name: 'Companies', icon: Building2, ready: true, match: /^\/rootAdmin(\/companies.*)?$/ },
+            { link: '/rootAdmin/plans', name: 'Plans', icon: Layers, ready: true, match: /^\/rootAdmin\/plans/ },
+            { link: '/rootAdmin/payments', name: 'Payments', icon: Wallet, ready: true, match: /^\/rootAdmin\/payments/ },
+            { link: '/rootAdmin/subscriptions', name: 'Subscriptions', icon: BadgeCheck, ready: true, match: /^\/rootAdmin\/subscriptions/ },
+            { link: '/rootAdmin/users', name: 'Users', icon: Users, ready: true, match: /^\/rootAdmin\/users/ },
+            { link: '/rootAdmin/admins', name: 'Platform admins', icon: ShieldCheck, ready: true, match: /^\/rootAdmin\/admins/ },
         ],
     },
     {
         name: 'account',
-        items: [{ href: '/change-password', label: 'Change password', icon: KeyRound, match: /^\/change-password/ }],
+        items: [{ link: '/change-password', name: 'Change password', icon: KeyRound, ready: true, match: /^\/change-password/ }],
     },
 ];
 
-function Brand() {
-    return (
-        <Link href="/rootAdmin" className="flex items-center gap-3">
-            <Image src="/icon.png" alt="" width={18} height={18} />
-            <span className="font-sans text-[15px] font-bold uppercase tracking-wider text-[#e5e2e1]">
-                EnrouteLogtek
-                <span className="ml-1 rounded-[2px] border border-[#353534] bg-[#1c1b1b] px-1.5 py-0.5 font-mono text-[9px] text-primary">
-                    platform
-                </span>
-            </span>
-        </Link>
-    );
+// Nav item link -> how many things wait there (companies to review, payments to check).
+const waitingCounts = async () => {
+    const data = (response) => response.data?.data ?? {};
+    const [companies, payments] = await Promise.all([getCompanySummaryApi().then(data), getPaymentSummaryApi().then(data)]);
+    return { '/rootAdmin': companies.pending ?? 0, '/rootAdmin/payments': payments.submitted ?? 0 };
+};
+
+/** Re-reads the waiting counts on every page change, so a decision clears its badge. A failed read shows no badge. */
+function useWaitingCounts() {
+    const pathname = usePathname();
+    const [counts, setCounts] = useState({});
+    useEffect(() => {
+        let live = true;
+        waitingCounts().then((next) => live && setCounts(next), () => {});
+        return () => {
+            live = false;
+        };
+    }, [pathname]);
+    return counts;
 }
 
-/** Frame for the platform admin area: a side panel with the admin sections, who is signed in, sign out. */
+/** Frame for the platform admin area: the same sidebar look as the company dashboards, who is signed in, sign out. */
 export default function AdminShell({ children }) {
-    const pathname = usePathname();
     const router = useRouter();
     const dispatch = useDispatch();
     const { user } = useSelector((state) => state.auth);
-    const [isOpen, setIsOpen] = useState(false);
+    const [navOpen, setNavOpen] = useState(false);
     const [signingOut, setSigningOut] = useState(false);
+    const counts = useWaitingCounts();
+    const sections = SECTIONS.map((section) => ({ ...section, items: section.items.map((item) => ({ ...item, count: counts[item.link] })) }));
 
     const onSignOut = async () => {
         setSigningOut(true);
@@ -60,101 +74,42 @@ export default function AdminShell({ children }) {
         }
     };
 
-    return (
-        <div className="flex min-h-screen bg-background text-foreground">
-            {/* Mobile top bar */}
-            <div className="fixed inset-x-0 top-0 z-50 flex h-[60px] items-center justify-between border-b border-[#222222] bg-black px-4 lg:hidden">
-                <Brand />
-                <button
-                    type="button"
-                    onClick={() => setIsOpen((open) => !open)}
-                    aria-label={isOpen ? 'Close navigation' : 'Open navigation'}
-                    aria-expanded={isOpen}
-                    className="rounded-[4px] border border-[#222222] bg-[#111111] p-2 text-[#e5e2e1] transition-colors hover:text-primary"
-                >
-                    {isOpen ? <X size={20} /> : <Menu size={20} />}
-                </button>
+    const account = (
+        <div className="flex flex-col gap-3">
+            <div className="min-w-0 px-3">
+                <p className="truncate text-[13px] text-[var(--ds-on-surface)]">{user?.name}</p>
+                <p className="truncate text-[12px] text-[var(--ds-on-surface-muted)]">Platform admin &middot; {user?.email}</p>
             </div>
-            {isOpen && (
-                <div
-                    onClick={() => setIsOpen(false)}
-                    className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
-                />
-            )}
+            <Button variant="secondary" onClick={onSignOut} disabled={signingOut} aria-busy={signingOut}>
+                <LogOut /> {signingOut ? 'Signing out...' : 'Sign out'}
+            </Button>
+        </div>
+    );
 
-            <aside
-                className={cn(
-                    'fixed left-0 top-0 z-50 flex h-screen w-[260px] flex-col border-r border-[#222222] bg-black p-5 transition-transform duration-300 lg:sticky lg:translate-x-0',
-                    isOpen ? 'translate-x-0' : '-translate-x-full',
-                )}
-            >
-                <div className="mb-8 px-2">
+    return (
+        <div className="flex min-h-screen bg-[var(--ds-color-background)] text-[var(--ds-on-surface)]">
+            <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col gap-8 overflow-y-auto bg-[var(--ds-surface-container-low)] px-4 py-6 lg:flex">
+                <Link href="/rootAdmin" className="px-3" aria-label="EnrouteLogtek platform">
+                    <Brand />
+                </Link>
+                <NavList sections={sections} />
+                <div className="mt-auto">{account}</div>
+            </aside>
+            <SidePanel open={navOpen} onOpenChange={setNavOpen} side="left" size="sm" title={<Brand />}>
+                <div className="flex h-full flex-col gap-8">
+                    <NavList sections={sections} onNavigate={() => setNavOpen(false)} />
+                    <div className="mt-auto">{account}</div>
+                </div>
+            </SidePanel>
+
+            <main className="min-w-0 flex-1">
+                <div className="flex h-14 items-center gap-3 px-4 lg:hidden">
+                    <Button variant="ghost" size="icon" aria-label="Open navigation" onClick={() => setNavOpen(true)}>
+                        <Menu />
+                    </Button>
                     <Brand />
                 </div>
-
-                <nav aria-label="Admin" className="flex flex-1 flex-col gap-6">
-                    {SECTIONS.map((section) => (
-                        <div key={section.name} className="flex flex-col gap-1.5">
-                            <div className="mb-1 flex items-center px-2">
-                                <h3 className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[#525B7A]">
-                                    {section.name}
-                                </h3>
-                                <div className="ml-3 h-px flex-1 bg-[#1c1b1b]" />
-                            </div>
-                            <ul className="flex flex-col gap-0.5">
-                                {section.items.map((item) => {
-                                    const active = item.match.test(pathname);
-                                    const Icon = item.icon;
-                                    return (
-                                        <li key={item.href}>
-                                            <Link
-                                                href={item.href}
-                                                aria-current={active ? 'page' : undefined}
-                                                onClick={() => setIsOpen(false)}
-                                                className={cn(
-                                                    'group relative flex items-center gap-3 overflow-hidden rounded-[4px] border px-3 py-2 text-[14px] transition-all',
-                                                    active
-                                                        ? 'border-[#222222] bg-[#111111] font-semibold text-[#e5e2e1]'
-                                                        : 'border-transparent text-[#c6c6c7] hover:border-[#222222] hover:bg-[#111111] hover:text-[#e5e2e1]',
-                                                )}
-                                            >
-                                                <span
-                                                    className={cn(
-                                                        'absolute left-0 top-1/2 w-[2px] -translate-y-1/2 bg-primary transition-all',
-                                                        active ? 'h-1/2' : 'h-0 group-hover:h-1/2',
-                                                    )}
-                                                />
-                                                <Icon
-                                                    size={16}
-                                                    className={active ? 'text-primary' : 'text-[#525B7A] group-hover:text-primary'}
-                                                />
-                                                <span className="tracking-tight">{item.label}</span>
-                                            </Link>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </div>
-                    ))}
-                </nav>
-
-                <div className="mt-6 border-t border-[#1c1b1b] pt-4">
-                    <p className="truncate px-2 text-[13px] text-foreground">{user?.name}</p>
-                    <p className="truncate px-2 text-[11px] text-muted-foreground">Platform admin · {user?.email}</p>
-                    <button
-                        type="button"
-                        onClick={onSignOut}
-                        disabled={signingOut}
-                        aria-busy={signingOut}
-                        className="mt-3 flex w-full items-center justify-center gap-2 rounded-[4px] border border-border bg-card px-3 py-1.5 text-[13px] text-[#c6c6c7] transition-colors hover:text-foreground disabled:opacity-60"
-                    >
-                        <LogOut size={14} /> {signingOut ? 'Signing out…' : 'Sign out'}
-                    </button>
-                </div>
-            </aside>
-
-            <main className="min-w-0 flex-1 pt-[60px] lg:pt-0">
-                <div className="mx-auto w-full max-w-5xl px-4 py-6 lg:px-8">{children}</div>
+                <div className="mx-auto w-full max-w-7xl px-4 py-6 lg:px-8">{children}</div>
             </main>
         </div>
     );

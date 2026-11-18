@@ -8,12 +8,21 @@
 export const PERMISSIONS = Object.freeze({
     LOADS_MANAGE: 'loads.manage',
     LOADS_AWARD: 'loads.award',
+    RFQS_MANAGE: 'rfqs.manage',
+    CONTRACTS_MANAGE: 'contracts.manage',
+    QUOTES_SUBMIT: 'quotes.submit',
+    CONTRACTS_RESPOND: 'contracts.respond',
     BIDS_SUBMIT: 'bids.submit',
     AWARDS_RESPOND: 'awards.respond',
     TRIPS_ASSIGN: 'trips.assign',
+    TRIPS_UPDATE: 'trips.update',
+    FLEET_MANAGE: 'fleet.manage',
     NETWORK_MANAGE: 'network.manage',
     TEAM_MANAGE: 'team.manage',
     ROLES_MANAGE: 'roles.manage',
+    BILLING_MANAGE: 'billing.manage',
+    ALLOCATIONS_MANAGE: 'allocations.manage',
+    OFFERS_RESPOND: 'offers.respond',
 });
 
 const ALL_TYPES = ['customer', 'transporter', 'broker', 'fleet_owner'];
@@ -38,6 +47,20 @@ export const PERMISSION_CATALOGUE = Object.freeze([
         companyTypes: ['customer'],
     },
     {
+        key: PERMISSIONS.RFQS_MANAGE,
+        area: 'Contracts',
+        label: 'Run RFQs',
+        description: 'Create, import, publish, extend and cancel RFQs, and award lanes.',
+        companyTypes: ['customer'],
+    },
+    {
+        key: PERMISSIONS.CONTRACTS_MANAGE,
+        area: 'Contracts',
+        label: 'Manage contracts',
+        description: 'Propose or answer amendments, cancel contracts and place indents.',
+        companyTypes: ['customer'],
+    },
+    {
         key: PERMISSIONS.BIDS_SUBMIT,
         area: 'Bids',
         label: 'Place bids',
@@ -52,11 +75,53 @@ export const PERMISSION_CATALOGUE = Object.freeze([
         companyTypes: ['transporter'],
     },
     {
+        key: PERMISSIONS.QUOTES_SUBMIT,
+        area: 'Contracts',
+        label: 'Quote RFQs',
+        description: 'Submit and revise lane quotations on RFQs your company is invited to.',
+        companyTypes: ['transporter'],
+    },
+    {
+        key: PERMISSIONS.CONTRACTS_RESPOND,
+        area: 'Contracts',
+        label: 'Run contracts',
+        description: 'Accept or decline lane awards, answer amendments, cancel contracts and acknowledge indents.',
+        companyTypes: ['transporter'],
+    },
+    {
+        key: PERMISSIONS.ALLOCATIONS_MANAGE,
+        area: 'Allocation',
+        label: 'Allocate trucks',
+        description: 'Offer accepted work to connected fleet owners, brokers or transporters, withdraw offers and reallocate.',
+        companyTypes: ['transporter', 'broker'],
+    },
+    {
+        key: PERMISSIONS.OFFERS_RESPOND,
+        area: 'Allocation',
+        label: 'Accept or decline offered work',
+        description: 'Answer when another company offers your company trucks of a load.',
+        companyTypes: ['fleet_owner', 'broker'],
+    },
+    {
         key: PERMISSIONS.TRIPS_ASSIGN,
         area: 'Trips',
         label: 'Assign truck and driver',
         description: 'Enter the vehicle and driver for an accepted load.',
         companyTypes: ['transporter'],
+    },
+    {
+        key: PERMISSIONS.TRIPS_UPDATE,
+        area: 'Trips',
+        label: 'Update trips',
+        description: 'Move a trip through its stages, add documents, charges and delay notes.',
+        companyTypes: ['transporter', 'fleet_owner', 'broker'],
+    },
+    {
+        key: PERMISSIONS.FLEET_MANAGE,
+        area: 'Fleet',
+        label: 'Manage vehicles and drivers',
+        description: 'Add, edit and retire vehicles and drivers, and upload their documents.',
+        companyTypes: ['transporter', 'fleet_owner'],
     },
     {
         key: PERMISSIONS.NETWORK_MANAGE,
@@ -77,6 +142,13 @@ export const PERMISSION_CATALOGUE = Object.freeze([
         area: 'Administration',
         label: 'Manage roles',
         description: 'Create, edit and delete roles and choose their permissions.',
+        companyTypes: ALL_TYPES,
+    },
+    {
+        key: PERMISSIONS.BILLING_MANAGE,
+        area: 'Administration',
+        label: 'Manage billing',
+        description: 'Choose a plan, submit payment proof, renew and buy extra seats.',
         companyTypes: ALL_TYPES,
     },
 ]);
@@ -103,7 +175,21 @@ export function catalogueFor(companyType) {
     );
 }
 
-const { LOADS_MANAGE, LOADS_AWARD, BIDS_SUBMIT, AWARDS_RESPOND, TRIPS_ASSIGN } = PERMISSIONS;
+const {
+    LOADS_MANAGE,
+    LOADS_AWARD,
+    BIDS_SUBMIT,
+    AWARDS_RESPOND,
+    TRIPS_ASSIGN,
+    TRIPS_UPDATE,
+    FLEET_MANAGE,
+    RFQS_MANAGE,
+    CONTRACTS_MANAGE,
+    QUOTES_SUBMIT,
+    CONTRACTS_RESPOND,
+    ALLOCATIONS_MANAGE,
+    OFFERS_RESPOND,
+} = PERMISSIONS;
 
 /**
  * The roles a new company starts with. They reproduce the old fixed roles exactly, so moving to
@@ -132,14 +218,26 @@ export const PRESET_ROLES = Object.freeze([
         legacyRole: 'bid_manager',
         isOwner: false,
         description: 'Runs loads and bids day to day.',
-        permissions: [LOADS_MANAGE, LOADS_AWARD, BIDS_SUBMIT, AWARDS_RESPOND, TRIPS_ASSIGN],
+        permissions: [
+            LOADS_MANAGE,
+            LOADS_AWARD,
+            BIDS_SUBMIT,
+            AWARDS_RESPOND,
+            TRIPS_ASSIGN,
+            RFQS_MANAGE,
+            CONTRACTS_MANAGE,
+            QUOTES_SUBMIT,
+            CONTRACTS_RESPOND,
+            ALLOCATIONS_MANAGE,
+            OFFERS_RESPOND,
+        ],
     },
     {
         name: 'Trip manager',
         legacyRole: 'trip_manager',
         isOwner: false,
-        description: 'Follows trips. Read-only until you add permissions.',
-        permissions: [],
+        description: 'Follows and updates trips and keeps the fleet list.',
+        permissions: [TRIPS_UPDATE, FLEET_MANAGE],
     },
     {
         name: 'Viewer',
@@ -152,8 +250,8 @@ export const PRESET_ROLES = Object.freeze([
         name: 'Accounts',
         legacyRole: 'accounts',
         isOwner: false,
-        description: 'Billing and finance. Read-only until you add permissions.',
-        permissions: [],
+        description: 'Billing and finance: plans, payments, renewals and extra seats.',
+        permissions: [PERMISSIONS.BILLING_MANAGE],
     },
 ]);
 

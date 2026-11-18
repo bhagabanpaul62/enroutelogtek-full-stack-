@@ -3,7 +3,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Input } from '@/shared/ui/primitives/input';
-import { Label } from '@/shared/ui/primitives/label';
+import { ModalField, ModalSection } from '@/shared/ui/kit';
 import {
     Select,
     SelectContent,
@@ -12,30 +12,24 @@ import {
     SelectValue,
 } from '@/shared/ui/primitives/select';
 
-// The shared primitives are sized for toolbars (h-7); forms get a taller control.
-const CONTROL = 'h-9 px-3 text-sm md:text-sm';
+// The kit's field look: tonal fill, no border, 40px tall.
+const CONTROL = 'h-10 rounded-xl border-0 bg-white/[0.05] px-3 text-sm md:text-sm';
 
-/** Label, control, then either the error or the hint, in one column. */
+/** Label, control, then either the error or the hint: the kit's ModalField, so wizard and dialogs match. */
 export function FormField({ label, htmlFor, hint, error, required, className, children }) {
     return (
-        <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
-            <Label htmlFor={htmlFor} className="text-[12px] text-[#c6c6c7]">
-                {label}
-                {required && (
-                    <span aria-hidden="true" className="-ml-1 text-primary">
-                        *
-                    </span>
-                )}
-            </Label>
+        <ModalField label={label} htmlFor={htmlFor} hint={hint} error={error} required={required} className={cn('min-w-0', className)}>
             {children}
-            {error ? (
-                <p role="alert" className="text-[12px] text-destructive">
-                    {error}
-                </p>
-            ) : hint ? (
-                <p className="text-[12px] text-muted-foreground">{hint}</p>
-            ) : null}
-        </div>
+        </ModalField>
+    );
+}
+
+/** A titled group of fields on a panel: one decision area per step. */
+export function FieldGroup({ title, children }) {
+    return (
+        <section className="rounded-3xl bg-[var(--ds-surface-container-low)] p-5">
+            <ModalSection title={title}>{children}</ModalSection>
+        </section>
     );
 }
 
@@ -50,7 +44,7 @@ export function TextArea({ className, invalid, ...props }) {
         <textarea
             aria-invalid={invalid || undefined}
             className={cn(
-                'w-full resize-y rounded-md border border-input bg-input/20 px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 aria-invalid:border-destructive dark:bg-input/30',
+                'w-full resize-y rounded-xl border-0 bg-white/[0.05] px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/30 aria-invalid:ring-2 aria-invalid:ring-destructive/60',
                 className,
             )}
             {...props}
@@ -68,7 +62,7 @@ export function SelectField({ id, value, onValueChange, items, placeholder, inva
             <SelectTrigger
                 id={id}
                 aria-invalid={invalid || undefined}
-                className="w-full px-3 text-sm data-[size=default]:h-9"
+                className="w-full rounded-xl border-0 bg-white/[0.05] px-3 text-sm data-[size=default]:h-10"
             >
                 <SelectValue placeholder={placeholder} />
             </SelectTrigger>
@@ -84,13 +78,13 @@ export function SelectField({ id, value, onValueChange, items, placeholder, inva
     );
 }
 
-/** A native checkbox with its label (and an optional second line) in a bordered row. */
+/** A native checkbox with its label (and an optional second line) on a tonal row; the picked row gets the accent tint. */
 export function CheckboxRow({ id, label, description, checked, onChange, disabled, className }) {
     return (
         <label
             htmlFor={id}
             className={cn(
-                'flex cursor-pointer items-start gap-2.5 rounded-[4px] border border-border bg-card px-3 py-2 text-[13px] text-foreground transition-colors has-checked:border-primary/50',
+                'flex cursor-pointer items-start gap-2.5 rounded-xl bg-white/[0.04] px-3 py-2.5 text-[13px] text-foreground transition-colors hover:bg-white/[0.07] has-checked:bg-primary/10',
                 disabled && 'cursor-not-allowed opacity-60',
                 className,
             )}
@@ -105,21 +99,18 @@ export function CheckboxRow({ id, label, description, checked, onChange, disable
             />
             <span className="min-w-0">
                 <span className="block">{label}</span>
-                {description && <span className="block text-[12px] text-muted-foreground">{description}</span>}
+                {description && <span className="block text-xs text-[var(--ds-on-surface-muted)]">{description}</span>}
             </span>
         </label>
     );
 }
 
-/** A red box for a form-level message: a 422 from the server, a refused publish. */
+/** A form-level message: a 422 from the server, a refused publish. Tone is the danger chip, not a bordered box. */
 export function FormAlert({ message, children }) {
     if (!message && !children) return null;
     return (
-        <div
-            role="alert"
-            className="flex gap-2 rounded-[4px] border border-destructive/40 bg-destructive/10 px-3 py-2 text-[13px] text-foreground"
-        >
-            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-destructive" />
+        <div role="alert" className="flex gap-2 rounded-2xl bg-red-400/10 px-4 py-3 text-[13px] text-red-200">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-red-300" aria-hidden />
             <div className="min-w-0">
                 {message && <p>{message}</p>}
                 {children}

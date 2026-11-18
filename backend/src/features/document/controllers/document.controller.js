@@ -1,77 +1,118 @@
 import { asyncHandler } from '#shared/utils/asyncHandler.js';
-import { successResponse, validationErrorResponse } from '#shared/utils/response.js';
+import { successResponse } from '#shared/utils/response.js';
 import { db } from '#shared/db/index.js';
-import { deleteDocumentFromR2, uploadToR2 } from '#shared/services/storage/r2.service.js';
-import { documents } from '#features/document/schemas/documents.Schema.js';
+import { documents, documentType as documentTypeEnum } from '#features/document/schemas/documents.Schema.js';
 import { AppError } from '#shared/utils/AppError.js';
-import { eq } from 'drizzle-orm';
+import { isUuid } from '#features/auth/services/session.service.js';
+import { registrationDocumentProblem } from '#features/auth/registration.rules.js';
+import { documentOwnerProblem, entityShapeProblem, uploadPermissionProblem } from '#features/document/document.rules.js';
+import { assertEntityOwned } from '#features/document/document.entity.js';
+import { storage } from '#features/document/storage.js';
+import { companies, companyDocumentReviews } from '#features/company/schemas/index.js';
+import { REVIEWED_TYPES } from '#features/company/services/document.service.js';
+import { writeBlockFor } from '#features/subscription/services/subscription.service.js';
+import { and, eq } from 'drizzle-orm';
 
+const REVIEW_TRACKED = ['gst', 'pan', 'rc', 'insurance'];
+
+/**
+ * Stores one document for the actor's own company. The user and company come from
+ * req.documentActor (see documentActor middleware); any userId/companyId in the body is ignored.
+ */
 export const uploadDocument = asyncHandler(async (req, res) => {
-    const { userId, companyId, documentType } = req.body;
+    const { userId, companyId, via } = req.documentActor;
+    const { documentType, entityType, entityId } = req.body;
     const file = req.file;
 
-    if (!userId || !companyId || !documentType || !file) {
-        return validationErrorResponse(res, 'All fields required', {
-            userId: !userId ? 'User Id required' : null,
-            companyId: !companyId ? 'Company ID required' : null,
-            documentType: !documentType ? 'Document type required' : null,
-            file: !file ? 'File is required' : null,
-        });
-    }
-    const validTypes = [
-        'gst',
-        'pan',
-        'logo',
-        'rc',
-        'insurance',
-        'paymentProof',
-        'pod',
-        'lr',
-        'indent',
-        'term&condition',
-        'profileImage',
-    ];
-
-    if (!validTypes.includes(documentType)) {
+    if (typeof documentType !== 'string' || !documentTypeEnum.enumValues.includes(documentType)) {
         throw new AppError('Invalid document type', 400);
     }
+    if (!file) throw new AppError('File is required', 400);
+    if (via === 'user') {
+        // Paying is how a lapsed company comes back, so proof stays open; everything else is read-only.
+        if (documentType !== 'paymentProof') {
+            const blocked = await writeBlockFor(companyId);
+            if (blocked) throw blocked;
+        }
+    }
+    if (via === 'registration') {
+        const problem = registrationDocumentProblem('draft', documentType);
+        if (problem) throw AppError.from(problem);
+        if (entityType || entityId) throw new AppError('Registration documents belong to the company only.', 400);
+    } else {
+        const permission = uploadPermissionProblem(req.user, documentType);
+        if (permission) throw AppError.from(permission);
+        const shape = entityShapeProblem(documentType, entityType, entityId);
+        if (shape) throw AppError.from(shape);
+        if (entityType) await assertEntityOwned(companyId, entityType, entityId);
+    }
+    const entity = entityType && via === 'user' ? { entityType, entityId } : {};
 
-    const fileLink = await uploadToR2(file, companyId, documentType);
+    const fileLink = await storage.upload(file, companyId, documentType);
 
     const [newDoc] = await db
         .insert(documents)
-        .values({
-            userId,
-            companyId,
-            documentType,
-            fileUrl: fileLink,
-        })
+        .values({ userId, companyId, documentType, fileUrl: fileLink, ...entity })
         .returning();
+
+    // A signed-in upload is a replacement: GST/PAN wait for platform review. Without this row an
+    // unreviewed newest file would read as approved and skip the review gate.
+    // A vehicle's RC or insurance belongs to the vehicle, not to the company's identity documents.
+    if (via === 'user' && !entityType && REVIEW_TRACKED.includes(documentType)) {
+        const needsReview = REVIEWED_TYPES.includes(documentType);
+        await db.insert(companyDocumentReviews).values({
+            documentId: newDoc.id,
+            companyId,
+            status: needsReview ? 'pending' : 'approved',
+            replacedBy: userId,
+            reviewedAt: needsReview ? null : new Date(),
+        });
+    }
 
     return successResponse(
         res,
-        {
-            documentId: newDoc.id,
-            documentType: newDoc.documentType,
-            fileUrl: newDoc.fileUrl,
-        },
+        { documentId: newDoc.id, documentType: newDoc.documentType, fileUrl: newDoc.fileUrl, entityType: newDoc.entityType, entityId: newDoc.entityId },
         'Document uploaded successfully',
         201,
     );
 });
 
+/** Deletes one of the actor's own company's documents; anything else is "not found". */
 export const deleteDocument = asyncHandler(async (req, res) => {
-    const { documentId } = req.body;
+    const { companyId, via } = req.documentActor;
+    const { documentId } = req.body ?? {};
+    if (via === 'user') {
+        const blocked = await writeBlockFor(companyId);
+        if (blocked) throw blocked;
+    }
+    if (!isUuid(documentId)) throw new AppError('Document id is required', 400);
 
-    console.log('doc id ::', documentId);
-
-    const [doc] = await db.select().from(documents).where(eq(documents.id, documentId)).limit(1);
-    if (!doc) {
-        throw new AppError('document not found', 404);
+    const [doc] = await db
+        .select()
+        .from(documents)
+        .where(and(eq(documents.id, documentId), eq(documents.companyId, companyId)))
+        .limit(1);
+    const problem = documentOwnerProblem(doc, { companyId });
+    if (problem) throw AppError.from(problem);
+    if (via === 'user') {
+        const permission = uploadPermissionProblem(req.user, doc.documentType);
+        if (permission) throw AppError.from(permission);
     }
 
-    await deleteDocumentFromR2(doc.fileUrl);
+    // GST/PAN are identity proofs: once past draft they can only be replaced, not removed.
+    if (REVIEWED_TYPES.includes(doc.documentType)) {
+        const [company] = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
+        if (company?.companyStatus !== 'draft') {
+            throw new AppError('GST and PAN cannot be deleted. Upload a replacement instead.', 403);
+        }
+    }
 
-    await db.delete(documents).where(eq(documents.id, documentId));
+    try {
+        await storage.remove(doc.fileUrl);
+    } catch (error) {
+        console.error('Document delete from storage failed:', error.message);
+        throw new AppError('Could not delete the file. Try again.', 502);
+    }
+    await db.delete(documents).where(eq(documents.id, doc.id));
     return successResponse(res, null, 'Document deleted', 200);
 });

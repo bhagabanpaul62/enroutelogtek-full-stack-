@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+    bigint,
     boolean,
     check,
     date,
@@ -20,6 +21,9 @@ import { users } from '#features/auth/schemas/users.Schema.js';
 import { timestamps } from '#shared/schemas/column.Helper.js';
 import { commodities, vehicleTypes } from './master.Schema.js';
 import { LOAD_KINDS, LOAD_STATUSES, PRICE_BASES } from '../load.constants.js';
+
+const paise = (name) => bigint(name, { mode: 'number' });
+const kg = (name) => numeric(name, { precision: 10, scale: 2, mode: 'number' });
 
 export const loadKind = pgEnum('load_kind', LOAD_KINDS);
 export const loadStatus = pgEnum('load_status', LOAD_STATUSES);
@@ -95,6 +99,39 @@ export const loads = pgTable(
         // (the snapshot), after which this column is only history.
         inviteeCompanyIds: jsonb('invitee_company_ids').notNull().default([]),
 
+        // Wave 2 (AJ-05..13). Money in paise. All nullable: FTL loads ignore the PTL block.
+        pickupPlaceKind: varchar('pickup_place_kind', { length: 10 }), // door | godown
+        dropPlaceKind: varchar('drop_place_kind', { length: 10 }),
+        pickupIsOda: boolean('pickup_is_oda').notNull().default(false),
+        dropIsOda: boolean('drop_is_oda').notNull().default(false),
+        distanceKm: integer('distance_km'),
+        hazmatClass: varchar('hazmat_class', { length: 2 }), // set when 'hazmat' tag chosen
+        unNumber: varchar('un_number', { length: 8 }),
+        declaredValuePaise: paise('declared_value_paise'),
+        invoiceNumber: varchar('invoice_number', { length: 50 }),
+        invoiceDate: date('invoice_date', { mode: 'string' }),
+        // PTL cargo block. packageDims = [{ count, lengthCm, widthCm, heightCm, weightKg? }]
+        packageCount: integer('package_count'),
+        packageDims: jsonb('package_dims').notNull().default([]),
+        actualWeightKg: kg('actual_weight_kg'),
+        volumetricWeightKg: kg('volumetric_weight_kg'),
+        chargeableWeightKg: kg('chargeable_weight_kg'), // max(actual, volumetric, min 50), set by load.rules
+        stackable: boolean('stackable'),
+        handling: varchar('handling', { length: 20 }),
+        // Commercial terms (AJ-12/13). Snapshotted onto the award at acceptance.
+        freeTimeLoadingHours: integer('free_time_loading_hours').notNull().default(24),
+        freeTimeUnloadingHours: integer('free_time_unloading_hours').notNull().default(24),
+        detentionRatePaisePerHour: paise('detention_rate_paise_per_hour').notNull().default(0),
+        labourPayableBy: varchar('labour_payable_by', { length: 12 }).notNull().default('consignor'),
+        freightPayableBy: varchar('freight_payable_by', { length: 12 }).notNull().default('consignor'),
+        tollIncluded: boolean('toll_included').notNull().default(true),
+
+        // Contract loads (Wave 3): set when an acknowledged indent creates this load. Plain uuids
+        // (no FK) because the contract tables import this file; the contract side holds the FK.
+        contractId: uuid('contract_id'),
+        contractLaneId: uuid('contract_lane_id'),
+        contractIndentId: uuid('contract_indent_id'),
+
         // Lifecycle
         publishedAt: timestamp('published_at'),
         closedAt: timestamp('closed_at'),
@@ -111,6 +148,7 @@ export const loads = pgTable(
         // The customer's Loads list: own company, by status, newest first.
         index('loads_customer_idx').on(table.customerCompanyId, table.status, table.createdAt),
         // The clock job: live loads whose window has ended.
+        index('loads_contract_idx').on(table.contractId, table.contractIndentId),
         index('loads_status_closes_idx').on(table.status, table.closesAt),
         check('loads_vehicle_count_positive', sql`${table.vehicleCount} >= 1`),
         check('loads_max_attempts_positive', sql`${table.maxAttempts} >= 1`),

@@ -1,7 +1,7 @@
-import ComingSoon from '@/shared/ui/layout/ComingSoon';
+import RfqsPage from '@/features/rfq/ui/customer/RfqsPage';
 
 export const metadata = { title: 'RFQs' };
 
 export default function Page() {
-    return <ComingSoon companyType="customer" slug="rfqs" />;
+    return <RfqsPage />;
 }

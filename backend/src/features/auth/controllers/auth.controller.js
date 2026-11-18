@@ -3,7 +3,7 @@ import { asyncHandler } from '#shared/utils/asyncHandler.js';
 import { db } from '#shared/db/index.js';
 import bcrypt from 'bcrypt';
 import { users, otpVerification, registrationSession } from '#features/auth/schemas/index.js';
-import { REVOKE_REASON } from '#features/auth/login.rules.js';
+import { REVOKE_REASON, newPasswordProblem } from '#features/auth/login.rules.js';
 import { endUserSessions } from '#features/auth/services/session.service.js';
 import { sendOtpEmail, sendWelcomeEmail } from '#shared/services/email/email.service.js';
 import crypto from 'crypto';
@@ -13,80 +13,90 @@ import { companies, branch, companyType as companyTypeEnum } from '#features/com
 import { documents } from '#features/document/schemas/index.js';
 import { generateEnrouteId } from '#shared/utils/genarateEnrouteId.js';
 import { createPresetRoles } from '#features/team/services/role.service.js';
-import { log } from 'console';
+import {
+    REGISTRATION_DOCUMENT_TTL_MS,
+    REGISTRATION_SESSION_TTL_MS,
+    REG_OTP_TTL_MS,
+    cleanEmail,
+    createOtpLimiter,
+    otpFormatProblem,
+    registrationSessionProblem,
+    submitProblem,
+} from '#features/auth/registration.rules.js';
+import { findRegistrationApplicant } from '#features/auth/services/registrationApplicant.service.js';
+import { isUuid } from '#features/auth/services/session.service.js';
 
-//send OTP
+const limiter = createOtpLimiter();
+const sessionCookie = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' };
+const failWith = (problem) => {
+    if (problem) throw AppError.from(problem);
+};
+
+//send OTP (registration and password reset share this code)
 export const sendOtp = asyncHandler(async (req, res) => {
-    const { email } = req.body;
-
+    const email = cleanEmail(req.body?.email);
     if (!email) {
-        return validationErrorResponse(res, 'Email id is require', {
-            email: 'email id is required',
-        });
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
         return validationErrorResponse(res, 'Validation failed', {
-            email: 'Invalid email format',
+            email: 'Enter a valid email address',
         });
     }
+    failWith(limiter.sendProblem(email, Date.now()));
 
     const otp = crypto.randomInt(100000, 999999).toString();
+    const expiresAt = new Date(Date.now() + REG_OTP_TTL_MS);
 
-    await db.delete(otpVerification).where(eq(otpVerification.email, email));
-
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    await db.insert(otpVerification).values({
-        email,
-        otp,
-        expiresAt,
-        isUsed: false,
+    // One live code and one live session per address.
+    const session = await db.transaction(async (tx) => {
+        await tx.delete(otpVerification).where(eq(otpVerification.email, email));
+        await tx.delete(registrationSession).where(eq(registrationSession.email, email));
+        await tx.insert(otpVerification).values({ email, otp, expiresAt, isUsed: false });
+        const [row] = await tx
+            .insert(registrationSession)
+            .values({ email, step: 'OTP_SENT', expiresAt })
+            .returning();
+        return row;
     });
-
-    const [session] = await db
-        .insert(registrationSession)
-        .values({
-            email: email,
-            step: 'OTP_SENT',
-            expiresAt: expiresAt,
-        })
-        .returning();
 
     try {
         await sendOtpEmail(email, otp);
     } catch (error) {
         console.error('Email send failed:', error.message);
+        await db.delete(otpVerification).where(eq(otpVerification.email, email));
+        await db.delete(registrationSession).where(eq(registrationSession.id, session.id));
+        throw new AppError(
+            'We could not send the verification email. Check the address and try again in a few minutes.',
+            502,
+        );
     }
+    limiter.recordSend(email, Date.now());
 
-    res.cookie('registration_Session_Id', session.id, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 10 * 60 * 1000,
-    });
-
-    res.cookie('otp_email', email, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 30 * 60 * 1000,
-    });
+    res.cookie('registration_Session_Id', session.id, { ...sessionCookie, maxAge: REG_OTP_TTL_MS });
+    res.cookie('otp_email', email, { ...sessionCookie, maxAge: 30 * 60 * 1000 });
     return successResponse(res, null, 'OTP sent to email', 200);
 });
 
 //verify the OTP
 export const verifyOtp = asyncHandler(async (req, res) => {
-    const { otp } = req.body;
-    const email = req.cookies.otp_email;
+    const email = cleanEmail(req.cookies.otp_email);
     const registrationSessionId = req.cookies.registration_Session_Id;
+    const otp = req.body?.otp;
 
-    if (!email || !otp) {
-        return validationErrorResponse(res, 'email id or otp is not found', {
-            error: 'give email id or otp properly',
-        });
+    if (!email || !isUuid(registrationSessionId)) {
+        throw new AppError('Start again: ask for a new code.', 400);
+    }
+    failWith(otpFormatProblem(otp));
+    failWith(limiter.guessProblem(email));
+
+    const [session] = await db
+        .select()
+        .from(registrationSession)
+        .where(and(eq(registrationSession.id, registrationSessionId), eq(registrationSession.email, email)))
+        .limit(1);
+    if (!session || session.expiresAt <= new Date()) {
+        throw new AppError('Your code expired. Ask for a new code.', 400);
     }
 
-    const data = await db
+    const [row] = await db
         .select()
         .from(otpVerification)
         .where(
@@ -97,57 +107,42 @@ export const verifyOtp = asyncHandler(async (req, res) => {
             ),
         )
         .limit(1);
+    if (!row) throw new AppError('OTP expired or invalid. Ask for a new code.', 400);
 
-    if (data.length === 0) {
-        throw new AppError('OTP expired or invalid', 400);
+    if (row.otp !== otp) {
+        const outcome = limiter.recordWrong(email);
+        if (outcome.exhausted) await db.delete(otpVerification).where(eq(otpVerification.id, row.id));
+        throw new AppError(outcome.message, outcome.status);
     }
 
-    if (data[0].otp !== otp) {
-        throw new AppError('Invalid OTP', 400);
-    }
-
-    await db
+    // Only one request can flip the code to used.
+    const used = await db
         .update(otpVerification)
         .set({ isUsed: true })
-        .where(eq(otpVerification.id, data[0].id));
+        .where(and(eq(otpVerification.id, row.id), eq(otpVerification.isUsed, false)))
+        .returning({ id: otpVerification.id });
+    if (used.length === 0) throw new AppError('OTP expired or invalid. Ask for a new code.', 400);
+    limiter.clearGuesses(email);
 
     await db
         .update(registrationSession)
-        .set({
-            step: 'OTP_VERIFIED',
-            expiresAt: new Date(Date.now() + 30 * 60 * 1000),
-        })
-        .where(
-            and(
-                eq(registrationSession.id, registrationSessionId),
-                eq(registrationSession.email, email),
-            ),
-        );
+        .set({ step: 'OTP_VERIFIED', expiresAt: new Date(Date.now() + REGISTRATION_SESSION_TTL_MS) })
+        .where(eq(registrationSession.id, session.id));
 
     const ExistingUser = await db.select().from(users).where(eq(users.email, email)).limit(1);
     const userExists = ExistingUser.length > 0;
 
-    res.cookie('registration_Session_Id', registrationSessionId, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 10 * 60 * 1000,
-    });
-    res.cookie('otp_email', email, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 30 * 60 * 1000,
-    });
+    res.cookie('registration_Session_Id', session.id, { ...sessionCookie, maxAge: REGISTRATION_SESSION_TTL_MS });
+    res.cookie('otp_email', email, { ...sessionCookie, sameSite: 'lax', maxAge: 30 * 60 * 1000 });
 
     return successResponse(res, { userExists }, 'OTP verification successful', 200);
 });
 
 //register user
 export const register = asyncHandler(async (req, res) => {
+    const body = req.body ?? {};
     const {
         name,
-        email,
         password,
         phone,
         companyName,
@@ -162,41 +157,25 @@ export const register = asyncHandler(async (req, res) => {
         city,
         state,
         pinCode,
-    } = req.body;
+    } = body;
+    const email = cleanEmail(body.email);
 
-    if (
-        !name ||
-        !email ||
-        !password ||
-        !phone ||
-        !companyName ||
-        !companyType ||
-        !companyEmailId ||
-        !companyPhoneNumber ||
-        !branchName ||
-        !branchCode ||
-        !address ||
-        !city ||
-        !state ||
-        !pinCode
-    ) {
+    const required = {
+        name, phone, companyName, companyType, companyEmailId, companyPhoneNumber,
+        branchName, branchCode, address, city, state, pinCode,
+    };
+    // Every field must be text (a number or object would reach the database as something else).
+    const bad = Object.entries(required).filter(
+        ([, v]) => typeof v !== 'string' || v.trim() === '' || v.length > 255,
+    );
+    if (!email || bad.length > 0 || typeof password !== 'string' || password === '') {
         return validationErrorResponse(res, 'All fields are required', {
-            name: name ? null : 'Name is required',
-            email: email ? null : 'Email is required',
-            password: password ? null : 'Password is required',
-            phone: phone ? null : 'Phone is required',
-            companyName: companyName ? null : 'Company Name is required',
-            companyType: companyType ? null : 'Company Type is required',
-            companyEmailId: companyEmailId ? null : 'Company Email ID is required',
-            companyPhoneNumber: companyPhoneNumber ? null : 'Company Phone Number is required',
-            branchName: branchName ? null : 'Branch name is required',
-            branchCode: branchCode ? null : 'Branch code is required',
-            address: address ? null : 'address is requried',
-            city: city ? null : 'City is required',
-            state: state ? null : 'State is required',
-            pinCode: pinCode ? null : 'Pin Code is required',
+            email: email ? null : 'A valid email is required',
+            password: typeof password === 'string' && password ? null : 'Password is required',
+            ...Object.fromEntries(Object.keys(required).map((k) => [k, bad.some(([b]) => b === k) ? `${k} is required` : null])),
         });
     }
+    failWith(newPasswordProblem(password));
 
     if (!companyTypeEnum.enumValues.includes(companyType)) {
         return validationErrorResponse(res, 'Invalid company type', {
@@ -205,20 +184,18 @@ export const register = asyncHandler(async (req, res) => {
     }
 
     //check gst length and panNumber length
-    if (gstNumber && gstNumber.length > 15)
-        throw new AppError('GST number must be 15 characters', 400);
-    if (panNumber && panNumber.length > 10)
-        throw new AppError('PAN number must me 10 characters', 400);
-
-    // Check email is verified via OTP
-    const [checkEmail] = await db
-        .select()
-        .from(otpVerification)
-        .where(eq(otpVerification.email, email))
-        .limit(1);
-    if (!checkEmail || checkEmail.isUsed === false) {
-        throw new AppError('Email is not verified', 403);
+    for (const [value, label, max] of [[gstNumber, 'GST', 15], [panNumber, 'PAN', 10]]) {
+        if (value !== undefined && value !== null && (typeof value !== 'string' || value.length > max)) {
+            throw new AppError(`${label} number must be at most ${max} characters`, 400);
+        }
     }
+
+    // The registration session proves this browser verified this email.
+    const sessionId = req.cookies.registration_Session_Id;
+    const [verified] = isUuid(sessionId)
+        ? await db.select().from(registrationSession).where(eq(registrationSession.id, sessionId)).limit(1)
+        : [];
+    failWith(registrationSessionProblem(verified, email, new Date()));
 
     //check phone number duplicate
     const checkPhone = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
@@ -326,10 +303,19 @@ export const register = asyncHandler(async (req, res) => {
         // Update user with branchId
         await tx.update(users).set({ branchId: newBranch.id }).where(eq(users.id, newUser.id));
         await tx.delete(otpVerification).where(eq(otpVerification.email, email));
+        // Keep the session for the document step, with more time.
+        await tx
+            .update(registrationSession)
+            .set({ expiresAt: new Date(Date.now() + REGISTRATION_DOCUMENT_TTL_MS) })
+            .where(eq(registrationSession.id, verified.id));
 
         return { newCompany, newUser, newBranch };
     });
 
+    res.cookie('registration_Session_Id', verified.id, {
+        ...sessionCookie,
+        maxAge: REGISTRATION_DOCUMENT_TTL_MS,
+    });
     return successResponse(
         res,
         {
@@ -347,7 +333,14 @@ export const register = asyncHandler(async (req, res) => {
 
 // Submit registration (after documents uploaded)
 export const submitRegistration = asyncHandler(async (req, res) => {
-    const { companyId } = req.body;
+    const applicant = await findRegistrationApplicant(req.cookies);
+    if (!applicant.companyId) throw new AppError('Finish registering before you submit.', 403);
+    // A company id in the body is only a cross-check; the company is the applicant's own.
+    const suppliedId = req.body?.companyId;
+    if (suppliedId !== undefined && suppliedId !== applicant.companyId) {
+        throw new AppError('You can only submit your own application.', 403);
+    }
+    const companyId = applicant.companyId;
 
     const requiredDocsByType = {
         customer: ['gst', 'pan'],
@@ -360,6 +353,7 @@ export const submitRegistration = asyncHandler(async (req, res) => {
     if (!company) {
         throw new AppError('Company not found', 404);
     }
+    failWith(submitProblem(company.companyStatus));
 
     const docs = await db.select().from(documents).where(eq(documents.companyId, companyId));
     const uploadTypes = docs.map((item) => item.documentType);
@@ -371,25 +365,22 @@ export const submitRegistration = asyncHandler(async (req, res) => {
     }
 
     const logoDoc = docs.find((docs) => docs.documentType == 'logo');
-
-    await db
-        .update(companies)
-        .set({
-            companyStatus: 'pending',
-            logoUrl: logoDoc?.fileUrl,
-        })
-        .where(eq(companies.id, companyId));
-
     const profilePhotoDoc = docs.find((docs) => docs.documentType === 'profileImage');
 
-    await db
-        .update(users)
-        .set({
-            profilePhoto: profilePhotoDoc?.fileUrl,
-        })
-        .where(eq(users.companyId, companyId));
+    // draft -> pending exactly once, even if two submits race.
+    const moved = await db
+        .update(companies)
+        .set({ companyStatus: 'pending', logoUrl: logoDoc?.fileUrl })
+        .where(and(eq(companies.id, companyId), eq(companies.companyStatus, 'draft')))
+        .returning({ id: companies.id });
+    if (moved.length === 0) failWith(submitProblem('pending'));
 
-    const [user] = await db.select().from(users).where(eq(users.companyId, companyId)).limit(1);
+    // drizzle throws on an empty .set(), so skip when there is no profile photo
+    if (profilePhotoDoc?.fileUrl) {
+        await db.update(users).set({ profilePhoto: profilePhotoDoc.fileUrl }).where(eq(users.id, applicant.userId));
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.id, applicant.userId)).limit(1);
 
     try {
         await sendWelcomeEmail(user.email, user.name, company.companyName);
@@ -402,19 +393,18 @@ export const submitRegistration = asyncHandler(async (req, res) => {
 
 //forget password
 export const forgetPassword = asyncHandler(async (req, res) => {
-    //get email , otp , new password from req
-    const { otp, newPassword } = req.body;
-    const email = req.cookies.otp_email;
+    const { otp, newPassword } = req.body ?? {};
+    const email = cleanEmail(req.cookies.otp_email);
 
-    //check validation email ,otp , new password
-    if (!email || !otp || !newPassword)
-        return validationErrorResponse(res, 'required email password and otp ', {
-            email: !email ? 'email is required ' : null,
-            otp: !otp ? 'otp is required' : null,
-            newPassword: !newPassword ? 'newPassword is required' : null,
+    if (!email) {
+        return validationErrorResponse(res, 'Ask for a new code first', {
+            email: 'email is required ',
         });
-    //verify the otp
-    //get otp from db
+    }
+    failWith(otpFormatProblem(otp));
+    failWith(newPasswordProblem(newPassword));
+    failWith(limiter.guessProblem(email));
+
     const [dbOtp] = await db
         .select()
         .from(otpVerification)
@@ -428,20 +418,23 @@ export const forgetPassword = asyncHandler(async (req, res) => {
         .limit(1);
 
     if (!dbOtp) throw new AppError('otp is expired', 400);
-    if (dbOtp.otp !== otp) throw new AppError('otp is invalid', 400);
-    //update otp is used
-    await db
+    if (dbOtp.otp !== otp) {
+        const outcome = limiter.recordWrong(email);
+        if (outcome.exhausted) await db.delete(otpVerification).where(eq(otpVerification.id, dbOtp.id));
+        throw new AppError(outcome.message, outcome.status);
+    }
+    // Only one request can spend the code.
+    const used = await db
         .update(otpVerification)
-        .set({
-            isUsed: true,
-        })
-        .where(eq(otpVerification.email, email));
-    //get user details
+        .set({ isUsed: true })
+        .where(and(eq(otpVerification.id, dbOtp.id), eq(otpVerification.isUsed, false)))
+        .returning({ id: otpVerification.id });
+    if (used.length === 0) throw new AppError('otp is expired', 400);
+    limiter.clearGuesses(email);
+
     const [ExistingUser] = await db.select().from(users).where(eq(users.email, email)).limit(1);
     if (!ExistingUser) throw new AppError('user not registered', 404);
-    //make hashed the password
     const passwordHash = await bcrypt.hash(newPassword, 12);
-    //update the password
     await db
         .update(users)
         .set({
@@ -452,7 +445,6 @@ export const forgetPassword = asyncHandler(async (req, res) => {
         .where(eq(users.id, ExistingUser.id));
     //kill every session, recording why so a signed-out device can say so
     await endUserSessions(ExistingUser.id, REVOKE_REASON.PASSWORD_RESET);
-    //success response
     return successResponse(res, null, 'forget password successful', 200);
 });
 
@@ -461,7 +453,7 @@ export const getRegistration = asyncHandler(async (req, res) => {
     const sessionId = req.cookies.registration_Session_Id;
     const email = req.cookies.otp_email;
 
-    if (!sessionId || !email) {
+    if (!isUuid(sessionId) || !email) {
         return validationErrorResponse(res, 'not get email or sessionId in cookies', {
             sessionId: sessionId ? null : 'not faound session ID',
             email: email ? null : 'need email id',

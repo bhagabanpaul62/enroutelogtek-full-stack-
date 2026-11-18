@@ -60,7 +60,7 @@ export default function AttachmentUpload({ value, onChange, error }) {
     if (value) {
         return (
             <FormField label="Attachment" hint="One PDF, for example the indent or packing list.">
-                <div className="flex items-center justify-between gap-3 rounded-[4px] border border-border bg-card px-3 py-2">
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.05] px-3 py-2">
                     <a
                         href={value}
                         target="_blank"
@@ -94,7 +94,7 @@ export default function AttachmentUpload({ value, onChange, error }) {
                     onChange={(event) => upload(event.target.files?.[0])}
                 />
                 <Button
-                    variant="outline"
+                    variant="secondary"
                     size="lg"
                     disabled={uploading}
                     onClick={() => inputRef.current?.click()}
@@ -106,7 +106,7 @@ export default function AttachmentUpload({ value, onChange, error }) {
                     <button
                         type="button"
                         onClick={() => setPasteLink(true)}
-                        className="text-[12px] text-[#c6c6c7] underline-offset-2 hover:text-foreground hover:underline"
+                        className="text-xs text-[var(--ds-on-surface-muted)] underline-offset-2 hover:text-foreground hover:underline"
                     >
                         or paste a link
                     </button>

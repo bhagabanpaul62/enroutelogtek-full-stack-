@@ -19,7 +19,8 @@ export function useTeamAction() {
             toast.success(successMessage);
             return response?.data?.data ?? true;
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Something went wrong. Please try again.');
+            // `handled` errors (such as the seat limit) already have their own prompt.
+            if (!error.handled) toast.error(error.response?.data?.message || 'Something went wrong. Please try again.');
             return null;
         } finally {
             setBusy(false);
