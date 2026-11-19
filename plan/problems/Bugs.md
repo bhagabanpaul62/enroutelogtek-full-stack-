@@ -39,3 +39,11 @@ Expected Result:
 Build and populate the required Load Contract Types.
 
 Separate the Contract field/workflow from the Adhoc Load field so users can distinctly select and manage each load type independently.
+
+5. Unable to Assign Truck After Adding a Transporter Company
+
+Category: Functional / Workflow
+
+Description: After creating/adding a Transporter company and subsequently adding a truck, the system does not allow assigning the truck to the transporter company.
+
+Expected Result: Once a truck is added under or associated with a Transporter company, the user should be able to successfully select and assign that truck to the company without restriction.
