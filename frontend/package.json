@@ -23,6 +23,7 @@
     "input-otp": "^1.4.2",
     "js-cookie": "^3.0.8",
     "lucide-react": "^1.23.0",
+    "motion": "^12.43.0",
     "next": "16.2.9",
     "next-view-transitions": "^0.3.5",
     "react": "19.2.4",

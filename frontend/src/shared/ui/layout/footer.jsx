@@ -41,6 +41,9 @@ function Footer() {
                         </small>
                     </div>
                 </div>
+                <p className="mk-footer__mark" aria-hidden="true">
+                    EnrouteLogtek
+                </p>
             </div>
         </footer>
     );
