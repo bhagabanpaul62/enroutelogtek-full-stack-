@@ -21,7 +21,7 @@ import { hasPermission } from '#features/team/team.rules.js';
 import { contracts } from '#features/contract/schemas/index.js';
 import { rfqInvitations, rfqLaneAwards, rfqLanes, rfqQuoteRevisions, rfqQuotes, rfqs } from '../schemas/index.js';
 import { RFQ_CANCELLABLE_FROM, RFQ_LIMITS } from '../rfq.constants.js';
-import { canQuote, extendProblems, lanesProblems, publishProblems } from '../rfq.rules.js';
+import { canQuote, extendProblems, lanesProblems, loadTypeProblem, publishProblems } from '../rfq.rules.js';
 import {
     CUSTOMER_LINK,
     TRANSPORTER_LINK,
@@ -113,6 +113,13 @@ const prepareDraft = async (user, input, existing = null) => {
     const to = values.validTo !== undefined ? values.validTo : existing?.validTo;
     if (from && to && to < from) problems.push('End date must be on or after the start date');
     if (!existing && !String(input.title ?? '').trim()) problems.push('Title is required');
+    // BR-C02: the type is chosen once, at creation; a later patch cannot change it.
+    if (input.loadType !== undefined) {
+        const problem = loadTypeProblem(input.loadType);
+        if (problem) problems.push(problem);
+        else if (existing && input.loadType !== existing.loadType) problems.push('The contract type cannot be changed after the draft is created');
+        else values.loadType = input.loadType;
+    }
 
     if (input.terms !== undefined) {
         values.terms = { ...TERMS_DEFAULTS, ...(existing?.terms ?? {}), ...Object.fromEntries(TERM_KEYS.filter((k) => input.terms?.[k] !== undefined).map((k) => [k, input.terms[k]])) };
@@ -302,6 +309,7 @@ const rowShape = ({ rfq, ...extra }) => ({
     id: rfq.id,
     number: numberOf(rfq),
     title: rfq.title,
+    loadType: rfq.loadType,
     status: rfq.status,
     validFrom: rfq.validFrom,
     validTo: rfq.validTo,

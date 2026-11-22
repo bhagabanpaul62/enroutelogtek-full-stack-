@@ -1,3 +1,4 @@
+import { phoneRule } from '#shared/utils/phone.js';
 import { body, param, query } from 'express-validator';
 import { VEHICLE_DOCUMENT_TYPES } from '../services/vehicle.service.js';
 
@@ -63,10 +64,12 @@ const driverFields = [
     body('yearsExperience').optional({ values: 'null' }).isInt({ min: 0, max: 60 }).withMessage('yearsExperience must be 0 to 60').toInt(),
     body('hazmatEndorsement').optional().isBoolean().withMessage('hazmatEndorsement must be true or false').toBoolean(),
 ];
-export const createDriverRules = [text('name', 100, { required: true }), text('phone', 20, { required: true }), ...driverFields];
+// Driver phones are typed freely ("+91 98765-43210"); driver.service normalises them to digits before saving.
+const DRIVER_PHONE = { separators: true, normalised: true };
+export const createDriverRules = [text('name', 100, { required: true }), phoneRule(body('phone').exists({ values: 'falsy' }).withMessage('phone is required').bail().trim(), DRIVER_PHONE), ...driverFields];
 export const updateDriverRules = [
     text('name', 100),
-    text('phone', 20),
+    phoneRule(body('phone').optional({ values: 'null' }).trim(), DRIVER_PHONE),
     body('availability').optional().isIn(['available', 'off_duty', 'inactive']).withMessage('availability must be available, off_duty or inactive'),
     ...driverFields,
 ];

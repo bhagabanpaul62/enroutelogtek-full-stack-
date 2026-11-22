@@ -8,6 +8,7 @@ import { TabBar, TickBar, ToneBadge } from '@/shared/ui/kit';
 import { getContractsApi, getIndentsApi } from '../api/contract.api';
 import { CONTRACT_TABS, SIDES } from '../constants';
 import { useFetchAll } from '../hooks/useFetchAll';
+import { contractTypeLabel } from '@/features/rfq/lib/rfq';
 import { formatDate, formatTrucks } from '../lib/format';
 import IndentsTable from './IndentsTable';
 
@@ -24,6 +25,7 @@ function buildColumns(side) {
             type: 'text',
             value: (row) => row[other]?.name ?? '',
         },
+        { key: 'loadType', label: 'Type', type: 'text', width: 130, value: (row) => contractTypeLabel(row.loadType), render: (row) => <ToneBadge label={contractTypeLabel(row.loadType)} /> },
         { key: 'rfq', label: 'RFQ', type: 'text', value: (row) => row.rfq?.number ?? '', render: (row) => (row.rfq ? <span className="truncate" title={row.rfq.title}>{row.rfq.number}</span> : <EmptyCell />) },
         {
             key: 'validity',

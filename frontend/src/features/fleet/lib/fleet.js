@@ -1,5 +1,7 @@
 /* Pure helpers shared by the fleet screens. Rules mirror backend fleet.rules.js. */
 
+import { MAX_PHONE_DIGITS } from '@/shared/lib/phone';
+
 export const EXPIRING_DAYS = 30;
 
 export const VEHICLE_AVAILABILITY = [
@@ -94,6 +96,7 @@ export function validateDriver(f) {
     const e = {};
     if (!f.name?.trim()) e.name = 'Enter the driver name.';
     if (digitsOnly(f.phone).length < 10) e.phone = 'Enter a 10 digit mobile number.';
+    else if (digitsOnly(f.phone).length > MAX_PHONE_DIGITS) e.phone = `Enter up to ${MAX_PHONE_DIGITS} digits`;
     if (!f.licenceNumber?.trim()) e.licenceNumber = 'Licence number is required.';
     if (!f.licenceExpiry) e.licenceExpiry = 'Licence expiry is required.';
     if (f.yearsExperience !== '' && f.yearsExperience != null && !(Number(f.yearsExperience) >= 0 && Number(f.yearsExperience) <= 60)) e.yearsExperience = 'Enter 0 to 60 years.';

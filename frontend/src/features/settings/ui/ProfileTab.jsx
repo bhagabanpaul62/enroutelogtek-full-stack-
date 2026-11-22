@@ -6,17 +6,18 @@ import { toast } from 'sonner';
 import { Button } from '@/shared/ui/primitives/button';
 import { ErrorState, Fact, FactList, IconChip, ModalField, Panel, SkeletonRows, StatusChip, formatDate } from '@/shared/ui/kit';
 import { COMPANY_TYPE_LABELS } from '@/shared/lib/dashboardNav';
+import { clampPhone, phoneProblem } from '@/shared/lib/phone';
 import { settingsApi, errorText } from '../api/settings.api';
 import { useAsyncData } from '../lib/useAsyncData';
 import { FormModal, inputClass } from './fields';
 
-const PHONE = /^\+?\d{7,14}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_LOGO_BYTES = 5 * 1024 * 1024;
 
 const problemsOf = (v) => {
     const p = {};
-    if (!PHONE.test(v.phone.trim())) p.phone = '7 to 14 digits, optionally starting with +';
+    const phoneError = phoneProblem(v.phone, { required: true });
+    if (phoneError) p.phone = phoneError;
     if (!EMAIL.test(v.email.trim())) p.email = 'Enter a valid email';
     if (v.address.trim().length < 2) p.address = 'Enter the street address';
     if (v.city.trim().length < 2) p.city = 'Enter the city';
@@ -41,7 +42,7 @@ function EditDialog({ company, user, onCancel, onSaved }) {
     const [busy, setBusy] = useState(false);
     const problems = hq ? problemsOf(v) : Object.fromEntries(Object.entries(problemsOf(v)).filter(([k]) => ['phone', 'email'].includes(k)));
     const shown = touched ? problems : {};
-    const set = (f) => (e) => setV((prev) => ({ ...prev, [f]: e.target.value }));
+    const set = (f) => (e) => setV((prev) => ({ ...prev, [f]: f === 'phone' ? clampPhone(e.target.value) : e.target.value }));
 
     const pickLogo = (e) => {
         const file = e.target.files?.[0];

@@ -1,5 +1,6 @@
 // Pure form logic for the New Ad Hoc load wizard: the controlled values per step, how they
 // become an API body, and the required checks run before a step is saved.
+import { phoneProblem } from '@/shared/lib/phone';
 import { DEFAULT_WINDOW_HOURS, HAZMAT_CLASS_LABELS, TERMS_DEFAULTS } from '../../../constants';
 import { isLineComplete, isLineStarted } from '../../../lib/ptl';
 import { isoHoursFromNow } from '../loadTime';
@@ -183,6 +184,10 @@ export const validateStep = (step, form, { otherCommodityId, today, now = Date.n
     };
 
     if (step === 1) {
+        for (const key of ['pickupContactPhone', 'dropContactPhone']) {
+            const problem = phoneProblem(form[key]);
+            if (problem) errors[key] = problem;
+        }
         pin('pickupPinCode');
         need('pickupCity', 'Pickup city is required');
         need('pickupAddress', 'Pickup address is required');

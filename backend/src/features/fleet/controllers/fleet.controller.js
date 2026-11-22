@@ -40,8 +40,8 @@ export const addDriverDocument = asyncHandler(async (req, res) =>
 
 export const getAvailability = asyncHandler(async (req, res) => {
     const filters = input(req, ['query']);
-    const [vehicles, drivers] = await Promise.all([vehicleService.assignableVehicles(req.user, filters), driverService.assignableDrivers(req.user)]);
-    return successResponse(res, { vehicles, drivers }, 'Available fleet fetched');
+    const [{ vehicles, blocked }, drivers] = await Promise.all([vehicleService.assignableVehicles(req.user, filters), driverService.assignableDrivers(req.user)]);
+    return successResponse(res, { vehicles, blockedVehicles: blocked, drivers }, 'Available fleet fetched');
 });
 export const getExpiring = asyncHandler(async (req, res) =>
     successResponse(res, await expiryService.listExpiring(req.user, input(req, ['query']).days), 'Expiring documents fetched'));

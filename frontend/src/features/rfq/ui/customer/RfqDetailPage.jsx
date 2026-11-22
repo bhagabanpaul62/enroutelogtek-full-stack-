@@ -9,13 +9,13 @@ import { useCan } from '@/shared/hooks/useCan';
 import { useConfirm } from '@/shared/ui/components/ConfirmDialog';
 import { DataGrid, EmptyCell } from '@/shared/ui/data-grid';
 import { Button } from '@/shared/ui/primitives/button';
-import { EmptyState, EntityHeader, ErrorState, Fact, FactList, Inset, Panel, SkeletonRows, StatCard, StatusChip, TabBar, formatINR } from '@/shared/ui/kit';
+import { EmptyState, EntityHeader, ErrorState, Fact, FactList, Inset, Panel, SkeletonRows, StatCard, StatusChip, TabBar, ToneBadge, formatINR } from '@/shared/ui/kit';
 import { formatDate, formatDateTime } from '@/shared/lib/format';
 import { formatCountdown } from '@/features/loads/lib/format';
 import { useNow } from '@/features/loads/ui/customer/useNow';
 import { cancelRfqApi, extendRfqApi, getRfqEventsApi, publishRfqApi } from '../../api/rfq.api';
 import { useRfq } from '../../hooks/useRfq';
-import { PAYABLE_BY, RFQ_PERMISSIONS, apiMessage, apiProblems, basisLabel, formatPeriod } from '../../lib/rfq';
+import { PAYABLE_BY, RFQ_PERMISSIONS, apiMessage, apiProblems, basisLabel, contractTypeLabel, formatPeriod } from '../../lib/rfq';
 import QuoteBoard from './QuoteBoard';
 import { CancelRfqDialog, ExtendRfqDialog } from './RfqDialogs';
 
@@ -339,7 +339,12 @@ function RfqDetailView({ rfqId }) {
             <EntityHeader
                 back={{ href: BASE, label: 'RFQs' }}
                 title={rfq.title || rfq.number}
-                chips={<StatusChip value={rfq.status} />}
+                chips={
+                    <>
+                        <StatusChip value={rfq.status} />
+                        <ToneBadge label={contractTypeLabel(rfq.loadType)} />
+                    </>
+                }
                 meta={[rfq.number, formatPeriod(rfq), `${lanes.length} ${lanes.length === 1 ? 'lane' : 'lanes'}`]}
                 actions={actions}
             >

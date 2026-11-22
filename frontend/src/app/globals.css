@@ -225,3 +225,99 @@ select:-webkit-autofill {
 @media (prefers-reduced-motion: reduce) {
   .ds-rise, .ds-grow-y, .ds-grow-x { animation: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   Form controls (dashboard + modals). One visible field language for
+   every <input>, <textarea>, native <select> and the Base UI Select,
+   whatever ad-hoc utility classes a feature put on them.
+   Border = foreground mixed 50% into the page (>= 3:1 on every surface),
+   focus = gold border + ring, error = --color-error.
+   Auth pages keep their own .au-* rules.
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  color-scheme: dark; /* native option lists, scrollbars, date pickers render dark */
+  --ds-field-bg: var(--background);
+  --ds-field-border: color-mix(in oklab, var(--foreground) 50%, var(--background));
+  --ds-field-border-hover: color-mix(in oklab, var(--foreground) 70%, var(--background));
+  --ds-field-placeholder: color-mix(in oklab, var(--foreground) 60%, var(--background));
+}
+
+:is(input, textarea, select):not(
+    [type='checkbox'], [type='radio'], [type='file'], [type='range'], [type='hidden'],
+    [type='color'], [type='submit'], [type='button'], [data-input-otp], .au-input, .sr-only
+  ),
+[data-slot='select-trigger']:not(.au-select__trigger) {
+  border: 1px solid var(--ds-field-border);
+  background-color: var(--ds-field-bg);
+  color: var(--foreground);
+  box-shadow: none;
+}
+:is(input, textarea, select):not([type='checkbox'], [type='radio'], [type='file'], [type='range'], [type='hidden'], [type='color'], [type='submit'], [type='button'], [data-input-otp], .au-input, .sr-only)::placeholder {
+  color: var(--ds-field-placeholder);
+  opacity: 1;
+}
+:is(input, textarea, select):not([type='checkbox'], [type='radio'], [type='file'], [type='range'], [type='hidden'], [type='color'], [type='submit'], [type='button'], [data-input-otp], .au-input, .sr-only):hover:not(:disabled),
+[data-slot='select-trigger']:not(.au-select__trigger):hover:not(:disabled) {
+  border-color: var(--ds-field-border-hover);
+}
+:is(input, textarea, select):not([type='checkbox'], [type='radio'], [type='file'], [type='range'], [type='hidden'], [type='color'], [type='submit'], [type='button'], [data-input-otp], .au-input, .sr-only):focus-visible,
+[data-slot='select-trigger']:not(.au-select__trigger):focus-visible,
+[data-slot='select-trigger']:not(.au-select__trigger)[data-popup-open] {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 45%, transparent);
+  outline: none;
+}
+:is(input, textarea, select)[aria-invalid='true']:not(.au-input),
+[data-slot='select-trigger'][aria-invalid='true']:not(.au-select__trigger) {
+  border-color: var(--color-error);
+}
+:is(input, textarea, select)[aria-invalid='true']:not(.au-input):focus-visible,
+[data-slot='select-trigger'][aria-invalid='true']:not(.au-select__trigger):focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--color-error) 45%, transparent);
+}
+:is(input, textarea, select):disabled:not(.au-input),
+[data-slot='select-trigger']:disabled:not(.au-select__trigger) {
+  cursor: not-allowed;
+  opacity: 1; /* keep the border legible; dim the text and fill instead */
+  color: color-mix(in oklab, var(--foreground) 55%, var(--background));
+  background-color: var(--muted);
+  border-style: dashed;
+}
+
+/* Native select: chevron (appearance-none removes the system one) and a dark option list. */
+select:not([multiple], [size], .au-input) {
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 1.1rem) 55%, calc(100% - 0.8rem) 55%;
+  background-size: 0.3rem 0.3rem, 0.3rem 0.3rem;
+  background-repeat: no-repeat;
+}
+option,
+optgroup {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+option:checked {
+  background-color: var(--accent);
+}
+option:disabled {
+  color: color-mix(in oklab, var(--foreground) 55%, var(--popover));
+}
+
+/* Base UI Select popup: a visible edge and a clear highlighted row. */
+[data-slot='select-content']:not(.au-select__popup) {
+  background-color: var(--ds-surface-container-high);
+  color: var(--foreground);
+  border: 1px solid var(--ds-field-border);
+}
+[data-slot='select-content']:not(.au-select__popup) [data-slot='select-item'][data-highlighted],
+[data-slot='select-content']:not(.au-select__popup) [data-slot='select-item'][data-selected] {
+  background-color: var(--ds-surface-container-highest);
+  color: var(--foreground);
+}
+[data-slot='select-content']:not(.au-select__popup) [data-slot='select-item'][data-selected] {
+  font-weight: 600;
+}

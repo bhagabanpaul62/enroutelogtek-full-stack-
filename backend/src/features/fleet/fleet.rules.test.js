@@ -7,6 +7,7 @@ import {
     isAssignable,
     normalisePhone,
     normaliseRegistration,
+    pickerProblem,
     reminderBucket,
     reminderKey,
     todayIST,
@@ -108,5 +109,19 @@ describe('expiry reminders', () => {
     });
     it('key changes when the document is renewed', () => {
         assert.notEqual(reminderKey('vehicle', 'a', 'rc', '2026-12-01', 30), reminderKey('vehicle', 'a', 'rc', '2027-12-01', 30));
+    });
+});
+
+describe('pickerProblem (why a new truck is not selectable)', () => {
+    const need = { id: 't-open', name: 'Open 32 ft' };
+    it('a fresh truck of the awarded type, no permit or fitness on file, is pickable', () =>
+        assert.equal(pickerProblem(vehicle({ vehicleTypeId: 't-open' }), need, TODAY), null));
+    it('a truck of another type is named, not hidden', () => {
+        const reason = pickerProblem(vehicle({ vehicleTypeId: 't-mini', vehicleTypeName: 'Mini Truck' }), need, TODAY);
+        assert.match(reason, /needs a Open 32 ft; WB23C4471 is a Mini Truck/);
+    });
+    it('no type filter: only the document and availability rules apply', () => {
+        assert.equal(pickerProblem(vehicle(), null, TODAY), null);
+        assert.match(pickerProblem(vehicle({ rcExpiry: '2026-01-01' }), null, TODAY), /RC expired/);
     });
 });

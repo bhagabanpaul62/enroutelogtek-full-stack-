@@ -184,7 +184,7 @@ const contractSelect = (exec) =>
     exec
         .select({
             contract: contracts,
-            rfq: { id: rfqs.id, rfqSeq: rfqs.rfqSeq, title: rfqs.title, createdAt: rfqs.createdAt },
+            rfq: { id: rfqs.id, rfqSeq: rfqs.rfqSeq, title: rfqs.title, loadType: rfqs.loadType, createdAt: rfqs.createdAt },
             customer: { id: customerCo.id, name: customerCo.companyName },
             transporter: { id: transporterCo.id, name: transporterCo.companyName },
         })
@@ -214,6 +214,7 @@ export const presentContractRows = async (side, rows, exec = db) => {
             number: contractNumber(contract.contractSeq, contract.createdAt),
             status: contract.status,
             rfq: { id: rfq.id, number: `RFQ-${new Date(rfq.createdAt).getUTCFullYear()}-${String(rfq.rfqSeq).padStart(6, '0')}`, title: rfq.title },
+            loadType: rfq.loadType,
             ...(side === 'transporter' ? { customer } : { transporter }),
             validFrom: contract.validFrom,
             validTo: contract.validTo,

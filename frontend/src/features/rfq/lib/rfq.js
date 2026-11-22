@@ -33,6 +33,13 @@ export const PAYABLE_BY = [
     { value: 'transporter', label: 'Transporter' },
 ];
 
+// BR-C02: the contract type is fixed when the RFQ is created. PTL (zone x weight-slab rates) is not built yet.
+export const CONTRACT_TYPES = [
+    { value: 'FTL', label: 'Full truck contract', short: 'FTL contract' },
+    { value: 'PTL', label: 'Part load contract', short: 'PTL contract' },
+];
+export const contractTypeLabel = (value) => CONTRACT_TYPES.find((t) => t.value === value)?.short ?? 'FTL contract';
+
 export const MAX_LANES = 200;
 export const MAX_REVISIONS = 10;
 export const MAX_IMPORT_BYTES = 200 * 1024;
@@ -133,6 +140,7 @@ export const newLane = (seed = {}) => ({
 export function formFromRfq(rfq) {
     const t = rfq.terms ?? {};
     return {
+        loadType: rfq.loadType ?? 'FTL',
         title: rfq.title ?? '',
         validFrom: rfq.validFrom ? String(rfq.validFrom).slice(0, 10) : '',
         validTo: rfq.validTo ? String(rfq.validTo).slice(0, 10) : '',
@@ -167,7 +175,8 @@ export function formFromRfq(rfq) {
     };
 }
 
-export const emptyForm = (closesAt) => ({
+export const emptyForm = (closesAt, loadType = 'FTL') => ({
+    loadType,
     title: '',
     validFrom: '',
     validTo: '',

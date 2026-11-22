@@ -7,12 +7,12 @@ import { Eye, FileUp, Plus } from 'lucide-react';
 import { useCursorList } from '@/shared/hooks/useCursorList';
 import { useCan } from '@/shared/hooks/useCan';
 import { DataGrid, EmptyCell, applyFilters, sortRows } from '@/shared/ui/data-grid';
-import { TabBar } from '@/shared/ui/kit';
+import { TabBar, ToneBadge } from '@/shared/ui/kit';
 import { Button } from '@/shared/ui/primitives/button';
 import { formatCountdown } from '@/features/loads/lib/format';
 import { useNow } from '@/features/loads/ui/customer/useNow';
 import { listRfqsApi } from '../../api/rfq.api';
-import { RFQ_PERMISSIONS, RFQ_STATUS_TABS, formatPeriod } from '../../lib/rfq';
+import { RFQ_PERMISSIONS, RFQ_STATUS_TABS, contractTypeLabel, formatPeriod } from '../../lib/rfq';
 
 const BASE = '/customer/rfqs';
 const TAB_IDS = RFQ_STATUS_TABS.map((t) => t.id);
@@ -29,6 +29,7 @@ function buildColumns(now) {
             type: 'text',
             render: (rfq) => <span className="block truncate font-medium">{rfq.title || 'Untitled RFQ'}</span>,
         },
+        { key: 'loadType', label: 'Type', type: 'text', width: 130, value: (rfq) => contractTypeLabel(rfq.loadType), render: (rfq) => <ToneBadge label={contractTypeLabel(rfq.loadType)} /> },
         { key: 'status', label: 'Status', type: 'status' },
         {
             key: 'validity',

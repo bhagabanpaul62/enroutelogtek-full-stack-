@@ -1,5 +1,6 @@
 'use client';
 
+import { phoneProblem } from '@/shared/lib/phone';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import Field from '../parts/Field';
@@ -70,7 +71,7 @@ export default function CreateAccount({ registerHook }) {
                             placeholder="98765 43210"
                             aria-invalid={errors.phone ? 'true' : undefined}
                             aria-describedby="phone-note"
-                            {...register('phone', { required: 'Mobile number is required' })}
+                            {...register('phone', { required: 'Mobile number is required', validate: (v) => phoneProblem(`${countryCode}${v}`) || true })}
                         />
                     </div>
                 </Field>

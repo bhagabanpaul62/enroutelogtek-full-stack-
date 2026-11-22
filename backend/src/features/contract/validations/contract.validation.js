@@ -1,3 +1,4 @@
+import { phoneRule } from '#shared/utils/phone.js';
 import { body, param, query } from 'express-validator';
 import { AMENDMENT_STATUSES, CONTRACT_STATUSES, INDENT_STATUSES } from '../schemas/index.js';
 import { PAYABLE_BY } from '#features/load/load.constants.js';
@@ -12,7 +13,7 @@ const isoDate = (field, { optional = false } = {}) => {
     return chain.isISO8601({ strict: true, strictSeparator: true }).withMessage(`${field} must be a date (YYYY-MM-DD)`).bail().matches(/^\d{4}-\d{2}-\d{2}$/).withMessage(`${field} must be a date (YYYY-MM-DD)`);
 };
 const time = (field) => body(field).optional({ values: 'null' }).matches(/^([01]\d|2[0-3]):[0-5]\d$/).withMessage(`${field} must be a time like 09:30`);
-const phone = (field) => body(field).optional({ values: 'null' }).isString().trim().matches(/^[0-9+\- ]{7,15}$/).withMessage(`${field} must be a phone number`);
+const phone = (field) => phoneRule(body(field).optional({ values: 'null' }), { separators: true });
 
 export const contractIdRules = [param('contractId').isUUID().withMessage('contractId must be a valid id')];
 export const amendmentIdRules = [param('amendmentId').isUUID().withMessage('amendmentId must be a valid id')];
