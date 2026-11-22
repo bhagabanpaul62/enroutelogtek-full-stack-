@@ -1,0 +1,315 @@
+/* Landing page. One framed column on near-black, hairline rules, mono labels, gold as the one accent.
+ * Motion: the hero truck drives in on load; the how-it-works truck follows the scroll (--p from
+ * ScrollSection in Motion.jsx); cubes fill when --lit reaches 1; counters count up once on screen. */
+@property --lit { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+.hm {
+  --hm-out: var(--color-paper-3);
+  --hm-in: var(--color-paper);
+  --hm-line: color-mix(in oklab, var(--color-ink) 72%, transparent);
+  --hm-faint: color-mix(in oklab, var(--color-ink) 9%, transparent);
+  --hm-gold-t: var(--color-signal);
+  --hm-gold-l: color-mix(in oklab, var(--color-signal) 78%, var(--color-paper-3));
+  --hm-gold-r: color-mix(in oklab, var(--color-signal) 58%, var(--color-paper-3));
+  /* drawing palette: the truck's painted box, steel rim, head-lamp, and shade for seams/ribs */
+  --hm-box-t: oklch(93% 0.006 85); --hm-box: oklch(91% 0.008 85); --hm-box-l: oklch(80% 0.008 85); --hm-box-r: oklch(68% 0.01 85);
+  --hm-rim: oklch(70% 0.01 85); --hm-lamp: oklch(98% 0.03 95);
+  --hm-shade: color-mix(in oklab, var(--color-paper-3) 40%, transparent);
+  background: var(--hm-out);
+  padding-bottom: 0;
+}
+.hm .hm-mono { font-family: var(--font-outlier); font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-3); }
+
+/* the framed column every section sits in */
+.hm .hm-frame { max-width: 1240px; background: var(--hm-in); border-inline: 1px solid var(--color-rule-2); border-top: 1px solid var(--color-rule-2); position: relative; }
+
+/* ---------- hero ---------- */
+.hm .hm-hero { padding-block: var(--space-xl) var(--space-lg); overflow: hidden; }
+.hm-hero__top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-xl); align-items: start; }
+.hm-kicker { display: inline-flex; align-items: center; gap: var(--space-sm); padding: var(--space-2xs) var(--space-md) var(--space-2xs) var(--space-2xs); background: var(--color-paper-2); border: 1px solid var(--color-rule-2); font-family: var(--font-outlier); font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-2); }
+.hm-kicker__icon { display: grid; place-items: center; width: 26px; height: 26px; background: var(--color-signal); color: var(--color-signal-ink); }
+.hm .hm-hero h1 { max-width: none; margin-top: var(--space-lg); font-size: clamp(2.6rem, 5.6vw + 0.3rem, 6.5rem); font-weight: 600; text-transform: uppercase; letter-spacing: -0.055em; line-height: 0.88; }
+.hm-line { display: block; overflow: hidden; padding-bottom: 0.06em; }
+.hm-line__in { display: inline-block; }
+.hm-hero h1 em { font-style: normal; color: var(--color-signal); }
+.hm-hero__stats { display: flex; gap: var(--space-xl); margin: var(--space-3xl) 0 0; }
+.hm-hero__stats dt { font-size: clamp(2.25rem, 2.4vw + 1rem, 3.25rem); font-weight: 400; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.hm-unit, .hm-hero__stats .hm-unit { color: var(--color-signal); }
+.hm-hero__stats dd { margin: var(--space-xs) 0 0; color: var(--color-ink-3); font-size: 0.875rem; line-height: 1.35; }
+
+.hm-stage { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr) minmax(0, 0.75fr); grid-template-rows: auto minmax(0, 1fr); column-gap: var(--space-lg); min-height: 500px; margin-top: var(--space-lg); }
+.hm-stage__actions { grid-column: 1; grid-row: 1; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-lg); padding-top: var(--space-lg); }
+.hm-link { display: inline-flex; align-items: center; min-height: 44px; gap: var(--space-xs); color: var(--color-ink); font-weight: 500; text-decoration: none; }
+.hm-link svg { color: var(--color-signal); transition: transform var(--dur-short) var(--ease-out); }
+.hm-link:is(:hover, :focus-visible) svg { transform: translateX(3px); }
+.hm-stage__truck { grid-column: 1 / 3; grid-row: 1 / 3; align-self: end; position: relative; z-index: 1; margin-left: 22%; }
+.hm-stage__side { grid-column: 3; grid-row: 1 / 3; display: grid; align-content: end; gap: var(--space-md); z-index: 2; }
+
+.hm-card { position: relative; background: var(--color-paper-2); border: 1px solid var(--color-rule-2); }
+.hm-card--boxes { grid-column: 1; grid-row: 2; align-self: end; z-index: 2; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: var(--space-md); align-items: end; padding: var(--space-md) var(--space-lg) var(--space-lg) var(--space-md); }
+.hm-card--boxes p { font-size: 1.0625rem; line-height: 1.35; max-width: 22ch; }
+.hm-cartons { width: 120px; margin-top: calc(-1 * var(--space-3xl)); overflow: visible; }
+.hm-card__btn { display: inline-flex; margin-top: var(--space-md); text-decoration: none; }
+.hm-card__btn span { display: inline-flex; align-items: center; height: 44px; padding: 0 var(--space-md); background: var(--color-ink); color: var(--hm-out); font-size: 0.875rem; font-weight: 500; white-space: nowrap; }
+.hm-card__btn svg { box-sizing: border-box; width: 44px; height: 44px; padding: var(--space-sm); margin-left: var(--space-2xs); background: var(--color-signal); color: var(--color-signal-ink); transition: transform var(--dur-short) var(--ease-out); }
+.hm-card__btn:is(:hover, :focus-visible) svg { transform: translate(2px, -2px); }
+.hm-card--globe { overflow: hidden; min-height: 290px; padding: var(--space-lg); }
+.hm-card--globe p, .hm-card--globe strong { position: relative; z-index: 1; }
+.hm-card--globe p { font-size: 1.0625rem; line-height: 1.3; max-width: 14ch; }
+.hm-card--globe strong { display: block; margin-top: var(--space-sm); font-size: 2rem; font-weight: 400; letter-spacing: -0.03em; color: var(--color-signal); }
+.hm-globe { position: absolute; width: 230px; right: -84px; bottom: -104px; }
+.hm-globe circle { fill: var(--color-signal); }
+
+/* the floating labels around the hero truck */
+.hm-tag { position: absolute; z-index: 2; display: inline-flex; align-items: center; gap: var(--space-xs); padding: var(--space-xs) var(--space-md) var(--space-xs) var(--space-sm); background: var(--color-paper-2); border: 1px solid var(--color-rule); color: var(--color-ink); font-size: 0.875rem; white-space: nowrap; clip-path: polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%); }
+.hm-tag::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--color-signal); }
+.hm-tag--gold { background: var(--color-signal); border-color: var(--color-signal); color: var(--color-signal-ink); }
+.hm-tag--gold::before { background: var(--color-signal-ink); }
+
+/* ---------- the truck drawing ---------- */
+.tk { display: block; width: 100%; height: auto; overflow: visible; }
+.tk-shadow { fill: var(--color-paper-3); opacity: 0.55; }
+.tk-box, .tk-plate { fill: var(--hm-box); }
+.tk-rib { stroke: color-mix(in oklab, var(--color-paper-3) 8%, transparent); stroke-width: 2; }
+.tk-brand, .sc-brand { fill: var(--color-paper-3); font-family: var(--font-display); font-weight: 600; letter-spacing: -0.03em; }
+.tk-brand { font-size: 46px; }
+.tk-sub { fill: var(--color-ink-4); font-family: var(--font-outlier); font-size: 14px; letter-spacing: 0.12em; }
+.tk-stripe, .sc-stripe { fill: var(--color-signal); }
+.tk-chassis, .tk-bumper, .tk-step { fill: var(--color-paper-3); }
+.tk-cab { fill: var(--color-signal); }
+.tk-fairing { fill: color-mix(in oklab, var(--color-signal) 82%, var(--color-paper-3)); }
+.tk-glass, .sc-glass { fill: var(--color-paper-3); }
+.tk-seam { stroke: var(--hm-shade); stroke-width: 2; }
+.tk-seam-fill { fill: var(--hm-shade); }
+.tk-mirror { fill: var(--color-paper-3); }
+.tk-lamp { fill: var(--hm-lamp); }
+.tk-tyre { fill: var(--color-paper-3); stroke: color-mix(in oklab, var(--color-ink) 22%, transparent); stroke-width: 2; }
+.tk-rim { fill: var(--hm-rim); }
+.tk-spoke { stroke: var(--color-paper-3); stroke-width: 4; }
+.tk-hub { fill: var(--color-signal); }
+.tk-wheel { transform-box: fill-box; transform-origin: center; }
+
+.hm-hero-truck .tk-wheel { animation: hm-roll 1.7s var(--ease-out) 0.2s both; }
+.hm-hero-truck .tk-body { animation: hm-idle 2.6s ease-in-out 2s infinite; }
+@keyframes hm-roll { from { transform: rotate(-2200deg); } }
+@keyframes hm-idle { 50% { transform: translateY(-1.5px); } }
+
+/* ---------- blocks with a head ---------- */
+.hm-block { padding-block: var(--space-2xl); }
+.hm-head { display: grid; gap: var(--space-sm); margin-bottom: var(--space-xl); }
+.hm .hm-head h2 { font-size: clamp(1.75rem, 1.6vw + 1rem, 2.5rem); font-weight: 400; letter-spacing: -0.035em; }
+.hm-head--split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: end; gap: var(--space-xl); }
+.hm-head--split > div { display: grid; gap: var(--space-sm); }
+.hm-head--split > p { color: var(--color-ink-3); max-width: 46ch; }
+
+/* why: four reasons */
+.hm-why { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--color-rule-2); }
+.hm-why li { display: grid; align-content: start; gap: var(--space-sm); padding: var(--space-lg); transition: background-color var(--dur-short) var(--ease-out); }
+.hm-why li + li { border-left: 1px solid var(--color-rule-2); }
+.hm-why__icon { display: grid; place-items: center; width: 44px; height: 44px; margin-bottom: var(--space-2xl); border: 1px solid var(--color-rule); color: var(--color-ink-2); transition: background-color var(--dur-short), color var(--dur-short), border-color var(--dur-short); }
+.hm .hm-why h3 { font-size: 1.125rem; font-weight: 500; letter-spacing: -0.015em; }
+.hm-why p { color: var(--color-ink-3); font-size: 0.9375rem; line-height: 1.5; }
+.hm-why li:hover { background: var(--color-paper-2); }
+.hm-why li:hover .hm-why__icon { background: var(--color-signal); border-color: var(--color-signal); color: var(--color-signal-ink); }
+
+/* how: the road, the truck on it, the three steps */
+.hm-road { position: relative; height: 96px; margin-bottom: var(--space-lg); }
+.hm-road__line { position: absolute; left: 0; right: 0; bottom: var(--space-xs); height: 2px; background: repeating-linear-gradient(90deg, var(--color-rule) 0 26px, transparent 26px 42px); }
+.hm-road__line::after { content: ''; position: absolute; inset: 0; background: var(--color-signal); transform: scaleX(var(--p, 0)); transform-origin: left; }
+.hm-road__truck { position: absolute; bottom: 0; left: calc(var(--p, 0) * (100% - 200px)); width: 200px; }
+.hm-road__truck .tk-wheel { transform: rotate(calc(var(--p, 0) * 3000deg)); }
+.hm-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-lg); }
+.hm-steps li { --on: clamp(0, (var(--p, 0) - var(--at)) * 10, 1); display: grid; align-content: start; gap: var(--space-xs); padding-top: var(--space-md); border-top: 2px solid color-mix(in oklab, var(--color-signal) calc(var(--on) * 100%), var(--color-rule)); }
+.hm-steps__n { font-family: var(--font-outlier); font-size: 0.75rem; color: color-mix(in oklab, var(--color-signal) calc(var(--on) * 100%), var(--color-ink-3)); }
+.hm .hm-steps h3 { font-size: clamp(1.25rem, 0.6vw + 1rem, 1.5rem); font-weight: 500; letter-spacing: -0.02em; }
+.hm-steps p { color: var(--color-ink-3); max-width: 34ch; }
+
+/* ---------- modules: sticky rail + panels ---------- */
+.hm .hm-modules { display: grid; grid-template-columns: 260px minmax(0, 1fr); padding-inline: 0; }
+.hm-rail { border-right: 1px solid var(--color-rule-2); }
+.hm-rail ol { position: sticky; top: var(--space-3xl); list-style: none; margin: 0; padding: 0; }
+.hm-rail a { display: flex; align-items: center; gap: var(--space-sm); min-height: 64px; padding-inline: var(--space-lg); border-bottom: 1px solid var(--color-rule-2); color: var(--color-ink-3); text-decoration: none; font-size: 1.0625rem; transition: color var(--dur-short) var(--ease-out), background-color var(--dur-short) var(--ease-out); }
+.hm-rail a .hm-mono { color: inherit; }
+.hm-rail a:is(:hover, :focus-visible) { color: var(--color-ink-2); }
+.hm-rail a[aria-current] { color: var(--color-ink); background: var(--color-paper-2); }
+.hm-rail a[aria-current] .hm-mono { color: var(--color-signal); }
+.hm-panel { display: grid; align-content: start; gap: var(--space-sm); padding: var(--space-xl); border-bottom: 1px solid var(--color-rule-2); }
+.hm-panel:last-child { border-bottom: 0; }
+.hm .hm-panel h3 { font-size: clamp(1.5rem, 1vw + 1rem, 2rem); font-weight: 400; letter-spacing: -0.03em; }
+.hm-panel__body { max-width: 52ch; color: var(--color-ink-3); }
+
+/* module scenes: a measured iso floor, tags on leader lines, a caption rule underneath */
+.hm-scene { margin: var(--space-lg) 0 0; display: grid; gap: var(--space-sm); }
+.hm-art { display: block; width: 100%; max-width: 680px; justify-self: center; overflow: visible; }
+.hm-scene figcaption { display: flex; justify-content: space-between; gap: var(--space-md); padding-top: var(--space-sm); border-top: 1px dashed var(--color-rule); font-family: var(--font-outlier); font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-ink-3); }
+.hm-scene figcaption span:first-child { color: var(--color-signal); white-space: nowrap; }
+.hm-scene figcaption span:last-child { text-align: right; }
+.sc-corner { fill: none; stroke: color-mix(in oklab, var(--color-ink) 35%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sc-floor { fill: color-mix(in oklab, var(--color-ink) 2.5%, transparent); stroke: color-mix(in oklab, var(--color-ink) 28%, transparent); vector-effect: non-scaling-stroke; }
+.sc-grid line { stroke: color-mix(in oklab, var(--color-ink) 8%, transparent); vector-effect: non-scaling-stroke; }
+.sc-tick text { fill: var(--color-ink-3); font-family: var(--font-outlier); font-size: 8px; }
+.sc-cross { stroke: color-mix(in oklab, var(--color-ink) 45%, transparent); vector-effect: non-scaling-stroke; }
+.sc-dim line { stroke: color-mix(in oklab, var(--color-ink) 35%, transparent); vector-effect: non-scaling-stroke; }
+.sc-dim text { fill: var(--color-ink-3); font-family: var(--font-outlier); font-size: 8.5px; letter-spacing: 0.08em; }
+.sc-label { fill: var(--color-ink-2); font-family: var(--font-outlier); font-size: 8px; letter-spacing: 0.06em; }
+.sc-road { fill: color-mix(in oklab, var(--color-ink) 6%, transparent); stroke: color-mix(in oklab, var(--color-ink) 22%, transparent); vector-effect: non-scaling-stroke; }
+.sc-road-line { stroke: color-mix(in oklab, var(--color-ink) 40%, transparent); stroke-dasharray: 8 7; animation: sc-flow 1.2s linear infinite; }
+.sc-lane { fill: none; stroke: color-mix(in oklab, var(--color-ink) 24%, transparent); stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
+.sc-lane--live { stroke: var(--color-signal); stroke-width: 2; stroke-dasharray: 9 6; animation: sc-flow 1.4s linear infinite; }
+@keyframes sc-flow { to { stroke-dashoffset: -30; } }
+.sc-packet { fill: var(--color-signal); }
+.sc-wheel { fill: var(--color-paper-3); stroke: color-mix(in oklab, var(--color-ink) 30%, transparent); vector-effect: non-scaling-stroke; }
+/* fixed-colour blocks inside scenes */
+.hm .iso-cube.ib-light .iso-t { fill: var(--hm-box-t); }
+.hm .iso-cube.ib-light .iso-l { fill: var(--hm-box-l); }
+.hm .iso-cube.ib-light .iso-r { fill: var(--hm-box-r); }
+.hm .iso-cube.ib-light polygon, .hm .iso-cube.ib-dark polygon, .hm .iso-cube.ib-gold polygon { stroke: color-mix(in oklab, var(--color-paper-3) 50%, transparent); }
+.hm .iso-cube.ib-dark polygon { fill: var(--color-paper-3); }
+.hm .iso-cube.ib-gold { --lit: 1; }
+.hm .iso-cube.ib-post polygon { fill: var(--color-ink-3); stroke: none; }
+.hm-panel .is-key { transition: --lit 0.9s var(--ease-out) 0.3s; }
+.hm-panel[data-in] .is-key { --lit: 1; }
+/* tags rise in turn when the panel arrives; --up ones then turn gold */
+.sc-tag { opacity: 0; transform: translateY(10px); transition: opacity 0.5s var(--ease-out) calc(var(--i) * 0.16s + 0.15s), transform 0.5s var(--ease-out) calc(var(--i) * 0.16s + 0.15s); }
+.hm-panel[data-in] .sc-tag { opacity: 1; transform: none; }
+.sc-tag rect { fill: var(--color-paper-2); stroke: var(--color-rule); vector-effect: non-scaling-stroke; transition: fill 0.4s, stroke 0.4s; }
+.sc-tag text { fill: var(--color-ink); font-family: var(--font-outlier); font-size: 8.5px; letter-spacing: 0.05em; transition: fill 0.4s; }
+.sc-tag .sc-tag__sub { fill: var(--color-ink-3); }
+.sc-leader { stroke: color-mix(in oklab, var(--color-ink) 40%, transparent); stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; }
+.sc-foot { fill: var(--color-ink-2); }
+.sc-tag--gold rect, .hm-panel[data-in] .sc-tag--up rect { fill: var(--color-signal); stroke: var(--color-signal); }
+.sc-tag--gold text, .sc-tag--gold .sc-tag__sub, .hm-panel[data-in] .sc-tag--up text { fill: var(--color-signal-ink); }
+.sc-tag--gold .sc-foot, .hm-panel[data-in] .sc-tag--up .sc-foot { fill: var(--color-signal); }
+.sc-tag--up rect, .sc-tag--up text, .sc-tag--up .sc-foot { transition-delay: calc(var(--i) * 0.45s + 0.9s); }
+
+/* ---------- iso primitives ---------- */
+.hm .iso-cube polygon { fill: color-mix(in oklab, var(--hm-gold-t) calc(var(--lit) * 100%), var(--hm-in)); stroke: color-mix(in oklab, var(--color-signal-ink) calc(var(--lit) * 70%), var(--hm-line)); stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.hm .iso-cube .iso-l { fill: color-mix(in oklab, var(--hm-gold-l) calc(var(--lit) * 100%), var(--hm-in)); }
+.hm .iso-cube .iso-r { fill: color-mix(in oklab, var(--hm-gold-r) calc(var(--lit) * 100%), var(--hm-in)); }
+.hm .hm-lines, .hm .hm-lines line, .hm .hm-lines path, .hm .hm-lines ellipse { fill: none; stroke: color-mix(in oklab, var(--color-ink) 16%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.hm .hm-lines--faint line { stroke: var(--hm-faint); }
+.hm .hm-dash { fill: none; stroke: color-mix(in oklab, var(--color-ink) 30%, transparent); stroke-dasharray: 3 4; vector-effect: non-scaling-stroke; }
+.hm .hm-mover { fill: var(--color-signal); }
+/* cartons: kraft-dark boxes, always a little lit */
+.hm .hm-carton { --lit: 0.32; }
+.hm .hm-carton polygon { stroke: color-mix(in oklab, var(--color-ink) 30%, transparent); }
+.hm .hm-tape { stroke: var(--color-signal); stroke-width: 6; }
+
+/* ---------- the gold band ---------- */
+.hm-band { position: relative; overflow: hidden; background: var(--color-signal); color: var(--color-signal-ink); padding-block: var(--space-3xl); }
+.hm-band__inner { position: relative; max-width: 1240px; }
+.hm-band .hm-mono { color: color-mix(in oklab, var(--color-signal-ink) 70%, transparent); }
+.hm .hm-band h2 { max-width: 18ch; color: var(--color-signal-ink); }
+.hm-hang { position: absolute; right: 2%; top: calc(-1 * var(--space-4xl) - var(--space-3xl)); width: 190px; transform-origin: 50% 0; animation: hm-swing 6s ease-in-out infinite alternate; }
+@keyframes hm-swing { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+.hm-cable { stroke: var(--color-signal-ink); stroke-width: 2; }
+.hm-hook { fill: none; stroke: var(--color-signal-ink); stroke-width: 3; }
+.hm-crate { fill: var(--color-paper-3); }
+.hm-crate-rib { stroke: color-mix(in oklab, var(--color-ink) 14%, transparent); stroke-width: 2; }
+.hm-crate-text { fill: var(--color-signal); font-family: var(--font-display); font-weight: 600; font-size: 34px; letter-spacing: 0.02em; }
+.hm-rules { margin: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid color-mix(in oklab, var(--color-signal-ink) 25%, transparent); }
+.hm-rules > div { padding: var(--space-lg) var(--space-lg) 0 0; }
+.hm-rules > div + div { padding-left: var(--space-lg); border-left: 1px solid color-mix(in oklab, var(--color-signal-ink) 25%, transparent); }
+.hm-rules dt { font-size: clamp(3rem, 4vw + 1rem, 5rem); font-weight: 300; letter-spacing: -0.05em; line-height: 1; font-variant-numeric: tabular-nums; }
+.hm-rules dt small { margin-left: 0.2em; font-family: var(--font-outlier); font-size: 0.2em; letter-spacing: 0.04em; text-transform: uppercase; }
+.hm-rules dd { margin: var(--space-md) 0 0; color: color-mix(in oklab, var(--color-signal-ink) 80%, transparent); font-size: 0.9375rem; max-width: 26ch; }
+
+/* ---------- roles ---------- */
+.hm-roles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid var(--color-rule-2); }
+.hm-roles li + li { border-left: 1px solid var(--color-rule-2); }
+.hm-role { display: grid; gap: var(--space-xs); height: 100%; padding: var(--space-md) var(--space-md) var(--space-lg); color: inherit; text-decoration: none; transition: background-color var(--dur-short) var(--ease-out); }
+.hm-role-art { width: 100%; aspect-ratio: 4 / 3; margin-bottom: var(--space-sm); border: 1px solid var(--color-rule-2); background: var(--hm-out); overflow: hidden; }
+.hm-role__name { margin-top: var(--space-xs); font-weight: 500; }
+.hm-role__line { color: var(--color-ink-3); font-size: 0.9375rem; line-height: 1.5; }
+.hm-role__go { margin-top: var(--space-sm); color: var(--color-ink-3); transition: transform var(--dur-short) var(--ease-out), color var(--dur-short); }
+.hm-role:is(:hover, :focus-visible) { background: var(--color-paper-2); }
+.hm-role:hover .hm-role__go, .hm-role:focus-visible .hm-role__go { color: var(--color-signal); transform: translateX(4px); }
+.hm-role .iso-cube { transition: --lit 0.5s var(--ease-out); }
+.hm-role:hover .hm-pop, .hm-role:focus-visible .hm-pop { --lit: 1; }
+.hm-role .hm-pop--late { transition-delay: 0.25s; }
+.hm-orbit { fill: none; stroke: color-mix(in oklab, var(--color-ink) 30%, transparent); vector-effect: non-scaling-stroke; }
+.hm-orbit-nodes rect { fill: var(--hm-out); stroke: var(--hm-line); vector-effect: non-scaling-stroke; transition: fill 0.4s; }
+.hm-role:is(:hover, :focus-visible) .hm-orbit-nodes rect { fill: var(--color-signal); }
+.hm-role:is(:hover, :focus-visible) .hm-orbit-nodes rect:nth-child(2) { transition-delay: 0.12s; }
+.hm-role:is(:hover, :focus-visible) .hm-orbit-nodes rect:nth-child(3) { transition-delay: 0.24s; }
+.hm-tile { transition: --lit 0.4s var(--ease-out); }
+.hm-role:is(:hover, :focus-visible) .hm-tile--1 { --lit: 1; transition-delay: 0.1s; }
+.hm-role:is(:hover, :focus-visible) .hm-tile--3 { --lit: 1; transition-delay: 0.3s; }
+.hm-role .hm-mover { opacity: 0; transition: opacity 0.3s; }
+.hm-role:is(:hover, :focus-visible) .hm-mover { opacity: 1; }
+.hm-bar { transform-box: fill-box; transform-origin: 50% 100%; transform: scaleY(0.45); transition: transform 0.6s var(--ease-out) calc(var(--i) * 50ms); }
+.hm-bar .iso-cube { transition: --lit 0.5s var(--ease-out) calc(var(--i) * 50ms); }
+.hm-role:is(:hover, :focus-visible) .hm-bar { transform: scaleY(1); }
+.hm-role:is(:hover, :focus-visible) .hm-bar:last-child .iso-cube { --lit: 1; }
+
+/* FAQ reuses the shared Questions block inside the frame */
+.hm-faq { padding-bottom: var(--space-2xl); }
+.hm .hm-faq > .container { padding-inline: 0; }
+.hm-faq .mk-section { padding-top: var(--space-2xl); }
+
+@media (max-width: 75rem) {
+  .hm-stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: none; min-height: 0; row-gap: var(--space-lg); }
+  .hm-stage__actions, .hm-stage__truck { grid-column: 1 / -1; grid-row: auto; margin: 0; }
+  .hm-stage__truck { margin-block: var(--space-xl) var(--space-sm); }
+  .hm-card--boxes { grid-column: 1; grid-row: auto; align-self: stretch; margin-top: var(--space-2xl); }
+  .hm-stage__side { grid-column: 2; grid-row: auto; align-content: start; }
+}
+@media (max-width: 40rem) {
+  .hm-stage { grid-template-columns: minmax(0, 1fr); }
+  .hm-card--boxes, .hm-stage__side { grid-column: 1; }
+}
+
+/* ---------- smaller screens ---------- */
+@media (max-width: 60rem) {
+  .hm-hero__top { grid-template-columns: minmax(0, 1fr); }
+  .hm-hero__stats { margin-top: 0; }
+  .hm-head--split { grid-template-columns: minmax(0, 1fr); }
+  .hm-why { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hm-why li:nth-child(3) { border-left: 0; }
+  .hm-why li:nth-child(n + 3) { border-top: 1px solid var(--color-rule-2); }
+  .hm .hm-modules { grid-template-columns: minmax(0, 1fr); }
+  .hm-rail { display: none; }
+  .hm-panel { padding: var(--space-xl) var(--gutter); }
+  .hm-hang { width: 130px; right: calc(-1 * var(--space-xs)); }
+  .hm .hm-band h2 { max-width: 14ch; }
+  .hm-rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hm-rules > div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .hm-rules > div:nth-child(n + 3) { padding-top: var(--space-lg); margin-top: var(--space-lg); border-top: 1px solid color-mix(in oklab, var(--color-signal-ink) 25%, transparent); }
+  .hm-roles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hm-roles li:nth-child(3) { border-left: 0; }
+  .hm-roles li:nth-child(n + 3) { border-top: 1px solid var(--color-rule-2); }
+}
+@media (max-width: 40rem) {
+  .hm-hero__stats { gap: var(--space-lg); }
+  .hm-tag { font-size: 0.75rem; padding: var(--space-2xs) var(--space-sm) var(--space-2xs) var(--space-xs); }
+  .hm-why { grid-template-columns: minmax(0, 1fr); }
+  .hm-why li + li { border-left: 0; border-top: 1px solid var(--color-rule-2); }
+  .hm-why__icon { margin-bottom: var(--space-md); }
+  .hm-steps { grid-template-columns: minmax(0, 1fr); }
+  .hm-road__truck { width: 140px; left: calc(var(--p, 0) * (100% - 140px)); }
+  .hm-roles { grid-template-columns: minmax(0, 1fr); }
+  .hm-roles li + li { border-left: 0; border-top: 1px solid var(--color-rule-2); }
+  .hm-rules dt { font-size: 2.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* finished state instead of scroll-linking: truck parked, every step lit */
+  .hm .hm-how { --p: 1 !important; }
+  .sc-road-line, .sc-lane--live { animation: none; }
+  .hm-hero-truck .tk-wheel, .hm-hero-truck .tk-body, .hm-hang { animation: none; }
+  .hm .hm-mover { display: none; }
+}
+@media (max-width: 40rem) {
+  .hm-card--globe { min-height: 230px; }
+  .hm-globe { width: 62%; right: -14%; bottom: -34%; }
+  .hm-hero__stats dd { font-size: 0.8125rem; }
+  .hm-hero__stats dd br { display: none; }
+}
+/* phones: the 560-wide drawing shrinks ~40%, so grow the callouts from their leader and drop fine print */
+@media (max-width: 40rem) {
+  .hm-scene { margin-inline: calc(-1 * var(--gutter)); }
+  .hm-scene figcaption { margin-inline: var(--gutter); }
+  .sc-tag__box { transform-box: fill-box; transform-origin: 0 100%; transform: scale(1.55); }
+  .sc-label { font-size: 12px; }
+  .sc-tick, .sc-dim text { display: none; }
+}

@@ -39,5 +39,26 @@ export const workingQuestions = [
 
 export const questions = [...registerQuestions, ...workingQuestions];
 
-// The three the landing page carries: none of them answered by the five stages.
-export const homeQuestions = [workingQuestions[0], workingQuestions[1], workingQuestions[3]];
+// The landing page's own set, in plain words for a first-time visitor.
+export const homeQuestions = [
+    {
+        q: 'Who can join?',
+        a: 'Companies that send goods, transport companies, brokers and truck owners. Each company joins as one of these.',
+    },
+    {
+        q: 'What happens after I sign up?',
+        a: 'A person checks your GST and PAN papers. You get an email when your company is approved, or told why not.',
+    },
+    {
+        q: 'Do I have to pay to start?',
+        a: 'No. You get 14 days free from the day you are approved, and choose a plan after that.',
+    },
+    {
+        q: 'Can my team share one login?',
+        a: 'No. Every person gets their own login, so you always know who did what.',
+    },
+    {
+        q: 'Can I stop a company from contacting me?',
+        a: 'Yes. Block it, and it can no longer find you or send you requests.',
+    },
+];
