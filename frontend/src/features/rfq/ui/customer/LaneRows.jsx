@@ -73,7 +73,7 @@ function PlaceFields({ lane, prefix, title, errors, onPatch }) {
 }
 
 /** One lane of the editor. Memoised so typing in one row does not repaint 200 others. */
-const LaneRow = memo(function LaneRow({ lane, index, vehicleTypes, showErrors, duplicate, canRemove, onPatch, onDuplicate, onRemove }) {
+const LaneRow = memo(function LaneRow({ lane, index, vehicleTypes, ptl = false, showErrors, duplicate, canRemove, onPatch, onDuplicate, onRemove }) {
     const errors = showErrors ? laneErrors(lane) : {};
     const id = lane.key;
     const hasRoute = lane.originCity || lane.destCity;
@@ -130,7 +130,7 @@ const LaneRow = memo(function LaneRow({ lane, index, vehicleTypes, showErrors, d
                             invalid={Boolean(errors.vehicleTypeId)}
                         />
                     </FormField>
-                    <FormField label="Trucks per month" htmlFor={`${id}-volume`} error={errors.monthlyVolumeTrucks}>
+                    <FormField label={ptl ? 'Shipments per month' : 'Trucks per month'} htmlFor={`${id}-volume`} error={errors.monthlyVolumeTrucks}>
                         <TextInput
                             id={`${id}-volume`}
                             inputMode="numeric"
@@ -140,15 +140,19 @@ const LaneRow = memo(function LaneRow({ lane, index, vehicleTypes, showErrors, d
                             onChange={(e) => onPatch(lane.key, { monthlyVolumeTrucks: e.target.value.replace(/\D/g, '').slice(0, 5) })}
                         />
                     </FormField>
-                    <FormField label="Rate basis" htmlFor={`${id}-basis`} error={errors.rateBasis}>
-                        <SelectField
-                            id={`${id}-basis`}
-                            value={lane.rateBasis}
-                            onValueChange={(v) => onPatch(lane.key, { rateBasis: v })}
-                            items={RATE_BASES.map((b) => ({ value: b.value, label: b.label }))}
-                            placeholder="Choose"
-                            invalid={Boolean(errors.rateBasis)}
-                        />
+                    <FormField label="Rate basis" htmlFor={`${id}-basis`} error={errors.rateBasis} hint={ptl ? 'Part loads are charged per kg of chargeable weight' : undefined}>
+                        {ptl ? (
+                            <TextInput id={`${id}-basis`} value="Per kg" readOnly />
+                        ) : (
+                            <SelectField
+                                id={`${id}-basis`}
+                                value={lane.rateBasis}
+                                onValueChange={(v) => onPatch(lane.key, { rateBasis: v })}
+                                items={RATE_BASES.filter((b) => b.value !== 'per_kg' || lane.rateBasis === 'per_kg').map((b) => ({ value: b.value, label: b.label }))}
+                                placeholder="Choose"
+                                invalid={Boolean(errors.rateBasis)}
+                            />
+                        )}
                     </FormField>
                     <FormField label="Target rate (₹)" htmlFor={`${id}-target`} error={errors.targetRateRupees} hint="Optional. Hidden from transporters">
                         <TextInput

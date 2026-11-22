@@ -12,7 +12,7 @@ import { users } from '#features/auth/schemas/index.js';
 import { companies } from '#features/company/schemas/company.Schema.js';
 import { documents } from '#features/document/schemas/documents.Schema.js';
 import { notifyCompanies } from '#features/notification/services/notification.service.js';
-import { awards, loads } from '#features/load/schemas/index.js';
+import { awards, loads, vehicleTypes } from '#features/load/schemas/index.js';
 import { loadNumber, pickupMoment } from '#features/load/load.rules.js';
 import { recordLoadEvent } from '#features/load/services/loadEvent.service.js';
 import { requireCompany } from '#features/load/services/load.access.js';
@@ -399,7 +399,16 @@ const lockAndCheck = async (tx, { companyId, vehicleId, driverId, trip, load, cu
         .for('update');
     if (!driver) throw new AppError('Driver not found in your fleet', 404);
 
-    const problem = assignmentProblems(vehicle, driver, load, todayIso(), current);
+    const typeIds = [...new Set([vehicle.vehicleTypeId, load.vehicleTypeId].filter(Boolean))];
+    const types = typeIds.length ? new Map((await tx.select().from(vehicleTypes).where(inArray(vehicleTypes.id, typeIds))).map((t) => [t.id, t])) : new Map();
+    const own = types.get(vehicle.vehicleTypeId);
+    const problem = assignmentProblems(
+        { ...vehicle, vehicleTypeBody: own?.bodyType, vehicleTypeCapacity: own?.capacityTons },
+        driver,
+        { ...load, requiredType: types.get(load.vehicleTypeId) },
+        todayIso(),
+        current,
+    );
     if (problem) throw new AppError(problem, 409);
     const hazmat = hazmatProblem(load, driver);
     if (hazmat) throw new AppError(hazmat, 422);

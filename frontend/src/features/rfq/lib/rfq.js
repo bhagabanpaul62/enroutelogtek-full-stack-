@@ -33,7 +33,7 @@ export const PAYABLE_BY = [
     { value: 'transporter', label: 'Transporter' },
 ];
 
-// BR-C02: the contract type is fixed when the RFQ is created. PTL (zone x weight-slab rates) is not built yet.
+// BR-C02: the contract type is fixed when the RFQ is created. PTL lanes are priced per kg of chargeable weight.
 export const CONTRACT_TYPES = [
     { value: 'FTL', label: 'Full truck contract', short: 'FTL contract' },
     { value: 'PTL', label: 'Part load contract', short: 'PTL contract' },
@@ -192,5 +192,5 @@ export const emptyForm = (closesAt, loadType = 'FTL') => ({
         tollIncluded: true,
     },
     inviteeCompanyIds: [],
-    lanes: [newLane()],
+    lanes: [newLane(loadType === 'PTL' ? { rateBasis: 'per_kg' } : {})],
 });

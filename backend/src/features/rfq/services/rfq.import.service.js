@@ -14,7 +14,7 @@ import { TERMS_DEFAULTS } from '#features/load/load.constants.js';
 import { PERMISSIONS } from '#features/team/team.permissions.js';
 import { rfqImports, rfqLanes, rfqs } from '../schemas/index.js';
 import { IMPORT_OPTIONAL_COLUMNS, IMPORT_REQUIRED_COLUMNS } from '../rfq.constants.js';
-import { csvCell, lanesProblems, normalizeCsv, parseImportTable, parseImportText, validateImportRows } from '../rfq.rules.js';
+import { csvCell, laneBasisFor, lanesProblems, normalizeCsv, parseImportTable, parseImportText, validateImportRows } from '../rfq.rules.js';
 import { buildTemplateXlsx, parseXlsxTable } from '../rfq.xlsx.js';
 import { findOwnRfq, getRfq, insertLanes, normalizeLane } from './rfq.service.js';
 import { recordRfqEvent } from './rfq.shared.js';
@@ -136,9 +136,10 @@ export const confirmImport = async (user, importId, { title, validFrom, validTo,
             const rfq = await findOwnRfq(user.companyId, rfqId, { tx, forUpdate: true });
             if (rfq.status !== 'draft') throw new AppError(`Lanes can only be added to a draft; this RFQ is ${rfq.status}`, 409);
             const existing = await tx.select().from(rfqLanes).where(eq(rfqLanes.rfqId, rfqId)).orderBy(asc(rfqLanes.laneNo));
-            const problems = lanesProblems([...existing, ...lanes]);
+            const added = lanes.map((lane) => laneBasisFor(rfq.loadType, lane));
+            const problems = lanesProblems([...existing, ...added]);
             if (problems.length > 0) throw new AppError(problems.map((p) => p.message).join('. '), 422);
-            await insertLanes(tx, rfqId, lanes, (existing.at(-1)?.laneNo ?? 0) + 1);
+            await insertLanes(tx, rfqId, added, (existing.at(-1)?.laneNo ?? 0) + 1);
             targetRfqId = rfqId;
         } else {
             if (!String(title ?? '').trim()) throw new AppError('Title is required', 422);

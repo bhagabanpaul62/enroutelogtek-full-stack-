@@ -5,7 +5,7 @@ import { AppError } from '#shared/utils/AppError.js';
 import { vehicleTypes } from '#features/load/schemas/master.Schema.js';
 import { linkDocument } from '#features/document/document.link.js';
 import { vehicles } from '../schemas/fleet.Schema.js';
-import { isAssignable, normaliseRegistration, pickerProblem, todayIST, vehicleDocStatus } from '../fleet.rules.js';
+import { isAssignable, normaliseRegistration, pickerProblem, truckTypeFit, todayIST, vehicleDocStatus } from '../fleet.rules.js';
 import {
     DEFAULT_LIMIT,
     busyVehicleSql,
@@ -49,6 +49,8 @@ const baseSelect = () => ({
     busy: busyVehicleSql(vehicles),
     cursorCreatedAt: cursorTextColumn(vehicles),
     vehicleTypeName: sql`(select name from vehicle_types vt where vt.id = ${outer(vehicles.vehicleTypeId)})`.mapWith(String),
+    vehicleTypeBody: sql`(select body_type from vehicle_types vt where vt.id = ${outer(vehicles.vehicleTypeId)})`.mapWith(String),
+    vehicleTypeCapacity: sql`(select capacity_tons from vehicle_types vt where vt.id = ${outer(vehicles.vehicleTypeId)})`.mapWith(Number),
 });
 
 const mine = (companyId) => and(eq(vehicles.ownerCompanyId, companyId), isNull(vehicles.deletedAt));
@@ -168,7 +170,9 @@ export const addVehicleDocument = async (user, id, { documentType, fileUrl, numb
  */
 export const assignableVehicles = async (user, { vehicleTypeId } = {}) => {
     const today = todayIST();
-    const [required] = vehicleTypeId ? await db.select({ id: vehicleTypes.id, name: vehicleTypes.name }).from(vehicleTypes).where(eq(vehicleTypes.id, vehicleTypeId)) : [];
+    const [required] = vehicleTypeId
+        ? await db.select({ id: vehicleTypes.id, name: vehicleTypes.name, bodyType: vehicleTypes.bodyType, capacityTons: vehicleTypes.capacityTons }).from(vehicleTypes).where(eq(vehicleTypes.id, vehicleTypeId))
+        : [];
     const rows = await db
         .select(baseSelect())
         .from(vehicles)
@@ -178,9 +182,10 @@ export const assignableVehicles = async (user, { vehicleTypeId } = {}) => {
     const pickable = [];
     const blocked = [];
     for (const row of rows.map((r) => shape(r, today))) {
-        const reason = pickerProblem(row, vehicleTypeId ? { id: vehicleTypeId, name: required?.name } : null, today);
+        const need = vehicleTypeId ? { id: vehicleTypeId, ...required } : null;
+        const reason = pickerProblem(row, need, today);
         if (reason) blocked.push({ id: row.id, registrationNumber: row.registrationNumber, reason });
-        else pickable.push(row);
+        else pickable.push({ ...row, typeFit: truckTypeFit(row, need) });
     }
     return { vehicles: pickable, blocked };
 };

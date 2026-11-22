@@ -57,6 +57,11 @@ describe('termForDate and volumeForMonth', () => {
 describe('indentProblems', () => {
     const ok = { contract, laneTerms: terms, trucks: 5, pickupDate: '2026-12-03' };
     it('accepts a good indent', () => assert.deepEqual(indentProblems(ok, TODAY), []));
+    it('a PTL indent is one shipment with package sizes and a weight', () => {
+        const ptl = { ...ok, trucks: 1, loadType: 'PTL', packageDims: [{ count: 1, lengthCm: 10, widthCm: 10, heightCm: 10 }], actualWeightKg: 80 };
+        assert.deepEqual(indentProblems(ptl, TODAY), []);
+        assert.deepEqual(indentProblems({ ...ptl, trucks: 2, packageDims: [], actualWeightKg: null }, TODAY).map((p) => p.field), ['trucks', 'packageDims', 'actualWeightKg']);
+    });
     it('rejects past, out-of-period and bad truck counts', () => {
         assert.ok(indentProblems({ ...ok, pickupDate: '2026-11-17' }, TODAY).some((p) => p.field === 'pickupDate'));
         assert.ok(indentProblems({ ...ok, pickupDate: '2027-03-01' }, TODAY).length > 0);
@@ -152,6 +157,16 @@ describe('buildIndentLoad / buildIndentAward', () => {
         assert.equal(load.contractIndentId, 'i1');
         assert.equal(load.createdByUserId, 'u1');
         assert.equal(load.closesAt, undefined);
+    });
+    it('a PTL indent becomes one PTL load priced per kg on the chargeable weight', () => {
+        const ptl = { ...indent, trucks: 1, weightTons: null, packageDims: [{ count: 10, lengthCm: 50, widthCm: 20, heightCm: 20 }], actualWeightKg: 30 };
+        const load = buildIndentLoad(contract, { ...lane, rateBasis: 'per_kg' }, terms[0], ptl, now, 'PTL');
+        assert.equal(load.loadType, 'PTL');
+        assert.equal(load.priceBasis, 'per_kg');
+        assert.equal(load.vehicleCount, 1);
+        assert.equal(load.chargeableWeightKg, 50); // 40 kg volumetric, 30 actual, 50 minimum
+        assert.equal(load.packageCount, 10);
+        assert.equal(load.weightTons, 0.03);
     });
     it('award is accepted with the frozen rate in rupees and paise', () => {
         const load = { ...buildIndentLoad(contract, lane, terms[0], indent, now), id: 'ld1', loadType: 'FTL' };

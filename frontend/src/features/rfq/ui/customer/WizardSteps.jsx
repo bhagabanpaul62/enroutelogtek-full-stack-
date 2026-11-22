@@ -73,7 +73,8 @@ export function StepLanes({ form, draftId, showErrors, onChange, onPatchLane }) 
     const dupes = duplicateLaneKeys(form.lanes);
     const lanes = form.lanes;
 
-    const add = () => onChange({ lanes: [...lanes, newLane()] });
+    const ptl = form.loadType === 'PTL';
+    const add = () => onChange({ lanes: [...lanes, newLane(ptl ? { rateBasis: 'per_kg' } : {})] });
     const duplicate = (key) => {
         const i = lanes.findIndex((l) => l.key === key);
         if (i < 0 || lanes.length >= MAX_LANES) return;
@@ -105,6 +106,7 @@ export function StepLanes({ form, draftId, showErrors, onChange, onPatchLane }) 
                         lane={lane}
                         index={i}
                         vehicleTypes={vehicleTypes}
+                        ptl={ptl}
                         showErrors={showErrors}
                         duplicate={dupes.has(lane.key)}
                         canRemove={lanes.length > 1}
@@ -271,7 +273,7 @@ export function StepReview({ form, problems, vehicleTypeNames }) {
                             <Inset className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-sm">
                                 <span className="min-w-0 truncate font-medium text-[var(--ds-on-surface)]">{laneRoute(lane)}</span>
                                 <span className="text-[13px] text-[var(--ds-on-surface-muted)]">
-                                    {vehicleTypeNames[lane.vehicleTypeId] ?? 'Truck'} · {lane.monthlyVolumeTrucks} a month · {basisLabel(lane.rateBasis)}
+                                    {vehicleTypeNames[lane.vehicleTypeId] ?? 'Truck'} · {lane.monthlyVolumeTrucks} {form.loadType === 'PTL' ? 'shipments' : 'trucks'} a month · {basisLabel(lane.rateBasis)}
                                     {lane.targetRateRupees ? ` · target ₹${lane.targetRateRupees} (hidden)` : ''}
                                 </span>
                             </Inset>

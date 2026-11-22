@@ -25,7 +25,7 @@ function Shell({ children }) {
 const latestFirst = (revisions) => [...(revisions ?? [])].sort((a, b) => b.revisionNumber - a.revisionNumber);
 
 /** One lane: its facts, my quote form and my own history. Paints a new rate at once and rolls back if the server refuses. */
-function LaneQuoteCard({ rfqId, lane, award, canQuote, open, onStale }) {
+function LaneQuoteCard({ rfqId, lane, award, canQuote, open, onStale, unit = 'trucks' }) {
     const [override, setOverride] = useState(null);
     const quote = override ?? lane.myQuote ?? null;
     const [rupees, setRupees] = useState('');
@@ -78,7 +78,7 @@ function LaneQuoteCard({ rfqId, lane, award, canQuote, open, onStale }) {
             action={award ? <ToneBadge label={award.status === 'accepted' ? 'Awarded to you' : 'Award waiting'} tone={award.status === 'accepted' ? 'success' : 'warning'} /> : null}
         >
             <p className="mb-4 text-xs text-[var(--ds-on-surface-muted)]">
-                {lane.vehicleType?.name} · {lane.monthlyVolumeTrucks} trucks a month · quote {basisUnit(lane.rateBasis)}
+                {lane.vehicleType?.name} · {lane.monthlyVolumeTrucks} {unit} a month · quote {basisUnit(lane.rateBasis)}
                 {lane.notes ? ` · ${lane.notes}` : ''}
             </p>
 
@@ -343,7 +343,7 @@ export default function TransporterRfqDetailPage({ rfqId }) {
             ) : (
                 <div className="flex flex-col gap-4">
                     {lanes.map((lane) => (
-                        <LaneQuoteCard key={lane.id} rfqId={rfq.id} lane={lane} award={awards.find((a) => a.laneId === lane.id && (a.status === 'pending' || a.status === 'accepted'))} canQuote={canQuote} open={open} onStale={reload} />
+                        <LaneQuoteCard key={lane.id} rfqId={rfq.id} lane={lane} unit={rfq.loadType === 'PTL' ? 'shipments' : 'trucks'} award={awards.find((a) => a.laneId === lane.id && (a.status === 'pending' || a.status === 'accepted'))} canQuote={canQuote} open={open} onStale={reload} />
                     ))}
                 </div>
             )}

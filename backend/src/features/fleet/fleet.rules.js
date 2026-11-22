@@ -87,13 +87,26 @@ export function isAssignable(entity, today) {
 }
 
 /**
- * Why a vehicle cannot be picked for a load that needs `required` ({ id, name }), or null when it can.
+ * Does this truck fit the load's truck type? The type itself is 'exact'. A truck of the same body rated
+ * for at least as many tons is 'bigger' (a 22 ft Open for a 19 ft Open load): transporters send one when
+ * the exact size is busy, and the customer still gets the body they asked for.
+ * `vehicle`: { vehicleTypeId, vehicleTypeBody, vehicleTypeCapacity }. `required`: { id, bodyType, capacityTons }.
+ * @returns {'exact' | 'bigger' | null}
+ */
+export function truckTypeFit(vehicle, required) {
+    if (!required?.id || vehicle.vehicleTypeId === required.id) return 'exact';
+    if (!vehicle.vehicleTypeBody || vehicle.vehicleTypeBody !== required.bodyType) return null;
+    return Number(vehicle.vehicleTypeCapacity) >= Number(required.capacityTons ?? Infinity) ? 'bigger' : null;
+}
+
+/**
+ * Why a vehicle cannot be picked for a load that needs `required` ({ id, name, bodyType, capacityTons }), or null when it can.
  * The truck-type rule is real (the trip check enforces it), so the picker names it instead of hiding the truck.
  */
 export function pickerProblem(vehicle, required, today) {
-    if (required?.id && vehicle.vehicleTypeId !== required.id) {
-        const has = vehicle.vehicleTypeName ? `is a ${vehicle.vehicleTypeName}` : 'has a different truck type';
-        return `This load needs a ${required.name ?? 'different truck type'}; ${vehicle.registrationNumber} ${has}. Change its type under Fleet to use it.`;
+    if (!truckTypeFit(vehicle, required)) {
+        const has = vehicle.vehicleTypeName ? `is a ${vehicle.vehicleTypeName}` : 'has no truck type set';
+        return `This load needs a ${required.name ?? 'different truck type'} or a bigger truck of the same body; ${vehicle.registrationNumber} ${has}. Change its type under Fleet if that is wrong.`;
     }
     return isAssignable(vehicle, today).reason;
 }

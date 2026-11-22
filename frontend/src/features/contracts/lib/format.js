@@ -30,7 +30,14 @@ export const formatRate = (paise, basis) =>
 export const rupeesToPaise = (value) => (value === '' || value === null || value === undefined ? null : Math.round(Number(value) * 100));
 export const paiseToRupees = (paise) => (paise === null || paise === undefined ? '' : String(paise / 100));
 
-export const formatTrucks = (n) => `${n} ${n === 1 ? 'truck' : 'trucks'}`;
+/** "3 trucks"; a PTL contract counts shipments instead (one per indent). */
+export const formatTrucks = (n, loadType) => (loadType === 'PTL' ? `${n} ${n === 1 ? 'shipment' : 'shipments'}` : `${n} ${n === 1 ? 'truck' : 'trucks'}`);
+
+/** What an indent asks for: "3 trucks", or "120 kg (8 packages)" on a PTL contract. */
+export const indentSize = (indent) =>
+    indent?.loadType === 'PTL'
+        ? `${indent.chargeableWeightKg} kg chargeable${indent.packageDims?.length ? ` (${indent.packageDims.reduce((n, p) => n + Number(p.count || 0), 0)} packages)` : ''}`
+        : formatTrucks(indent?.trucks ?? 0);
 
 /** Readable server error: the message plus any rule list the API returns. */
 export function errorText(error, fallback = 'Something went wrong. Please try again.') {

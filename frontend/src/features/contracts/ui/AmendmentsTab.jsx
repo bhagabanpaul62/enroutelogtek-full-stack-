@@ -22,7 +22,7 @@ function changeRows(contract, a) {
         const prev = made ? [...lane.terms].filter((t) => t.version < made.version).sort((x, y) => y.version - x.version)[0] : a.status === 'proposed' ? lane.currentTerm : null;
         const name = `Lane ${lane.laneNo}, ${laneRoute(lane)}`;
         if (ch.ratePaise != null) rows.push({ label: `${name}: rate`, from: known && prev ? formatRate(prev.ratePaise, lane.rateBasis) : null, to: formatRate(ch.ratePaise, lane.rateBasis) });
-        if (ch.monthlyVolumeTrucks != null) rows.push({ label: `${name}: monthly volume`, from: known && prev ? formatTrucks(prev.monthlyVolumeTrucks) : null, to: formatTrucks(ch.monthlyVolumeTrucks) });
+        if (ch.monthlyVolumeTrucks != null) rows.push({ label: `${name}: monthly volume`, from: known && prev ? formatTrucks(prev.monthlyVolumeTrucks, contract.loadType) : null, to: formatTrucks(ch.monthlyVolumeTrucks, contract.loadType) });
     }
     if (a.changes?.validTo) rows.push({ label: 'Contract ends', from: a.before?.validTo ? formatDate(a.before.validTo) : a.status === 'proposed' ? formatDate(contract.validTo) : null, to: formatDate(a.changes.validTo) });
     if (a.changes?.paymentTerms !== undefined && a.changes?.paymentTerms !== null) rows.push({ label: 'Payment terms', from: a.before?.paymentTerms ?? (a.status === 'proposed' ? contract.paymentTerms : null) ?? null, to: a.changes.paymentTerms || '(none)' });

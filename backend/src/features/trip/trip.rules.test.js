@@ -186,6 +186,11 @@ describe('assignmentProblems', () => {
     const today = '2026-11-20';
     it('accepts a valid pair', () => assert.equal(assignmentProblems(vehicle, driver, load, today), null));
     it('rejects the wrong truck type', () => assert.match(assignmentProblems({ ...vehicle, vehicleTypeId: 't2' }, driver, load, today), /truck type/));
+    it('takes a bigger truck of the same body, not a smaller one', () => {
+        const need = { ...load, requiredType: { id: 't1', bodyType: 'open', capacityTons: 7 } };
+        assert.equal(assignmentProblems({ ...vehicle, vehicleTypeId: 't2', vehicleTypeBody: 'open', vehicleTypeCapacity: 10 }, driver, need, today), null);
+        assert.match(assignmentProblems({ ...vehicle, vehicleTypeId: 't3', vehicleTypeBody: 'open', vehicleTypeCapacity: 5 }, driver, need, today), /truck type/);
+    });
     it('rejects a truck that is busy, unless it is already on this trip', () => {
         assert.match(assignmentProblems({ ...vehicle, availability: 'on_trip' }, driver, load, today), /on trip/);
         assert.equal(assignmentProblems({ ...vehicle, availability: 'on_trip' }, driver, load, today, { vehicleId: 'v1' }), null);

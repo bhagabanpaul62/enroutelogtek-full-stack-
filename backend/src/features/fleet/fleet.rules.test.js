@@ -8,6 +8,7 @@ import {
     normalisePhone,
     normaliseRegistration,
     pickerProblem,
+    truckTypeFit,
     reminderBucket,
     reminderKey,
     todayIST,
@@ -118,10 +119,33 @@ describe('pickerProblem (why a new truck is not selectable)', () => {
         assert.equal(pickerProblem(vehicle({ vehicleTypeId: 't-open' }), need, TODAY), null));
     it('a truck of another type is named, not hidden', () => {
         const reason = pickerProblem(vehicle({ vehicleTypeId: 't-mini', vehicleTypeName: 'Mini Truck' }), need, TODAY);
-        assert.match(reason, /needs a Open 32 ft; WB23C4471 is a Mini Truck/);
+        assert.match(reason, /needs a Open 32 ft or a bigger truck of the same body; WB23C4471 is a Mini Truck/);
+    });
+    it('a bigger truck of the same body is pickable; a smaller one or another body is not', () => {
+        const need19 = { id: 'open_19', name: '19 ft Open', bodyType: 'open', capacityTons: 7 };
+        const truck = (id, body, tons) => vehicle({ vehicleTypeId: id, vehicleTypeName: id, vehicleTypeBody: body, vehicleTypeCapacity: tons });
+        assert.equal(pickerProblem(truck('open_22', 'open', 10), need19, TODAY), null);
+        assert.match(pickerProblem(truck('open_17', 'open', 5), need19, TODAY), /needs a 19 ft Open/);
+        assert.match(pickerProblem(truck('closed_22', 'closed', 10), need19, TODAY), /needs a 19 ft Open/);
+        assert.match(pickerProblem(vehicle({ vehicleTypeId: null }), need19, TODAY), /has no truck type set/);
     });
     it('no type filter: only the document and availability rules apply', () => {
         assert.equal(pickerProblem(vehicle(), null, TODAY), null);
         assert.match(pickerProblem(vehicle({ rcExpiry: '2026-01-01' }), null, TODAY), /RC expired/);
+    });
+});
+
+describe('truckTypeFit', () => {
+    const need = { id: 'open_19', bodyType: 'open', capacityTons: 7 };
+    it('exact, bigger of the same body, or no fit', () => {
+        assert.equal(truckTypeFit({ vehicleTypeId: 'open_19' }, need), 'exact');
+        assert.equal(truckTypeFit({ vehicleTypeId: 'open_22', vehicleTypeBody: 'open', vehicleTypeCapacity: 10 }, need), 'bigger');
+        assert.equal(truckTypeFit({ vehicleTypeId: 'open_19b', vehicleTypeBody: 'open', vehicleTypeCapacity: 7 }, need), 'bigger');
+        assert.equal(truckTypeFit({ vehicleTypeId: 'open_17', vehicleTypeBody: 'open', vehicleTypeCapacity: 5 }, need), null);
+        assert.equal(truckTypeFit({ vehicleTypeId: 'tanker', vehicleTypeBody: 'tanker', vehicleTypeCapacity: 20 }, need), null);
+    });
+    it('no required type means any truck; a required type without body info allows only the exact type', () => {
+        assert.equal(truckTypeFit({ vehicleTypeId: 'x' }, null), 'exact');
+        assert.equal(truckTypeFit({ vehicleTypeId: 'open_22', vehicleTypeBody: 'open', vehicleTypeCapacity: 10 }, { id: 'open_19' }), null);
     });
 });

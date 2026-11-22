@@ -10,7 +10,8 @@ import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { db } from '#shared/db/index.js';
 import { AppError } from '#shared/utils/AppError.js';
 import { awards, loadInvitations, loads } from '#features/load/schemas/index.js';
-import { loadNumber } from '#features/load/load.rules.js';
+import { chargeableWeight, loadNumber } from '#features/load/load.rules.js';
+import { rfqs } from '#features/rfq/schemas/index.js';
 import { recordLoadEvent } from '#features/load/services/loadEvent.service.js';
 import { todayIST } from '#features/fleet/fleet.rules.js';
 import { actorOf, createTripsForAward, sendAfter } from '#features/trip/services/trip.service.js';
@@ -33,6 +34,12 @@ import {
     transporterCo,
 } from './contract.support.js';
 
+/** FTL or PTL: a contract is the type its RFQ was created as. */
+const loadTypeOf = async (exec, contract) => (await exec.select({ loadType: rfqs.loadType }).from(rfqs).where(eq(rfqs.id, contract.rfqId)))[0]?.loadType ?? 'FTL';
+
+/** "3 truck(s)" for FTL, "a 120 kg shipment" for PTL: used in event notes and notifications. */
+const indentAsk = (indent) => (indent.actualWeightKg != null ? `a ${chargeableWeight(indent).chargeableWeightKg} kg part load shipment` : `${indent.trucks} truck(s)`);
+
 const sideColumn = (side) => (side === 'customer' ? contractIndents.customerCompanyId : contractIndents.transporterCompanyId);
 
 // ---------- read model ----------
@@ -41,13 +48,14 @@ const indentSelect = (exec) =>
     exec
         .select({
             indent: contractIndents,
-            contract: { id: contracts.id, contractSeq: contracts.contractSeq, createdAt: contracts.createdAt, status: contracts.status },
+            contract: { id: contracts.id, contractSeq: contracts.contractSeq, createdAt: contracts.createdAt, status: contracts.status, loadType: rfqs.loadType },
             customer: { id: customerCo.id, name: customerCo.companyName },
             transporter: { id: transporterCo.id, name: transporterCo.companyName },
             load: { loadSeq: loads.loadSeq, kind: loads.kind, createdAt: loads.createdAt },
         })
         .from(contractIndents)
         .innerJoin(contracts, eq(contractIndents.contractId, contracts.id))
+        .innerJoin(rfqs, eq(contracts.rfqId, rfqs.id))
         .innerJoin(customerCo, eq(contractIndents.customerCompanyId, customerCo.id))
         .innerJoin(transporterCo, eq(contractIndents.transporterCompanyId, transporterCo.id))
         .leftJoin(loads, eq(contractIndents.loadId, loads.id));
@@ -64,6 +72,7 @@ export const presentIndents = async (rows, exec = db) => {
             status: indent.status,
             contractId: contract.id,
             contractNumber: contractNumber(contract.contractSeq, contract.createdAt),
+            loadType: contract.loadType,
             lane: lane && {
                 id: lane.id,
                 laneNo: lane.laneNo,
@@ -87,6 +96,9 @@ export const presentIndents = async (rows, exec = db) => {
             dropContactName: indent.dropContactName,
             dropContactPhone: indent.dropContactPhone,
             weightTons: indent.weightTons,
+            packageDims: indent.packageDims,
+            actualWeightKg: indent.actualWeightKg,
+            chargeableWeightKg: indent.actualWeightKg != null ? chargeableWeight(indent).chargeableWeightKg : null,
             notes: indent.notes,
             overVolumeBy: indent.overVolumeBy,
             ratePaise: indent.ratePaise,
@@ -186,7 +198,9 @@ export const createIndent = async (user, contractId, input) => {
         if (existing) return { indentId: existing.id, replayed: true };
 
         const laneTerms = await tx.select().from(contractLaneTerms).where(eq(contractLaneTerms.contractLaneId, lane.id));
-        const problems = indentProblems({ contract, laneTerms, trucks: input.trucks, pickupDate: input.pickupDate }, today);
+        const loadType = await loadTypeOf(tx, contract);
+        const ptl = loadType === 'PTL';
+        const problems = indentProblems({ contract, laneTerms, trucks: input.trucks, pickupDate: input.pickupDate, loadType, packageDims: input.packageDims, actualWeightKg: input.actualWeightKg }, today);
         if (problems.length > 0) throw problemError(problems);
 
         const month = monthOf(input.pickupDate);
@@ -211,7 +225,9 @@ export const createIndent = async (user, contractId, input) => {
                 dropAddress: input.dropAddress ?? null,
                 dropContactName: input.dropContactName ?? null,
                 dropContactPhone: input.dropContactPhone ?? null,
-                weightTons: input.weightTons ?? null,
+                weightTons: ptl ? null : (input.weightTons ?? null),
+                packageDims: ptl ? input.packageDims : null,
+                actualWeightKg: ptl ? input.actualWeightKg : null,
                 notes: input.notes ?? null,
                 idempotencyKey: input.idempotencyKey,
                 overVolumeBy,
@@ -224,7 +240,7 @@ export const createIndent = async (user, contractId, input) => {
             type: 'indent_requested',
             toStatus: 'requested',
             actor: actorOf(user),
-            note: `${input.trucks} truck(s) on ${input.pickupDate}`,
+            note: `${indentAsk(indent)} on ${input.pickupDate}`,
             data: { trucks: input.trucks, pickupDate: input.pickupDate, overVolumeBy, contractLaneId: lane.id },
         });
         return { indentId: indent.id, replayed: false, contract, indent };
@@ -237,7 +253,7 @@ export const createIndent = async (user, contractId, input) => {
                 companyIds: [result.contract.transporterCompanyId],
                 actorUserId: user.userId,
                 type: 'indent.requested',
-                title: `${company.name} requested ${result.indent.trucks} truck(s) for ${formatDay(result.indent.pickupDate)}`,
+                title: `${company.name} requested ${indentAsk(result.indent)} for ${formatDay(result.indent.pickupDate)}`,
                 message: `Indent ${number} on contract ${contractNumber(result.contract.contractSeq, result.contract.createdAt)}. Acknowledge or decline it.${result.indent.overVolumeBy ? ` It is ${result.indent.overVolumeBy} over the monthly volume.` : ''}`,
                 data: { contractId, indentId: result.indentId, indentNumber: number, link: TRANSPORTER_CONTRACT_LINK(contractId) },
             },
@@ -287,7 +303,7 @@ export const acknowledgeIndent = async (user, indentId) => {
         const laneTerm = termForDate(laneTerms, indent.pickupDate);
         if (!laneTerm) throw new AppError('No rate is in force on the pickup date', 409);
 
-        const [load] = await tx.insert(loads).values(buildIndentLoad(contract, lane, laneTerm, indent, now)).returning();
+        const [load] = await tx.insert(loads).values(buildIndentLoad(contract, lane, laneTerm, indent, now, await loadTypeOf(tx, contract))).returning();
         const [award] = await tx.insert(awards).values(buildIndentAward(contract, laneTerm, indent, load, user, now)).returning();
         // The transporter's load list and detail read through invitations.
         await tx.insert(loadInvitations).values({ loadId: load.id, transporterCompanyId: contract.transporterCompanyId, viewedAt: now }).onConflictDoNothing();
@@ -318,7 +334,7 @@ export const acknowledgeIndent = async (user, indentId) => {
                 actorUserId: user.userId,
                 type: 'indent.acknowledged',
                 title: `${company.name} acknowledged ${number}`,
-                message: `Load ${loadNo} is created for ${indent.trucks} truck(s) on ${formatDay(indent.pickupDate)}. They will assign trucks next.`,
+                message: `Load ${loadNo} is created for ${indentAsk(indent)} on ${formatDay(indent.pickupDate)}. They will assign trucks next.`,
                 data: { contractId: contract.id, indentId, loadId: load.id, loadNumber: loadNo, link: CUSTOMER_LINK(load.id) },
             },
         ];
