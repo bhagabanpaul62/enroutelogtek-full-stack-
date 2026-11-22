@@ -21,7 +21,7 @@ import { hasPermission } from '#features/team/team.rules.js';
 import { contracts } from '#features/contract/schemas/index.js';
 import { rfqInvitations, rfqLaneAwards, rfqLanes, rfqQuoteRevisions, rfqQuotes, rfqs } from '../schemas/index.js';
 import { RFQ_CANCELLABLE_FROM, RFQ_LIMITS } from '../rfq.constants.js';
-import { canQuote, extendProblems, lanesProblems, loadTypeProblem, publishProblems } from '../rfq.rules.js';
+import { canQuote, extendProblems, laneBasisFor, lanesProblems, loadTypeProblem, publishProblems } from '../rfq.rules.js';
 import {
     CUSTOMER_LINK,
     TRANSPORTER_LINK,
@@ -136,7 +136,8 @@ const prepareDraft = async (user, input, existing = null) => {
 
     let lanes;
     if (input.lanes !== undefined) {
-        lanes = input.lanes.map(normalizeLane);
+        const loadType = values.loadType ?? existing?.loadType ?? 'FTL';
+        lanes = input.lanes.map((lane) => laneBasisFor(loadType, normalizeLane(lane)));
         problems.push(...lanesProblems(lanes, { activeVehicleTypeIds: await activeVehicleTypeIds(lanes.map((l) => l.vehicleTypeId)) }));
     }
     if (problems.length > 0) throw unprocessable(problems);

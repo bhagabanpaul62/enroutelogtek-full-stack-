@@ -9,7 +9,7 @@ import { Modal, ModalFooter, ToneBadge } from '@/shared/ui/kit';
 import { Button } from '@/shared/ui/primitives/button';
 import { acknowledgeIndentApi, cancelIndentApi, declineIndentApi } from '../api/contract.api';
 import { SIDES } from '../constants';
-import { errorText, formatDate, formatRate, formatTrucks, laneRoute } from '../lib/format';
+import { errorText, formatDate, formatRate, formatTrucks, indentSize, laneRoute } from '../lib/format';
 import IndentPanel from './IndentPanel';
 import ReasonModal from './ReasonModal';
 
@@ -55,7 +55,7 @@ export default function IndentsTable({ side, list, showContract = false, canResp
                 ? [{ key: 'contractNumber', label: 'Contract', type: 'text', value: (r) => r.contractNumber ?? '' }, { key: 'party', label: isTransporter ? 'Customer' : 'Transporter', type: 'text', value: (r) => (isTransporter ? r.customer?.name : r.transporter?.name) ?? '' }]
                 : []),
             { key: 'lane', label: 'Lane', type: 'text', value: (r) => (r.lane ? `${r.lane.laneNo}. ${laneRoute(r.lane)}` : '') },
-            { key: 'trucks', label: 'Trucks', type: 'number', width: 90 },
+            { key: 'trucks', label: 'Size', type: 'text', width: 150, value: (r) => indentSize(r) },
             { key: 'pickupDate', label: 'Pickup', type: 'date', width: 110 },
             {
                 key: 'overVolumeBy',
@@ -63,7 +63,7 @@ export default function IndentsTable({ side, list, showContract = false, canResp
                 type: 'number',
                 value: (r) => r.overVolumeBy ?? 0,
                 render: (r) =>
-                    r.overVolumeBy > 0 ? <ToneBadge label={`${formatTrucks(r.overVolumeBy)} over`} tone="warning" /> : <span className="text-xs text-[var(--ds-on-surface-muted)]">Within volume</span>,
+                    r.overVolumeBy > 0 ? <ToneBadge label={`${formatTrucks(r.overVolumeBy, r.loadType)} over`} tone="warning" /> : <span className="text-xs text-[var(--ds-on-surface-muted)]">Within volume</span>,
             },
             {
                 key: 'rate',
@@ -140,7 +140,7 @@ export default function IndentsTable({ side, list, showContract = false, canResp
                 onOpenChange={(next) => !next && !busy && setDialog(null)}
                 size="sm"
                 title={ind ? `Acknowledge ${ind.number}?` : ''}
-                description={ind ? `Creates a contract load and ${formatTrucks(ind.trucks)} (one trip each) for ${formatDate(ind.pickupDate)}, at ${formatRate(ind.indicativeRatePaise ?? ind.ratePaise, ind.lane?.rateBasis)}.` : ''}
+                description={ind ? `Creates a contract load for ${indentSize(ind)}${ind.loadType === 'PTL' ? '' : ' (one trip each)'} on ${formatDate(ind.pickupDate)}, at ${formatRate(ind.indicativeRatePaise ?? ind.ratePaise, ind.lane?.rateBasis)}.` : ''}
                 footer={
                     <ModalFooter
                         summary="The rate is frozen now and cannot change later."
@@ -149,7 +149,7 @@ export default function IndentsTable({ side, list, showContract = false, canResp
                     />
                 }
             >
-                {ind?.overVolumeBy > 0 ? <p className="rounded-2xl bg-amber-400/10 px-4 py-3 text-[13px] text-amber-200">This indent is {formatTrucks(ind.overVolumeBy)} over the contracted monthly volume.</p> : <span />}
+                {ind?.overVolumeBy > 0 ? <p className="rounded-2xl bg-amber-400/10 px-4 py-3 text-[13px] text-amber-200">This indent is {formatTrucks(ind.overVolumeBy, ind.loadType)} over the contracted monthly volume.</p> : <span />}
             </Modal>
 
             <ReasonModal

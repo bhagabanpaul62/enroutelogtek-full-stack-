@@ -6,6 +6,7 @@
  */
 import { snapshotTerms } from '#features/trip/trip.rules.js';
 import { TERMS_DEFAULTS } from '#features/load/load.constants.js';
+import { derivedShape } from '#features/load/load.rules.js';
 import { CONTRACT_DEFAULTS, CONTRACT_NUMBER_PREFIX, INDENT_NUMBER_PREFIX, OPEN_CONTRACT_STATUSES } from './contract.constants.js';
 
 const numberOf = (prefix, seq, createdAt) =>
@@ -54,7 +55,7 @@ export const coversDate = (contract, pickupDate) => {
 };
 
 /** Problems with placing an indent. laneTerms = the lane's term rows. */
-export const indentProblems = ({ contract, laneTerms, trucks, pickupDate }, today) => {
+export const indentProblems = ({ contract, laneTerms, trucks, pickupDate, loadType = 'FTL', packageDims, actualWeightKg }, today) => {
     const problems = [];
     if (!isIsoDate(pickupDate)) return [{ field: 'pickupDate', message: 'Pickup date must be a date' }];
     if (contract.status === 'expired') problems.push({ field: 'contractId', message: 'This contract has expired' });
@@ -72,6 +73,12 @@ export const indentProblems = ({ contract, laneTerms, trucks, pickupDate }, toda
         problems.push({ field: 'trucks', message: `Trucks must be a whole number from 1 to ${CONTRACT_DEFAULTS.maxTrucksPerIndent}` });
     }
     if (!termForDate(laneTerms, pickupDate)) problems.push({ field: 'pickupDate', message: 'No rate is in force on that date' });
+    // A PTL indent is one shipment of packages, priced per kg of chargeable weight.
+    if (loadType === 'PTL') {
+        if (trucks !== 1) problems.push({ field: 'trucks', message: 'A part load indent is one shipment' });
+        if (!Array.isArray(packageDims) || packageDims.length === 0) problems.push({ field: 'packageDims', message: 'Add the package sizes' });
+        if (!(Number(actualWeightKg) > 0)) problems.push({ field: 'actualWeightKg', message: 'Enter the actual weight in kg' });
+    }
     return problems;
 };
 
@@ -216,7 +223,7 @@ export const contractFromAwards = (rfq, transporterCompanyId, laneAwards, lanes,
 // ---------- indent -> load and award ----------
 
 /** The loads row an acknowledged indent becomes (kind contract, already accepted). */
-export const buildIndentLoad = (contract, lane, laneTerm, indent, now) => ({
+export const buildIndentLoad = (contract, lane, laneTerm, indent, now, loadType = 'FTL') => ({
     kind: 'contract',
     status: 'accepted',
     customerCompanyId: contract.customerCompanyId,
@@ -239,10 +246,13 @@ export const buildIndentLoad = (contract, lane, laneTerm, indent, now) => ({
     pickupTimeTo: indent.pickupTimeTo ?? null,
     weightTons: indent.weightTons ?? null,
     notes: indent.notes ?? null,
-    loadType: 'FTL',
+    loadType,
     vehicleTypeId: lane.vehicleTypeId,
     vehicleCount: indent.trucks,
     priceBasis: lane.rateBasis,
+    // PTL: the cargo, then the derived chargeable weight, package count and per_kg basis.
+    ...(loadType === 'PTL' ? derivedShape({ loadType, packageDims: indent.packageDims ?? [], actualWeightKg: indent.actualWeightKg }) : {}),
+    ...(loadType === 'PTL' ? { packageDims: indent.packageDims ?? [], actualWeightKg: indent.actualWeightKg } : {}),
     paymentTerms: contract.paymentTerms ?? null,
     freeTimeLoadingHours: contract.terms?.freeTimeLoadingHours ?? TERMS_DEFAULTS.freeTimeLoadingHours,
     freeTimeUnloadingHours: contract.terms?.freeTimeUnloadingHours ?? TERMS_DEFAULTS.freeTimeUnloadingHours,

@@ -44,18 +44,18 @@ describe('contracts: from accepted lane awards to indents, trips and amendments'
         ok(await api(customer, 'POST', `/contracts/${contractId}/indents`, indentBody(laneId, trucks, pickupDate, extra)), 201);
 
     /** RFQ rows by SQL (awarded + accepted lane awards), then the contract through the service. */
-    const makeContract = async ({ validFrom, validTo, lanes = 1, rate = 5800000, volume = 20, transporterId = ids.transporter }) => {
+    const makeContract = async ({ validFrom, validTo, lanes = 1, rate = 5800000, volume = 20, transporterId = ids.transporter, loadType = 'FTL' }) => {
         const [rfq] = await sql(
-            `insert into rfqs (status, customer_company_id, created_by_user_id, title, valid_from, valid_to, closes_at, terms, payment_terms)
-             values ('awarded', $1, $2, $3, $4, $5, now() - interval '1 day', '{"freeTimeLoadingHours": 12}', 'Net 30') returning id`,
-            [ids.customer, ids.customerUser, `E2E RFQ ${Date.now()}`, validFrom, validTo],
+            `insert into rfqs (status, customer_company_id, created_by_user_id, title, valid_from, valid_to, closes_at, terms, payment_terms, load_type)
+             values ('awarded', $1, $2, $3, $4, $5, now() - interval '1 day', '{"freeTimeLoadingHours": 12}', 'Net 30', $6) returning id`,
+            [ids.customer, ids.customerUser, `E2E RFQ ${Date.now()}`, validFrom, validTo, loadType],
         );
         const laneIds = [];
         for (let n = 1; n <= lanes; n++) {
             const [lane] = await sql(
                 `insert into rfq_lanes (rfq_id, lane_no, origin_pin_code, origin_city, dest_pin_code, dest_city, vehicle_type_id, monthly_volume_trucks, rate_basis)
-                 values ($1, $2, '110001', 'Delhi', '400001', 'Mumbai', $3, $4, 'per_vehicle') returning id`,
-                [rfq.id, n, truckType, volume],
+                 values ($1, $2, '110001', 'Delhi', '400001', 'Mumbai', $3, $4, $5) returning id`,
+                [rfq.id, n, truckType, volume, loadType === 'PTL' ? 'per_kg' : 'per_vehicle'],
             );
             const [quote] = await sql(
                 `insert into rfq_quotes (rfq_id, lane_id, transporter_company_id, current_rate_paise, revision_count, last_submitted_at)
@@ -437,6 +437,32 @@ describe('contracts: from accepted lane awards to indents, trips and amendments'
         assert.equal(detail.lanes[1].rateBasis, 'per_ton');
         assert.equal(detail.lanes[1].currentTerm.ratePaise, 450000);
         assert.equal((await sql('select count(*)::int as n from contracts where rfq_id = $1', [cc.rfqId]))[0].n, 1);
+    });
+
+    test('PTL contract: an indent is one shipment of packages, and its load is per kg on the chargeable weight', async () => {
+        const ptl = await makeContract({ validFrom: istDay(0), validTo: istDay(200), rate: 1200, loadType: 'PTL' }); // ₹12 per kg
+        const lane = ptl.laneIds[0];
+        const detail = ok(await api(customer, 'GET', `/contracts/${ptl.contractId}`));
+        assert.equal(detail.loadType, 'PTL');
+
+        const missing = await api(customer, 'POST', `/contracts/${ptl.contractId}/indents`, indentBody(lane, 1, base(3)));
+        assert.equal(missing.status, 422, 'a PTL indent needs packages and a weight');
+        assert.equal((await api(customer, 'POST', `/contracts/${ptl.contractId}/indents`, indentBody(lane, 2, base(3), { actualWeightKg: 30, packageDims: [{ count: 10, lengthCm: 50, widthCm: 20, heightCm: 20 }] }))).status, 422, 'one shipment per indent');
+
+        const indent = await placeIndent(ptl.contractId, lane, 1, base(3), { actualWeightKg: 30, packageDims: [{ count: 10, lengthCm: 50, widthCm: 20, heightCm: 20 }] });
+        assert.equal(indent.loadType, 'PTL');
+        assert.equal(indent.chargeableWeightKg, 50); // 40 kg volumetric, 30 actual, 50 minimum
+
+        ok(await api(transporter, 'POST', `/indents/${indent.id}/acknowledge`, {}));
+        const [load] = await sql('select l.load_type, l.price_basis, l.chargeable_weight_kg, l.vehicle_count, l.package_count from loads l join contract_indents i on i.load_id = l.id where i.id = $1', [indent.id]);
+        assert.equal(load.load_type, 'PTL');
+        assert.equal(load.price_basis, 'per_kg');
+        assert.equal(Number(load.chargeable_weight_kg), 50);
+        assert.equal(load.vehicle_count, 1);
+        assert.equal(load.package_count, 10);
+        const [award] = await sql(`select terms_snapshot from awards a join contract_indents i on i.load_id = a.load_id where i.id = $1`, [indent.id]);
+        assert.equal(award.terms_snapshot.ratePaise, 1200);
+        assert.equal(award.terms_snapshot.chargeableWeightKg, 50);
     });
 
     test('cross-company: another transporter cannot see or answer indents', async () => {

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
 import { Fact, FactList, SidePanel, StatusChip, Timeline, formatDateTime } from '@/shared/ui/kit';
 import { SIDES } from '../constants';
-import { formatDate, formatRate, formatTrucks, laneRoute } from '../lib/format';
+import { formatDate, formatRate, formatTrucks, indentSize, laneRoute } from '../lib/format';
 import { Notice } from './fields';
 
 const when = (iso) => (iso ? formatDateTime(iso) : undefined);
@@ -37,7 +37,7 @@ export default function IndentPanel({ indent, side, onClose }) {
             {indent ? (
                 <div className="flex flex-col gap-6">
                     {indent.overVolumeBy > 0 ? (
-                        <Notice>This indent takes the month {formatTrucks(indent.overVolumeBy)} over the contracted volume. It is still valid; there is no penalty in v1.</Notice>
+                        <Notice>This indent takes the month {formatTrucks(indent.overVolumeBy, indent.loadType)} over the contracted volume. It is still valid; there is no penalty in v1.</Notice>
                     ) : null}
                     {indent.loadId ? (
                         <Link
@@ -50,7 +50,9 @@ export default function IndentPanel({ indent, side, onClose }) {
                     ) : null}
                     <FactList>
                         <Fact label="Lane">{laneRoute(lane)}{lane?.vehicleType?.name ? ` · ${lane.vehicleType.name}` : ''}</Fact>
-                        <Fact label="Trucks">{formatTrucks(indent.trucks)}</Fact>
+                        <Fact label={indent.loadType === 'PTL' ? 'Shipment' : 'Trucks'}>{indentSize(indent)}</Fact>
+                        {indent.loadType === 'PTL' ? <Fact label="Actual weight">{`${indent.actualWeightKg} kg`}</Fact> : null}
+                        {indent.loadType === 'PTL' ? <Fact label="Packages">{(indent.packageDims ?? []).map((p) => `${p.count} × ${p.lengthCm}×${p.widthCm}×${p.heightCm} cm`).join(', ')}</Fact> : null}
                         <Fact label="Pickup">{formatDate(indent.pickupDate)}{indent.pickupTimeFrom ? `, ${indent.pickupTimeFrom}${indent.pickupTimeTo ? ` to ${indent.pickupTimeTo}` : ''}` : ''}</Fact>
                         <Fact label={indent.ratePaise != null ? 'Rate (frozen)' : 'Rate (expected)'}>{rate != null ? formatRate(rate, lane?.rateBasis) : null}</Fact>
                         {indent.ratePaise == null && rate != null ? <Fact label="Note"><span className="text-[var(--ds-on-surface-muted)]">Final rate is fixed when the transporter acknowledges, using the contract version in force on the pickup date.</span></Fact> : null}

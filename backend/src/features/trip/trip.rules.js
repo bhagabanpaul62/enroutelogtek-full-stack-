@@ -3,6 +3,7 @@
  * and load.constants.js; the services call these and only add the database work.
  */
 import { snapshotTerms as loadSnapshotTerms } from '#features/load/load.rules.js';
+import { truckTypeFit } from '#features/fleet/fleet.rules.js';
 import { DELIVERY_REQUIRES_RECEIVER, GST_TREATMENTS, POD_CONDITIONS, POD_REJECTION, TRIP_ACTORS, TRIP_DEFAULTS, TRIP_TRANSITIONS } from './trip.constants.js';
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -239,8 +240,8 @@ export const customerMayCancel = (status) => status === 'planned';
 
 /**
  * Can this vehicle and driver take this trip today? Returns the first problem as text, or null.
- * Mirrors fleet.rules.isAssignable (not imported: that file may not exist yet).
- * shortcut: duplicated check, point it at fleet.rules.isAssignable once that lands.
+ * Mirrors fleet.rules.isAssignable; the truck-type fit comes from fleet.rules.truckTypeFit.
+ * shortcut: duplicated document check, point it at fleet.rules.isAssignable when this is next touched.
  */
 export const assignmentProblems = (vehicle, driver, load, today, current = {}) => {
     const reg = vehicle.registrationNumber;
@@ -248,8 +249,9 @@ export const assignmentProblems = (vehicle, driver, load, today, current = {}) =
     if (vehicle.availability !== 'available' && vehicle.id !== current.vehicleId) {
         return `Vehicle ${reg} is ${String(vehicle.availability).replace('_', ' ')}`;
     }
-    if (load.vehicleTypeId && vehicle.vehicleTypeId !== load.vehicleTypeId) {
-        return 'This vehicle is not the truck type awarded on the load';
+    // load.requiredType ({ id, bodyType, capacityTons }) lets a bigger truck of the same body through.
+    if (load.vehicleTypeId && !truckTypeFit(vehicle, load.requiredType ?? { id: load.vehicleTypeId })) {
+        return 'This vehicle is not the truck type awarded on the load, or a bigger truck of the same body';
     }
     const docs = [
         ['RC', vehicle.rcExpiry],

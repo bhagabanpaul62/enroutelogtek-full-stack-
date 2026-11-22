@@ -13,7 +13,7 @@ import { TextInput } from './fields';
 const upcomingTerm = (lane) =>
     [...(lane.terms ?? [])].filter((t) => t.effectiveFrom > todayIST()).sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))[0];
 
-function VersionHistory({ lane, onClose }) {
+function VersionHistory({ lane, loadType, onClose }) {
     const terms = [...(lane?.terms ?? [])].sort((a, b) => b.version - a.version);
     return (
         <SidePanel open={Boolean(lane)} onOpenChange={(next) => !next && onClose()} size="md" title="Rate history" description={lane ? `Lane ${lane.laneNo}: ${laneRoute(lane)}` : ''}>
@@ -25,7 +25,7 @@ function VersionHistory({ lane, onClose }) {
                             <span className="text-xs text-[var(--ds-on-surface-muted)]">From {formatDate(t.effectiveFrom)}</span>
                         </div>
                         <p className="mt-1 text-sm tabular-nums text-[var(--ds-on-surface-variant)]">
-                            {formatRate(t.ratePaise, lane.rateBasis)} · {formatTrucks(t.monthlyVolumeTrucks)} a month
+                            {formatRate(t.ratePaise, lane.rateBasis)} · {formatTrucks(t.monthlyVolumeTrucks, loadType)} a month
                         </p>
                         <p className="mt-0.5 text-xs text-[var(--ds-on-surface-muted)]">{t.amendmentId ? 'Changed by an accepted amendment' : 'Awarded through the RFQ'}</p>
                     </li>
@@ -88,7 +88,7 @@ export default function LanesTab({ contract }) {
                                     <span className="text-2xl font-light tabular-nums text-[var(--ds-on-surface)]">{formatRate(lane.currentTerm?.ratePaise, lane.rateBasis)}</span>
                                     {lane.vehicleType?.name ? <Chip>{lane.vehicleType.name}</Chip> : null}
                                 </div>
-                                {next ? <p className="mt-1 text-xs text-amber-300">From {formatDate(next.effectiveFrom)}: {formatRate(next.ratePaise, lane.rateBasis)}, {formatTrucks(next.monthlyVolumeTrucks)} a month</p> : null}
+                                {next ? <p className="mt-1 text-xs text-amber-300">From {formatDate(next.effectiveFrom)}: {formatRate(next.ratePaise, lane.rateBasis)}, {formatTrucks(next.monthlyVolumeTrucks, contract.loadType)} a month</p> : null}
                                 <div className="mt-5">
                                     {loading ? (
                                         <SkeletonRows rows={1} />
@@ -97,10 +97,10 @@ export default function LanesTab({ contract }) {
                                             <TickBar value={volume ? (consumed / volume) * 100 : 0} tone={used?.over ? 'danger' : 'info'} />
                                             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-[var(--ds-on-surface-muted)]">
                                                 <span className="tabular-nums">
-                                                    {consumed} of {volume} trucks used
+                                                    {consumed} of {formatTrucks(volume, contract.loadType)} used
                                                     {used?.requested ? ` · ${used.requested} awaiting acknowledge` : ''}
                                                 </span>
-                                                {used?.over ? <ToneBadge label={`${formatTrucks(Math.abs(used.remaining))} over`} tone="danger" /> : <span className="tabular-nums">{Math.max(0, volume - consumed)} left</span>}
+                                                {used?.over ? <ToneBadge label={`${formatTrucks(Math.abs(used.remaining), contract.loadType)} over`} tone="danger" /> : <span className="tabular-nums">{Math.max(0, volume - consumed)} left</span>}
                                             </div>
                                         </>
                                     )}
@@ -110,7 +110,7 @@ export default function LanesTab({ contract }) {
                     })}
                 </div>
             )}
-            <VersionHistory lane={history} onClose={() => setHistory(null)} />
+            <VersionHistory lane={history} loadType={contract.loadType} onClose={() => setHistory(null)} />
         </div>
     );
 }

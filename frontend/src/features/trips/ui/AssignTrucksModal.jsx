@@ -112,7 +112,7 @@ export default function AssignTrucksModal({ award, trips: given, open, onOpenCha
                                         value={r.vehicleId ?? ''}
                                         onChange={(e) => set(trip.id, 'vehicleId', e.target.value)}
                                         placeholder="Pick a vehicle"
-                                        options={state.vehicles.filter((v) => v.id === r.vehicleId || !usedV.has(v.id)).map((v) => ({ value: v.id, label: `${v.registrationNumber}${v.capacityTons ? ` · ${v.capacityTons} t` : ''}` }))}
+                                        options={state.vehicles.filter((v) => v.id === r.vehicleId || !usedV.has(v.id)).map((v) => ({ value: v.id, label: `${v.registrationNumber}${v.capacityTons ? ` · ${v.capacityTons} t` : ''}${v.typeFit === 'bigger' ? ` · bigger: ${v.vehicleTypeName}` : ''}` }))}
                                     />
                                     <SelectField
                                         aria-label={`Driver for truck ${trip.seqNo}`}

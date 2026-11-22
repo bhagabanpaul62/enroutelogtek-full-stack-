@@ -81,7 +81,7 @@ function AwardLine({ award }) {
     );
 }
 
-function LaneCard({ lane, picked, canAward, onPick, onClear, onHistory }) {
+function LaneCard({ lane, picked, canAward, onPick, onClear, onHistory, unit = 'trucks' }) {
     const live = lane.award && LIVE.includes(lane.award.status);
     const selectable = canAward && !live && lane.quotes.length > 0;
     const past = lane.history ?? [];
@@ -101,7 +101,7 @@ function LaneCard({ lane, picked, canAward, onPick, onClear, onHistory }) {
             }
         >
             <p className="mb-4 text-xs text-[var(--ds-on-surface-muted)]">
-                {lane.vehicleType?.name} · {lane.monthlyVolumeTrucks} trucks a month · rates {basisUnit(lane.rateBasis)}
+                {lane.vehicleType?.name} · {lane.monthlyVolumeTrucks} {unit} a month · rates {basisUnit(lane.rateBasis)}
                 {lane.targetRatePaise ? ` · your target ${formatINR(lane.targetRatePaise)}` : ''}
             </p>
             <div className="grid gap-3">
@@ -248,6 +248,7 @@ export default function QuoteBoard({ rfq, now, canAward, onAwarded, focusLaneId 
                 <div key={lane.laneId} id={`board-lane-${lane.laneId}`}>
                     <LaneCard
                         lane={lane}
+                        unit={rfq.loadType === 'PTL' ? 'shipments' : 'trucks'}
                         picked={picks[lane.laneId]}
                         canAward={canAward}
                         onPick={(laneId, quoteId) => setPicks((p) => ({ ...p, [laneId]: quoteId }))}

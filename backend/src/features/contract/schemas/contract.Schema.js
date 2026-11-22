@@ -212,6 +212,9 @@ export const contractIndents = pgTable(
         dropContactName: varchar('drop_contact_name', { length: 100 }),
         dropContactPhone: varchar('drop_contact_phone', { length: 15 }),
         weightTons: numeric('weight_tons', { precision: 10, scale: 2, mode: 'number' }),
+        // PTL contracts only: the cargo, as on an Ad Hoc PTL load. [{ count, lengthCm, widthCm, heightCm, weightKg? }]
+        packageDims: jsonb('package_dims'),
+        actualWeightKg: numeric('actual_weight_kg', { precision: 10, scale: 2, mode: 'number' }),
         notes: text('notes'),
         // Client-generated; a retried request with the same key returns the same indent.
         idempotencyKey: varchar('idempotency_key', { length: 64 }).notNull(),

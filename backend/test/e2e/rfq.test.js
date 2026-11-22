@@ -65,6 +65,12 @@ describe('contract RFQs', { timeout: 240000 }, () => {
         assert.equal((await api(customer, 'POST', '/rfqs', draftBody([lane(), lane()]))).status, 422, 'duplicate lane');
         assert.equal((await api(customer, 'POST', '/rfqs', draftBody([lane({ destPinCode: '110001' })]))).status, 422, 'same origin and destination');
 
+        // A PTL contract RFQ: its lanes are always per kg, whatever basis is sent.
+        const ptl = await api(customer, 'POST', '/rfqs', draftBody([lane({ rateBasis: 'per_vehicle' })], { loadType: 'PTL' }));
+        assert.equal(ptl.status, 201, JSON.stringify(ptl.body));
+        assert.equal(ptl.body.data.loadType, 'PTL');
+        assert.deepEqual(ptl.body.data.lanes.map((l) => l.rateBasis), ['per_kg']);
+
         const noInvitee = await api(customer, 'POST', '/rfqs', draftBody([lane()], { inviteeCompanyIds: [] }));
         assert.equal(noInvitee.status, 201);
         const refused = await api(customer, 'POST', `/rfqs/${noInvitee.body.data.id}/publish`);

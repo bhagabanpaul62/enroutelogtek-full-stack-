@@ -10,6 +10,7 @@ import {
     extendProblems,
     laneProblems,
     lanesProblems,
+    laneBasisFor,
     loadTypeProblem,
     parseCsv,
     parseImportText,
@@ -290,8 +291,10 @@ describe('loadTypeProblem (BR-C02)', () => {
         assert.equal(loadTypeProblem('FTL'), null);
         assert.equal(loadTypeProblem(undefined), null);
     });
-    it('says PTL contracts are not available yet', () => {
-        assert.match(loadTypeProblem('PTL'), /not available yet/);
+    it('accepts PTL, whose lanes are always per kg', () => {
+        assert.equal(loadTypeProblem('PTL'), null);
+        assert.equal(laneBasisFor('PTL', { rateBasis: 'per_vehicle' }).rateBasis, 'per_kg');
+        assert.equal(laneBasisFor('FTL', { rateBasis: 'per_ton' }).rateBasis, 'per_ton');
     });
     it('rejects anything else', () => {
         assert.match(loadTypeProblem('LTL'), /FTL or PTL/);

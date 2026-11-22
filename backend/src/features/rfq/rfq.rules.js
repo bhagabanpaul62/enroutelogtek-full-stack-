@@ -34,13 +34,13 @@ export const acceptBy = (now = new Date()) => new Date(now.getTime() + ACCEPTANC
 // ---------- load type (BR-C02) ----------
 
 /** Contract types a customer can pick today. PTL needs zone x weight-slab rates and consignment indents (spec section 3), which are not built. */
-export const RFQ_OPEN_LOAD_TYPES = ['FTL'];
+export const RFQ_OPEN_LOAD_TYPES = ['FTL', 'PTL'];
 
 /** Problem text for a load type sent on create, or null when it is fine. */
-export const loadTypeProblem = (loadType) => {
-    if (loadType === undefined || RFQ_OPEN_LOAD_TYPES.includes(loadType)) return null;
-    return loadType === 'PTL' ? 'Part load (PTL) contracts are not available yet. Choose a full truck load (FTL) contract.' : 'loadType must be FTL or PTL';
-};
+export const loadTypeProblem = (loadType) => (loadType === undefined || RFQ_OPEN_LOAD_TYPES.includes(loadType) ? null : 'loadType must be FTL or PTL');
+
+/** PTL lanes are always priced per kg of chargeable weight (PRD Q2), the way an Ad Hoc PTL load is. */
+export const laneBasisFor = (loadType, lane) => (loadType === 'PTL' ? { ...lane, rateBasis: 'per_kg' } : lane);
 
 // ---------- lanes ----------
 

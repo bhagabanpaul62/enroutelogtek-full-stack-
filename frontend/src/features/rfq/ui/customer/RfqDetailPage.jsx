@@ -50,7 +50,7 @@ function LanesTab({ rfq }) {
         { key: 'laneNo', label: '#', type: 'number', width: 60 },
         { key: 'route', label: 'Route', type: 'text', value: (l) => `${l.originCity} ${l.originPinCode} → ${l.destCity} ${l.destPinCode}`, render: (l) => <span className="block truncate font-medium">{l.originCity} → {l.destCity}</span> },
         { key: 'truck', label: 'Truck', type: 'chip', value: (l) => l.vehicleType?.name ?? '' },
-        { key: 'volume', label: 'Trucks a month', type: 'number', value: (l) => l.monthlyVolumeTrucks },
+        { key: 'volume', label: rfq.loadType === 'PTL' ? 'Shipments a month' : 'Trucks a month', type: 'number', value: (l) => l.monthlyVolumeTrucks },
         { key: 'basis', label: 'Rate basis', type: 'text', value: (l) => basisLabel(l.rateBasis) },
         { key: 'target', label: 'Target rate', type: 'money', value: (l) => l.targetRatePaise ?? null },
         { key: 'quotes', label: 'Quotes', type: 'number', value: (l) => (open || rfq.status !== 'draft' ? (l.quoteCount ?? 0) : null), render: (l) => (rfq.status === 'draft' ? <EmptyCell /> : <span className="tabular-nums">{l.quoteCount ?? 0}</span>) },

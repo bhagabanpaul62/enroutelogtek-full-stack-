@@ -103,7 +103,7 @@ export default function ProposeAmendmentModal({ open, contract, onClose, onPropo
                                     <ModalField label={`Rate (₹ per ${RATE_UNIT[l.rateBasis] ?? 'truck'})`} htmlFor={`amend-rate-${l.id}`}>
                                         <TextInput id={`amend-rate-${l.id}`} type="number" inputMode="decimal" min={0} step="0.01" value={lanes[l.id].rate} onChange={setLane(l.id, 'rate')} />
                                     </ModalField>
-                                    <ModalField label="Trucks a month" htmlFor={`amend-vol-${l.id}`} hint={`Now ${formatTrucks(l.currentTerm?.monthlyVolumeTrucks ?? 0)}`}>
+                                    <ModalField label={contract.loadType === 'PTL' ? 'Shipments a month' : 'Trucks a month'} htmlFor={`amend-vol-${l.id}`} hint={`Now ${formatTrucks(l.currentTerm?.monthlyVolumeTrucks ?? 0, contract.loadType)}`}>
                                         <TextInput id={`amend-vol-${l.id}`} type="number" inputMode="numeric" min={1} max={10000} value={lanes[l.id].volume} onChange={setLane(l.id, 'volume')} />
                                     </ModalField>
                                 </div>

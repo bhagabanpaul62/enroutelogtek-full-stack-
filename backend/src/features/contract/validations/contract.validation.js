@@ -82,6 +82,14 @@ export const createIndentRules = [
     optionalText('dropContactName', 100),
     phone('dropContactPhone'),
     body('weightTons').optional({ values: 'null' }).isFloat({ gt: 0, max: 99999999 }).withMessage('weightTons must be more than 0').toFloat(),
+    // PTL contracts: the same cargo block as an Ad Hoc PTL load (load.validation.js).
+    body('actualWeightKg').optional({ values: 'null' }).isFloat({ min: 0.01, max: 100000 }).withMessage('actualWeightKg must be a number from 0.01 to 100000').toFloat(),
+    body('packageDims').optional({ values: 'null' }).isArray({ min: 1, max: 50 }).withMessage('packageDims must be a list of 1 to 50 package lines'),
+    body('packageDims.*.count').isInt({ min: 1, max: 100000 }).withMessage('each package line needs a count').toInt(),
+    body('packageDims.*.lengthCm').isFloat({ gt: 0, max: 100000 }).withMessage('lengthCm must be more than 0').toFloat(),
+    body('packageDims.*.widthCm').isFloat({ gt: 0, max: 100000 }).withMessage('widthCm must be more than 0').toFloat(),
+    body('packageDims.*.heightCm').isFloat({ gt: 0, max: 100000 }).withMessage('heightCm must be more than 0').toFloat(),
+    body('packageDims.*.weightKg').optional({ values: 'null' }).isFloat({ gt: 0, max: 100000 }).withMessage('weightKg must be more than 0').toFloat(),
     optionalText('notes', 1000),
     body('idempotencyKey').isString().withMessage('idempotencyKey is required').bail().trim().isLength({ min: 8, max: 64 }).withMessage('idempotencyKey must be 8 to 64 characters'),
 ];
