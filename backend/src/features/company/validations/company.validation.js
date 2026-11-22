@@ -1,7 +1,7 @@
 /** Request shapes for /companies. Field-level checks only; business rules are in the services. */
+import { phoneRule } from '#shared/utils/phone.js';
 import { body, param, query } from 'express-validator';
 
-const PHONE = /^\+?\d{7,14}$/;
 const text = (chain, label, max) =>
     chain
         .isString()
@@ -33,13 +33,7 @@ const singleQuery = (field) =>
 export const IDENTITY_FIELDS = ['companyName', 'companyType', 'gstNumber', 'panNumber'];
 
 export const updateCompanyRules = [
-    body('companyPhoneNumber')
-        .optional()
-        .isString()
-        .bail()
-        .trim()
-        .matches(PHONE)
-        .withMessage('Phone must be 7 to 14 digits, optionally starting with +'),
+    phoneRule(body('companyPhoneNumber').optional().trim()),
     body('companyEmailId')
         .optional()
         .isString()

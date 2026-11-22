@@ -10,6 +10,7 @@ import {
     extendProblems,
     laneProblems,
     lanesProblems,
+    loadTypeProblem,
     parseCsv,
     parseImportText,
     publishProblems,
@@ -281,5 +282,18 @@ describe('validateImportRows', () => {
         assert.ok(out.rows[0].errors.some((e) => e.field === 'monthly_volume_trucks'));
         assert.ok(out.rows[1].errors.some((e) => e.field === 'dest_pin'));
         assert.ok(out.rows[2].errors.some((e) => e.field === 'monthly_volume_trucks'));
+    });
+});
+
+describe('loadTypeProblem (BR-C02)', () => {
+    it('accepts FTL and an omitted type', () => {
+        assert.equal(loadTypeProblem('FTL'), null);
+        assert.equal(loadTypeProblem(undefined), null);
+    });
+    it('says PTL contracts are not available yet', () => {
+        assert.match(loadTypeProblem('PTL'), /not available yet/);
+    });
+    it('rejects anything else', () => {
+        assert.match(loadTypeProblem('LTL'), /FTL or PTL/);
     });
 });

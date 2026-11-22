@@ -1,5 +1,6 @@
 'use client';
 
+import { MAX_PHONE_DIGITS } from '@/shared/lib/phone';
 import { useState } from 'react';
 import { UserRound } from 'lucide-react';
 import { toast } from 'sonner';
@@ -70,7 +71,7 @@ export default function DriverModal({ open, onOpenChange, driver, onSaved }) {
         >
             <form id="driver-form" onSubmit={submit} noValidate className="grid gap-4 sm:grid-cols-2">
                 <TextField id="d-name" label="Name" required value={form.name} onChange={set('name')} error={errors.name} maxLength={80} className="sm:col-span-2" />
-                <TextField id="d-phone" label="Mobile number" required type="tel" inputMode="numeric" value={form.phone} onChange={set('phone')} error={errors.phone} hint="10 digits, unique in your company." maxLength={15} />
+                <TextField id="d-phone" label="Mobile number" required type="tel" inputMode="tel" value={form.phone} onChange={(ev) => setForm((f) => ({ ...f, phone: digitsOnly(ev.target.value).slice(0, MAX_PHONE_DIGITS) }))} error={errors.phone} hint="10 to 15 digits, unique in your company." maxLength={15} />
                 <TextField id="d-exp" label="Years of experience" type="number" min="0" max="60" value={form.yearsExperience} onChange={set('yearsExperience')} error={errors.yearsExperience} />
                 <TextField id="d-lic" label="Licence number" required value={form.licenceNumber} onChange={set('licenceNumber')} error={errors.licenceNumber} maxLength={30} />
                 <TextField id="d-lic-exp" label="Licence expiry" required type="date" value={form.licenceExpiry} onChange={set('licenceExpiry')} error={errors.licenceExpiry} />

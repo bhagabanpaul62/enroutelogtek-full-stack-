@@ -51,6 +51,8 @@ export const rfqs = pgTable(
             .notNull()
             .references(() => users.id),
         title: varchar('title', { length: 150 }).notNull(),
+        // BR-C02: FTL or PTL, fixed at creation and inherited by every contract and indent under it.
+        loadType: varchar('load_type', { length: 3 }).notNull().default('FTL'),
         validFrom: date('valid_from', { mode: 'string' }),
         validTo: date('valid_to', { mode: 'string' }),
         closesAt: timestamp('closes_at'),

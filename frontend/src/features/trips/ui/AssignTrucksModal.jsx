@@ -20,7 +20,7 @@ const expiringNote = (vehicle) => {
  * it loads once per mount. onDone() runs after at least one assign succeeds.
  */
 export default function AssignTrucksModal({ award, trips: given, open, onOpenChange, onDone }) {
-    const [state, setState] = useState({ loading: true, error: '', trips: [], vehicles: [], drivers: [] });
+    const [state, setState] = useState({ loading: true, error: '', trips: [], vehicles: [], blocked: [], drivers: [] });
     const [rows, setRows] = useState({}); // tripId -> { vehicleId, driverId, at }
     const [errors, setErrors] = useState({}); // tripId -> message
     const [busy, setBusy] = useState(false);
@@ -35,7 +35,7 @@ export default function AssignTrucksModal({ award, trips: given, open, onOpenCha
         ])
             .then(([trips, fleet]) => {
                 if (ignore) return;
-                setState({ loading: false, error: '', trips, vehicles: fleet.vehicles ?? [], drivers: fleet.drivers ?? [] });
+                setState({ loading: false, error: '', trips, vehicles: fleet.vehicles ?? [], blocked: fleet.blockedVehicles ?? [], drivers: fleet.drivers ?? [] });
                 setRows(Object.fromEntries(trips.map((t) => [t.id, { vehicleId: t.vehicleId ?? '', driverId: t.driverId ?? '', at: toLocalInput(t.expectedPlacementAt) }])));
                 setErrors({});
             })
@@ -149,6 +149,16 @@ export default function AssignTrucksModal({ award, trips: given, open, onOpenCha
                     {!state.drivers.length ? 'No driver is free right now. ' : ''}
                     Add or fix them under Fleet and Drivers.
                 </p>
+            ) : null}
+            {!state.loading && !state.error && state.trips.length && state.blocked.length ? (
+                <div className="mt-4 text-xs text-[var(--ds-on-surface-muted)]">
+                    <p className="font-medium text-amber-300">Not selectable</p>
+                    <ul className="mt-1 flex flex-col gap-1">
+                        {state.blocked.map((b) => (
+                            <li key={b.id}>{b.reason.includes(b.registrationNumber) ? b.reason : `${b.registrationNumber}: ${b.reason}`}</li>
+                        ))}
+                    </ul>
+                </div>
             ) : null}
         </Modal>
     );

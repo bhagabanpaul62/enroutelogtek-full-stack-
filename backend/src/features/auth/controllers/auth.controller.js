@@ -25,6 +25,7 @@ import {
 } from '#features/auth/registration.rules.js';
 import { findRegistrationApplicant } from '#features/auth/services/registrationApplicant.service.js';
 import { isUuid } from '#features/auth/services/session.service.js';
+import { phoneProblem } from '#shared/utils/phone.js';
 
 const limiter = createOtpLimiter();
 const sessionCookie = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict' };
@@ -176,6 +177,14 @@ export const register = asyncHandler(async (req, res) => {
         });
     }
     failWith(newPasswordProblem(password));
+
+    const phoneErrors = {
+        phone: phoneProblem(phone, { min: 7 }),
+        companyPhoneNumber: phoneProblem(companyPhoneNumber, { min: 7 }),
+    };
+    if (phoneErrors.phone || phoneErrors.companyPhoneNumber) {
+        return validationErrorResponse(res, 'Check the phone number', phoneErrors);
+    }
 
     if (!companyTypeEnum.enumValues.includes(companyType)) {
         return validationErrorResponse(res, 'Invalid company type', {

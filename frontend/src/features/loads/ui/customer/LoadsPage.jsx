@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Eye, Plus } from 'lucide-react';
 import { useCursorList } from '@/shared/hooks/useCursorList';
 import { DataGrid, EmptyCell, applyFilters, sortRows } from '@/shared/ui/data-grid';
-import { TabBar } from '@/shared/ui/kit';
+import { TabBar, ToneBadge } from '@/shared/ui/kit';
 import { Button } from '@/shared/ui/primitives/button';
 import { formatWeight, formatRoute } from '@/shared/lib/format';
 import { getLoadsApi } from '../../api/loads.api';
@@ -47,6 +47,7 @@ function buildColumns(now) {
             value: (load) => (hasRoute(load) ? routeOf(load) : ''),
             render: (load) => (hasRoute(load) ? <span className="block truncate font-medium">{routeOf(load)}</span> : <span className="text-foreground/40">Not entered yet</span>),
         },
+        { key: 'kind', label: 'Kind', type: 'text', width: 100, value: (load) => (load.kind === 'contract' ? 'Contract' : 'Ad Hoc'), render: (load) => <ToneBadge label={load.kind === 'contract' ? 'Contract' : 'Ad Hoc'} /> },
         { key: 'loadType', label: 'Type', type: 'text', width: 80, value: (load) => load.loadType ?? '', render: (load) => (load.loadType ? <LoadTypeBadge type={load.loadType} /> : <EmptyCell />) },
         {
             key: 'truck',

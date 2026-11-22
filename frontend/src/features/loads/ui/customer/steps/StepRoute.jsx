@@ -1,5 +1,6 @@
 'use client';
 
+import { clampPhone } from '@/shared/lib/phone';
 import { useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { SegmentedControl } from '@/shared/ui/kit';
@@ -162,7 +163,7 @@ function PlaceFields({ prefix, title, form, errors, onChange }) {
                         maxLength={15}
                         value={form[keys.contactPhone]}
                         invalid={Boolean(errors[keys.contactPhone])}
-                        onChange={(event) => onChange({ [keys.contactPhone]: event.target.value })}
+                        onChange={(event) => onChange({ [keys.contactPhone]: clampPhone(event.target.value) })}
                         placeholder="10-digit mobile"
                         className="font-mono"
                     />

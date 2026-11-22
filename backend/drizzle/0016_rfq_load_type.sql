@@ -1,0 +1,1 @@
+ALTER TABLE "rfqs" ADD COLUMN "load_type" varchar(3) DEFAULT 'FTL' NOT NULL;

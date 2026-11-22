@@ -87,6 +87,18 @@ export function isAssignable(entity, today) {
 }
 
 /**
+ * Why a vehicle cannot be picked for a load that needs `required` ({ id, name }), or null when it can.
+ * The truck-type rule is real (the trip check enforces it), so the picker names it instead of hiding the truck.
+ */
+export function pickerProblem(vehicle, required, today) {
+    if (required?.id && vehicle.vehicleTypeId !== required.id) {
+        const has = vehicle.vehicleTypeName ? `is a ${vehicle.vehicleTypeName}` : 'has a different truck type';
+        return `This load needs a ${required.name ?? 'different truck type'}; ${vehicle.registrationNumber} ${has}. Change its type under Fleet to use it.`;
+    }
+    return isAssignable(vehicle, today).reason;
+}
+
+/**
  * Documents of one vehicle or driver that expire within `withinDays` (or already have), soonest first.
  * @returns {{ kind: string, label: string, expiry: string, daysLeft: number, status: string }[]}
  */

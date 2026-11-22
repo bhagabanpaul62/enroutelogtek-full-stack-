@@ -7,20 +7,20 @@ import { Check, ChevronLeft, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/ui/primitives/button';
-import { ErrorState, Modal, ModalFooter, Panel, SkeletonRows } from '@/shared/ui/kit';
+import { ErrorState, Modal, ModalFooter, Panel, SkeletonRows, ToneBadge } from '@/shared/ui/kit';
 import { formatDateTime } from '@/shared/lib/format';
 import { FormAlert } from '@/features/loads/ui/customer/steps/FormField';
 import { MS_PER_HOUR, isoHoursFromNow } from '@/features/loads/ui/customer/loadTime';
 import { useNow } from '@/features/loads/ui/customer/useNow';
 import { createRfqApi, getRfqApi, publishRfqApi, updateRfqApi } from '../../api/rfq.api';
 import { useVehicleTypes } from '../../hooks/useRfqLookups';
-import { MAX_WINDOW_DAYS, MIN_WINDOW_MINUTES, WIZARD_STEPS, apiMessage, apiProblems, duplicateLaneKeys, emptyForm, formFromRfq, laneErrors } from '../../lib/rfq';
+import { MAX_WINDOW_DAYS, MIN_WINDOW_MINUTES, WIZARD_STEPS, apiMessage, apiProblems, contractTypeLabel, duplicateLaneKeys, emptyForm, formFromRfq, laneErrors } from '../../lib/rfq';
 import { StepBasics, StepInvite, StepLanes, StepReview } from './WizardSteps';
 
 const BASE = '/customer/rfqs';
 const DEFAULT_WINDOW_HOURS = 72;
 const STEP_HEADINGS = {
-    1: 'Name the RFQ and set the contract period',
+    1: 'Name the contract and set its period',
     2: 'Add the lanes you want quoted',
     3: 'Pick who quotes and when it closes',
     4: 'Check everything, then publish',
@@ -28,7 +28,7 @@ const STEP_HEADINGS = {
 
 function basicsErrors(form) {
     const e = {};
-    if (!form.title.trim()) e.title = 'Give the RFQ a title';
+    if (!form.title.trim()) e.title = 'Give the contract a title';
     if (!form.validFrom) e.validFrom = 'Choose the start date';
     if (!form.validTo) e.validTo = 'Choose the end date';
     if (form.validFrom && form.validTo && form.validTo < form.validFrom) e.validTo = 'Must be on or after the start date';
@@ -115,7 +115,7 @@ function WizardView({ rfqId: propId }) {
     const vehicleTypes = useVehicleTypes();
 
     const [draftId, setDraftId] = useState(initialId);
-    const [form, setForm] = useState(() => (initialId ? null : emptyForm(isoHoursFromNow(DEFAULT_WINDOW_HOURS, now))));
+    const [form, setForm] = useState(() => (initialId ? null : emptyForm(isoHoursFromNow(DEFAULT_WINDOW_HOURS, now), searchParams.get('type') === 'PTL' ? 'PTL' : 'FTL')));
     const [loadError, setLoadError] = useState('');
     const [attempt, setAttempt] = useState(0);
     const [step, setStep] = useState(1);
@@ -237,7 +237,7 @@ function WizardView({ rfqId: propId }) {
     const saveDraft = () =>
         withBusy(async () => {
             if (!form.title.trim()) {
-                setErrors({ title: 'Give the RFQ a title to save it' });
+                setErrors({ title: 'Give the contract a title to save it' });
                 setStep(1);
                 return;
             }
@@ -285,6 +285,7 @@ function WizardView({ rfqId: propId }) {
                     <ChevronLeft className="size-4" aria-hidden /> RFQs
                 </Link>
                 <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-[var(--ds-on-surface)]">{draftId ? form.title || 'Draft RFQ' : 'New RFQ'}</h1>
+                <div><ToneBadge label={contractTypeLabel(form.loadType)} /></div>
             </header>
 
             <div className="grid gap-6 lg:grid-cols-[220px_minmax(0,1fr)]">

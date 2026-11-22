@@ -5,7 +5,7 @@ import { AppError } from '#shared/utils/AppError.js';
 import { vehicleTypes } from '#features/load/schemas/master.Schema.js';
 import { linkDocument } from '#features/document/document.link.js';
 import { vehicles } from '../schemas/fleet.Schema.js';
-import { isAssignable, normaliseRegistration, todayIST, vehicleDocStatus } from '../fleet.rules.js';
+import { isAssignable, normaliseRegistration, pickerProblem, todayIST, vehicleDocStatus } from '../fleet.rules.js';
 import {
     DEFAULT_LIMIT,
     busyVehicleSql,
@@ -162,18 +162,27 @@ export const addVehicleDocument = async (user, id, { documentType, fileUrl, numb
     });
 };
 
-/** Vehicles the company can put on a trip right now (picker). */
+/**
+ * Picker for trip assignment: { vehicles: can be picked now, blocked: [{ id, registrationNumber, reason }] }.
+ * A truck that cannot be picked is listed with the reason, never silently dropped.
+ */
 export const assignableVehicles = async (user, { vehicleTypeId } = {}) => {
     const today = todayIST();
-    const conditions = [mine(user.companyId), eq(vehicles.isActive, true), sql`not ${busyVehicleSql(vehicles)}`];
-    if (vehicleTypeId) conditions.push(eq(vehicles.vehicleTypeId, vehicleTypeId));
+    const [required] = vehicleTypeId ? await db.select({ id: vehicleTypes.id, name: vehicleTypes.name }).from(vehicleTypes).where(eq(vehicleTypes.id, vehicleTypeId)) : [];
     const rows = await db
         .select(baseSelect())
         .from(vehicles)
-        .where(and(...conditions))
+        .where(and(mine(user.companyId), eq(vehicles.isActive, true)))
         .orderBy(vehicles.registrationNumber)
         .limit(200);
-    return rows.map((r) => shape(r, today)).filter((v) => v.assignable.ok);
+    const pickable = [];
+    const blocked = [];
+    for (const row of rows.map((r) => shape(r, today))) {
+        const reason = pickerProblem(row, vehicleTypeId ? { id: vehicleTypeId, name: required?.name } : null, today);
+        if (reason) blocked.push({ id: row.id, registrationNumber: row.registrationNumber, reason });
+        else pickable.push(row);
+    }
+    return { vehicles: pickable, blocked };
 };
 
 /** Vehicles with documents expiring (or expired). Used by the expiring list. */

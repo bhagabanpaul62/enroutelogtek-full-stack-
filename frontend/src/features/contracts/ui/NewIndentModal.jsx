@@ -1,5 +1,6 @@
 'use client';
 
+import { clampPhone, phoneProblem } from '@/shared/lib/phone';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Modal, ModalField, ModalFooter, ModalSection } from '@/shared/ui/kit';
@@ -21,7 +22,7 @@ export default function NewIndentModal({ open, contract, onClose, onCreated }) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [usage, setUsage] = useState(null); // { month, lane } for the month of the chosen pickup date
-    const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+    const set = (key) => (e) => setForm((f) => ({ ...f, [key]: /ContactPhone$/.test(key) ? clampPhone(e.target.value) : e.target.value }));
 
     const lane = contract.lanes.find((l) => l.id === form.laneId);
     const month = monthOf(form.pickupDate);
@@ -54,6 +55,11 @@ export default function NewIndentModal({ open, contract, onClose, onCreated }) {
     if (!Number.isInteger(trucks) || trucks < 1 || trucks > MAX_TRUCKS) problems.push(`Trucks must be 1 to ${MAX_TRUCKS}.`);
     if (!form.pickupDate) problems.push('Pick a pickup date.');
     else if (form.pickupDate < min || form.pickupDate > contract.validTo) problems.push(`Pickup must be between ${formatDate(min)} and ${formatDate(contract.validTo)}.`);
+
+    for (const [key, label] of [['pickupContactPhone', 'Pickup phone'], ['dropContactPhone', 'Drop phone']]) {
+        const problem = phoneProblem(form[key]);
+        if (problem) problems.push(`${label}: ${problem}.`);
+    }
 
     const submit = async () => {
         if (problems.length || busy) return;

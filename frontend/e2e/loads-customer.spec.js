@@ -11,7 +11,7 @@ test('customer posts a draft and opens it as a record page', async ({ page }) =>
     // Mode picker, then the wizard.
     await page.getByRole('button', { name: 'New load' }).first().click();
     await expect(page.getByRole('dialog')).toContainText('Choose how this load will be placed');
-    await expect(page.getByRole('button', { name: /Contract/ })).toHaveCount(0); // Contract is a disabled card until Wave 3
+    await expect(page.getByRole('button', { name: /Contract/ })).toBeEnabled(); // Contract is its own choice (opens the contract types)
     await page.getByRole('button', { name: /Ad Hoc/ }).click();
     // The FTL / PTL gate; the wizard reads ?type=.
     await expect(page.getByRole('dialog')).toContainText('How much are you moving?');

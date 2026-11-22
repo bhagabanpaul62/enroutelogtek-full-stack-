@@ -8,6 +8,7 @@ import { EntityHeader, ErrorState, Panel, SkeletonRows, StatusChip, TabBar, Tone
 import { Button } from '@/shared/ui/primitives/button';
 import { SIDES } from '../constants';
 import { useContract } from '../hooks/useContract';
+import { contractTypeLabel } from '@/features/rfq/lib/rfq';
 import { formatDate } from '../lib/format';
 import ActivityTab from './ActivityTab';
 import AmendmentsTab from './AmendmentsTab';
@@ -86,6 +87,7 @@ function ContractView({ side, contractId }) {
                 chips={
                     <>
                         <StatusChip value={contract.status} />
+                        <ToneBadge label={contractTypeLabel(contract.loadType)} />
                         <ToneBadge label={`Version ${contract.version}`} />
                     </>
                 }

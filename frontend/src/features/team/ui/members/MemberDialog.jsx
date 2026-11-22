@@ -6,18 +6,17 @@ import { Button } from '@/shared/ui/primitives/button';
 import { ModalField } from '@/shared/ui/kit';
 import TeamDialog, { inputClass } from '../components/TeamDialog';
 import { generateTemporaryPassword, temporaryPasswordProblem } from '../../lib/tempPassword';
+import { clampPhone, phoneProblem } from '@/shared/lib/phone';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE = /^\+?\d{7,14}$/;
 
 const problemsOf = (values, adding) => {
     const problems = {};
     const name = values.name.trim();
     if (name.length < 2) problems.name = 'Enter the person’s name';
     if (adding && !EMAIL.test(values.email.trim())) problems.email = 'Enter a valid email';
-    if (values.phone.trim() && !PHONE.test(values.phone.trim())) {
-        problems.phone = '7 to 14 digits, optionally starting with +';
-    }
+    const phoneError = phoneProblem(values.phone);
+    if (phoneError) problems.phone = phoneError;
     if (!values.roleId) problems.roleId = 'Choose a role';
     if (adding) {
         const password = temporaryPasswordProblem(values.temporaryPassword);
@@ -118,7 +117,8 @@ export default function MemberDialog({ open, member, roles, busy, onCancel, onSu
                         type="tel"
                         className={inputClass}
                         value={values.phone}
-                        onChange={set('phone')}
+                        onChange={(e) => setValues((v) => ({ ...v, phone: clampPhone(e.target.value) }))}
+                        inputMode="tel"
                         maxLength={15}
                         autoComplete="off"
                         aria-invalid={Boolean(shown.phone) || undefined}

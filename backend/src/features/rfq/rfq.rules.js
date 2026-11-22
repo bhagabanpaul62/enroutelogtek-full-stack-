@@ -31,6 +31,17 @@ export const rfqNumber = (seq, createdAt) =>
 /** The moment a lane award lapses if the transporter stays silent. */
 export const acceptBy = (now = new Date()) => new Date(now.getTime() + ACCEPTANCE_HOURS * 60 * MS_PER_MINUTE);
 
+// ---------- load type (BR-C02) ----------
+
+/** Contract types a customer can pick today. PTL needs zone x weight-slab rates and consignment indents (spec section 3), which are not built. */
+export const RFQ_OPEN_LOAD_TYPES = ['FTL'];
+
+/** Problem text for a load type sent on create, or null when it is fine. */
+export const loadTypeProblem = (loadType) => {
+    if (loadType === undefined || RFQ_OPEN_LOAD_TYPES.includes(loadType)) return null;
+    return loadType === 'PTL' ? 'Part load (PTL) contracts are not available yet. Choose a full truck load (FTL) contract.' : 'loadType must be FTL or PTL';
+};
+
 // ---------- lanes ----------
 
 /**

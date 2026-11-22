@@ -1,3 +1,4 @@
+import { phoneRule } from '#shared/utils/phone.js';
 import { body, param, query } from 'express-validator';
 import {
     LOAD_STATUSES,
@@ -78,13 +79,13 @@ export const draftRules = [
     text('pickupState', 100),
     text('pickupAddress', 300),
     text('pickupContactName', 100),
-    optionalBody('pickupContactPhone').matches(/^\+?\d{7,15}$/).withMessage('pickupContactPhone must be 7 to 15 digits'),
+    phoneRule(optionalBody('pickupContactPhone').trim()),
     pin('dropPinCode'),
     text('dropCity', 100),
     text('dropState', 100),
     text('dropAddress', 300),
     text('dropContactName', 100),
-    optionalBody('dropContactPhone').matches(/^\+?\d{7,15}$/).withMessage('dropContactPhone must be 7 to 15 digits'),
+    phoneRule(optionalBody('dropContactPhone').trim()),
     isoDate('pickupDate'),
     clockTime('pickupTimeFrom'),
     clockTime('pickupTimeTo'),
@@ -166,6 +167,5 @@ export const assignmentRules = [
         .withMessage('vehicleNumber must be 4 to 20 characters'),
     body('driverName').isString().withMessage('driverName is required').bail().trim().isLength({ min: 2, max: 100 })
         .withMessage('driverName must be 2 to 100 characters'),
-    body('driverPhone').isString().withMessage('driverPhone is required').bail().trim().matches(/^\+?\d{10,15}$/)
-        .withMessage('driverPhone must be 10 to 15 digits'),
+    phoneRule(body('driverPhone').isString().withMessage('driverPhone is required').bail().trim(), { min: 10 }),
 ];

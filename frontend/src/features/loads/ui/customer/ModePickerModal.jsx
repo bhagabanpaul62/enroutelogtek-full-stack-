@@ -4,9 +4,10 @@
  * AJ-01 / AJ-02 / AJ-03 — Mode picker, then the FTL / PTL gate
  *
  * Shown before the wizard opens. First the customer picks Ad Hoc (one load, one date, short bidding
- * window) or Contract (a lane over a period — not built yet, so it shows "coming soon" until Wave 3).
- * After Ad Hoc, a second choice: a full truck (FTL) or a part load (PTL). The wizard reads it from
- * `?type=` and starts with that load type.
+ * window) or Contract (a lane over a period). Then a second choice: a full truck (FTL) or a part
+ * load (PTL). Ad Hoc opens the load wizard, Contract opens the contract wizard; both read `?type=`.
+ * PTL contracts need zone x weight-slab rates and consignment indents (spec section 3, Q2), so
+ * that card is shown disabled until those exist.
  *
  * BR-01: load.kind is fixed at creation; this gate is the only place it can be chosen.
  */
@@ -17,6 +18,7 @@ import { IconChip, Modal, ToneBadge } from '@/shared/ui/kit';
 import { cn } from '@/shared/lib/utils';
 
 const NEW_ADHOC_PATH = '/customer/loads/new';
+const NEW_CONTRACT_PATH = '/customer/rfqs/new';
 
 function ModeCard({ icon: Icon, title, description, badge, disabled, href, onClick }) {
     const inner = (
@@ -60,6 +62,13 @@ function ModeCard({ icon: Icon, title, description, badge, disabled, href, onCli
  */
 export default function ModePickerModal({ open, onClose }) {
     const [stage, setStage] = useState('mode'); // 'mode' | 'type'
+    const [mode, setMode] = useState('adhoc'); // 'adhoc' | 'contract'
+    const contract = mode === 'contract';
+    const base = contract ? NEW_CONTRACT_PATH : NEW_ADHOC_PATH;
+    const pick = (next) => {
+        setMode(next);
+        setStage('type');
+    };
     const close = () => {
         setStage('mode');
         onClose();
@@ -70,8 +79,8 @@ export default function ModePickerModal({ open, onClose }) {
             open={open}
             onOpenChange={(next) => !next && close()}
             size="md"
-            title={stage === 'mode' ? 'New load' : 'How much are you moving?'}
-            description={stage === 'mode' ? 'Choose how this load will be placed and priced.' : 'This decides the form and how transporters price their bids.'}
+            title={stage === 'mode' ? 'New load' : contract ? 'What kind of contract?' : 'How much are you moving?'}
+            description={stage === 'mode' ? 'Choose how this load will be placed and priced.' : contract ? 'This decides how transporters price the contract. It cannot be changed later.' : 'This decides the form and how transporters price their bids.'}
         >
             {stage === 'mode' ? (
                 <>
@@ -80,18 +89,17 @@ export default function ModePickerModal({ open, onClose }) {
                             icon={Package}
                             title="Ad Hoc"
                             description="One shipment, one pickup date. Invite your transporters to bid in a short window and pick the winner."
-                            onClick={() => setStage('type')}
+                            onClick={() => pick('adhoc')}
                         />
                         <ModeCard
                             icon={FileText}
                             title="Contract"
-                            description="A lane or monthly volume over a period. Set rates, award a carrier, and place indents against the contract. Coming soon: for now, post it as an Ad Hoc load."
-                            badge="Coming soon"
-                            disabled
+                            description="The same lanes every month for a period. Transporters quote a rate per lane, you award it, then book trucks against the contract as you need them."
+                            onClick={() => pick('contract')}
                         />
                     </div>
                     <p className="mt-4 text-xs text-[var(--ds-on-surface-muted)]">
-                        Not sure? Ad Hoc is the right choice for a one-off movement. Use Contract when you move the same lane regularly.
+                        Not sure? Ad Hoc is the right choice for a one-off movement. Use Contract when you move the same lane regularly and want one rate for the period.
                     </p>
                 </>
             ) : (
@@ -99,15 +107,17 @@ export default function ModePickerModal({ open, onClose }) {
                     <div className="grid gap-3 sm:grid-cols-2">
                         <ModeCard
                             icon={Truck}
-                            title="Full truck load (FTL)"
-                            description="The whole truck is yours. Transporters bid per truck, per ton or per km."
-                            href={`${NEW_ADHOC_PATH}?type=FTL`}
+                            title={contract ? 'Full truck contract (FTL)' : 'Full truck load (FTL)'}
+                            description={contract ? 'A rate for each lane, per truck trip or per ton, for the whole period.' : 'The whole truck is yours. Transporters bid per truck, per ton or per km.'}
+                            href={`${base}?type=FTL`}
                         />
                         <ModeCard
                             icon={Boxes}
-                            title="Part load (PTL)"
-                            description="Packages that share a truck. You enter package sizes and weight; bids are per kg on the chargeable weight."
-                            href={`${NEW_ADHOC_PATH}?type=PTL`}
+                            title={contract ? 'Part load contract (PTL)' : 'Part load (PTL)'}
+                            description={contract ? 'A rate per kg for each zone and weight band. Not available yet: for now, book part loads one at a time as Ad Hoc.' : 'Packages that share a truck. You enter package sizes and weight; bids are per kg on the chargeable weight.'}
+                            badge={contract ? 'Later' : undefined}
+                            disabled={contract}
+                            href={contract ? undefined : `${base}?type=PTL`}
                         />
                     </div>
                     <button

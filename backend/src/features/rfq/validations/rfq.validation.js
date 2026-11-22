@@ -29,6 +29,7 @@ const whole = (field, min, max) =>
 /** Create and patch share one rule set; required-ness (title on create) is checked in the service. */
 export const draftRules = [
     text('title', 150),
+    optional('loadType').isIn(['FTL', 'PTL']).withMessage('loadType must be FTL or PTL'),
     isoDate('validFrom'),
     isoDate('validTo'),
     optional('closesAt').isISO8601().withMessage('closesAt must be a date and time'),

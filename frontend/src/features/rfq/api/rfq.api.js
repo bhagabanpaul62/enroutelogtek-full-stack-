@@ -19,6 +19,7 @@ export const paiseToRupeeInput = (paise) =>
 /** The form (rupees, strings) as the RfqDraft the API wants. Sends only what the form has. */
 export function toDraftPayload(form, { withLanes = true } = {}) {
     const payload = {
+        loadType: form.loadType || undefined,
         title: form.title.trim(),
         validFrom: form.validFrom || undefined,
         validTo: form.validTo || undefined,

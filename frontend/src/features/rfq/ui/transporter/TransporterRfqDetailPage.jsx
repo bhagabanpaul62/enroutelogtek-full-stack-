@@ -14,7 +14,7 @@ import { formatCountdown } from '@/features/loads/lib/format';
 import { useNow } from '@/features/loads/ui/customer/useNow';
 import { respondAwardsApi, submitQuoteApi } from '../../api/rfq.api';
 import { useRfq } from '../../hooks/useRfq';
-import { MAX_RATE_RUPEES, MAX_REVISIONS, RFQ_PERMISSIONS, apiMessage, basisUnit, formatPeriod, laneRoute } from '../../lib/rfq';
+import { MAX_RATE_RUPEES, MAX_REVISIONS, RFQ_PERMISSIONS, apiMessage, basisUnit, contractTypeLabel, formatPeriod, laneRoute } from '../../lib/rfq';
 
 const BASE = '/transporter/rfqs';
 
@@ -298,7 +298,7 @@ export default function TransporterRfqDetailPage({ rfqId }) {
                 back={{ href: BASE, label: 'RFQs' }}
                 title={rfq.title}
                 chips={<StatusChip value={rfq.status} />}
-                meta={[rfq.customer?.name, rfq.number, formatPeriod(rfq), `${lanes.length} ${lanes.length === 1 ? 'lane' : 'lanes'}`]}
+                meta={[rfq.customer?.name, rfq.number, contractTypeLabel(rfq.loadType), formatPeriod(rfq), `${lanes.length} ${lanes.length === 1 ? 'lane' : 'lanes'}`]}
             />
 
             {refreshError && <p className="rounded-2xl bg-amber-400/10 px-4 py-3 text-[13px] text-amber-300">{refreshError}</p>}

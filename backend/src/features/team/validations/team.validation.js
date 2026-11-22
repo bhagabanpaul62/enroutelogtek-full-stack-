@@ -2,6 +2,7 @@
  * Request shapes for /team. Field-level checks only; which permissions a role may hold and who
  * may do what are business rules in team.rules.js.
  */
+import { phoneRule } from '#shared/utils/phone.js';
 import { body, param, query } from 'express-validator';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from '#features/auth/login.rules.js';
 import { userStatus } from '#features/auth/schemas/users.Schema.js';
@@ -42,13 +43,7 @@ const personName = (chain) =>
         .withMessage('Name must be 2 to 255 characters');
 
 // users.phone is varchar(15); digits with an optional leading +.
-const phone = body('phone')
-    .optional({ values: 'falsy' })
-    .isString()
-    .bail()
-    .trim()
-    .matches(/^\+?\d{7,14}$/)
-    .withMessage('Phone must be 7 to 14 digits, optionally starting with +');
+const phone = phoneRule(body('phone').optional({ values: 'falsy' }).trim());
 
 const temporaryPassword = body('temporaryPassword')
     .isString()
@@ -105,13 +100,7 @@ export const addMemberRules = [
 export const updateMemberRules = [
     personName(body('name').optional()),
     // An empty phone clears it.
-    body('phone')
-        .optional({ values: 'null' })
-        .isString()
-        .bail()
-        .trim()
-        .custom((value) => value === '' || /^\+?\d{7,14}$/.test(value))
-        .withMessage('Phone must be 7 to 14 digits, optionally starting with +'),
+    phoneRule(body('phone').optional({ values: 'null' }).trim(), { allowEmpty: true }),
     body('roleId').optional().isUUID().withMessage('Choose a role'),
 ];
 
